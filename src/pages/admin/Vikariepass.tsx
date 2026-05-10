@@ -146,18 +146,49 @@ function PassDetaljer({
           </div>
         </div>
 
-        {/* Tilldela vikarie */}
+{/* Tilldela vikarie */}
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Tilldela vikarie</p>
           <div className="flex gap-2">
-            <Select value={tilldela} onChange={(e) => setTilldela(e.target.value)} className="flex-1">
+            <select value={tilldela} onChange={(e) => setTilldela(e.target.value)}
+              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">– Välj vikarie –</option>
               {vikarier.map((v) => (
                 <option key={v.id} value={v.id}>{v.namn}</option>
               ))}
-            </Select>
-            <Button size="sm" onClick={tilldelaVikarie} disabled={!tilldela}>Tilldela</Button>
+            </select>
+            <button onClick={tilldelaVikarie} disabled={!tilldela}
+              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+              Tilldela
+            </button>
           </div>
+        </div>
+
+        {/* Rikta pass */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Rikta pass till specifik vikarie</p>
+          <p className="mb-2 text-xs text-gray-400">Passet syns bara för den valda vikarien och ingen annan.</p>
+          <div className="flex gap-2">
+            <select
+              value={pass.riktad_till_vikarie_id ?? ''}
+              onChange={async (e) => {
+                const val = e.target.value || null;
+                const res = await passApi.uppdatera(pass.id, { riktad_till_vikarie_id: val } as any);
+                if (res.data) onUppdaterad({ ...pass, riktad_till_vikarie_id: val });
+              }}
+              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">– Publikt (alla vikarier) –</option>
+              {vikarier.map((v) => (
+                <option key={v.id} value={v.id}>{v.namn}</option>
+              ))}
+            </select>
+          </div>
+          {pass.riktad_till_vikarie_id && (
+            <p className="mt-1.5 text-xs text-yellow-600">
+              Riktat till: {vikarier.find(v => v.id === pass.riktad_till_vikarie_id)?.namn ?? '–'}
+            </p>
+          )}
         </div>
 
         {/* Notifiera vikarier */}

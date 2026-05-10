@@ -2,11 +2,11 @@ import { supabase } from '../supabase';
 import type {
   Arbetslag, NyArbetslag, UppdateraArbetslag,
   Personal, NyPersonal, UppdateraPersonal,
-  Vikarier, NyVikarie, UppdateraVikarie,
+  Vikarie, NyVikarie, UppdateraVikarie,
   VikarieTillgänglighet,
   Frånvaro, NyFrånvaro,
   Vikariepass, NyttVikariepass, UppdateraVikariepass,
-  PassStatus, Passhistorik, HändelsTyp,
+  PassStatus, HändelsTyp,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
 } from '../../types';
@@ -124,7 +124,7 @@ export const frånvaroApi = {
 export const passApi = {
   async lista(filter?: PassFilter) {
     let q = supabase.from('vikariepass')
-      .select('*, personal(*, arbetslag(*)), vikarier(*), frånvaro(*)')
+      .select('*, personal(*, arbetslag(*)), frånvaro(*)')
       .order('datum').order('tid_från');
     if (filter?.datumFrån) q = q.gte('datum', filter.datumFrån);
     if (filter?.datumTill) q = q.lte('datum', filter.datumTill);
@@ -133,13 +133,14 @@ export const passApi = {
   },
   async hämta(id: string) {
     return supabase.from('vikariepass')
-      .select('*, personal(*, arbetslag(*)), vikarier(*), frånvaro(*)').eq('id', id).single();
+      .select('*, personal(*, arbetslag(*)), frånvaro(*)')
+      .eq('id', id).single();
   },
   async skapa(data: NyttVikariepass) {
-    return supabase.from('vikariepass').insert(data).select('*, personal(*), vikarier(*)').single();
+    return supabase.from('vikariepass').insert(data).select('*, personal(*)').single();
   },
   async uppdatera(id: string, data: UppdateraVikariepass) {
-    return supabase.from('vikariepass').update(data).eq('id', id).select('*, personal(*), vikarier(*)').single();
+    return supabase.from('vikariepass').update(data).eq('id', id).select('*, personal(*)').single();
   },
   async uppdateraStatus(id: string, status: PassStatus) {
     return supabase.from('vikariepass').update({ status }).eq('id', id).select().single();
@@ -147,7 +148,7 @@ export const passApi = {
   async tilldelVikarie(passId: string, vikarieId: string) {
     return supabase.from('vikariepass')
       .update({ vikarie_id: vikarieId, status: 'bokat' })
-      .eq('id', passId).select('*, personal(*), vikarier(*)').single();
+      .eq('id', passId).select('*, personal(*)').single();
   },
   async bokaPass(passId: string, vikarieId: string) {
     return supabase.from('vikariepass')
@@ -155,13 +156,16 @@ export const passApi = {
       .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
       .select().single();
   },
+  async hämtaVikarie(vikarieId: string) {
+    return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
+  },
   async dashboardStatistik(): Promise<DashboardStatistik> {
     const idag = new Date().toISOString().slice(0, 10);
     const omSjuDagar = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
     const [dagensRes, kommandeRes, statRes] = await Promise.all([
-      supabase.from('vikariepass').select('*, personal(*, arbetslag(*)), vikarier(*)')
+      supabase.from('vikariepass').select('*, personal(*, arbetslag(*))')
         .eq('datum', idag).neq('status', 'avbokat').order('tid_från'),
-      supabase.from('vikariepass').select('*, personal(*, arbetslag(*)), vikarier(*)')
+      supabase.from('vikariepass').select('*, personal(*, arbetslag(*))')
         .gt('datum', idag).lte('datum', omSjuDagar).neq('status', 'avbokat').order('datum'),
       supabase.from('vikariepass').select('status').gte('datum', idag),
     ]);
@@ -196,8 +200,8 @@ export const historikApi = {
 
 export const notisApi = {
   async listaFörPass(passId: string) {
-    return supabase.from('notiser').select('*, vikarier(*)').eq('pass_id', passId)
-      .order('created_at', { ascending: false });
+    return supabase.from('notiser').select('*')
+      .eq('pass_id', passId).order('created_at', { ascending: false });
   },
   async skickaNotiser(passId: string, vikariIds: string[]) {
     return supabase.functions.invoke('skicka-epost', {
@@ -221,7 +225,8 @@ export const importApi = {
       .eq('import_id', importId).order('datum').order('tid_från');
   },
   async uppdateraMatchning(radId: string, personalId: string | null, status: Matchningsstatus) {
-    return supabase.from('schemarader').update({ personal_id: personalId, matchningsstatus: status }).eq('id', radId);
+    return supabase.from('schemarader')
+      .update({ personal_id: personalId, matchningsstatus: status }).eq('id', radId);
   },
   async uppdateraImportStatistik(importId: string, matchade: number, omatchade: number) {
     return supabase.from('schemaimport').update({ matchade, omatchade }).eq('id', importId);

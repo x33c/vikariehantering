@@ -146,7 +146,8 @@ export interface Vikariepass {
   ämne: string | null;
   grupp: string | null;
   sal: string | null;
-  anteckning: string | null;
+anteckning: string | null;
+  riktad_till_vikarie_id: string | null;
   status: PassStatus;
   skapad_av: string | null;
   created_at: string;
