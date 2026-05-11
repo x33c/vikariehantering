@@ -33,15 +33,11 @@ const VECKODAGAR: Record<string, number> = {
 };
 
 export function detekteraNovaschema(text: string): boolean {
-  return text
-    .split(/\r?\n/)
-    .slice(0, 300)
-    .some((rad) => parsaLektionsrad(rad) !== null);
+  return hittaLektionsrader(text).some((rad) => parsaLektionsrad(rad) !== null);
 }
 
 export function parsaNovaschemaFil(text: string): NovaschemaLektion[] {
-  return text
-    .split(/\r?\n/)
+  return hittaLektionsrader(text)
     .map(parsaLektionsrad)
     .filter((rad): rad is NovaschemaLektion => rad !== null);
 }
@@ -49,7 +45,6 @@ export function parsaNovaschemaFil(text: string): NovaschemaLektion[] {
 export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaImportRad[] {
   return lektioner.flatMap((lektion) => {
     const tidTill = läggTillMinuter(lektion.tidFrån, lektion.minuter);
-
     return lektion.veckor.map((vecka) => ({
       datum: isoDatumFörVecka(vecka >= 27 ? 2025 : 2026, vecka, lektion.veckodag),
       tidFrån: lektion.tidFrån,
@@ -62,6 +57,24 @@ export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaIm
       vecka,
     }));
   });
+}
+
+function hittaLektionsrader(text: string): string[] {
+  const allaRader = text.split(/\r?\n/);
+  const lessonIndex = allaRader.findIndex((rad) => rad.trim() === 'Lesson (7100)');
+  if (lessonIndex === -1) return allaRader;
+
+  const rowsIndex = allaRader.findIndex((rad, index) => index > lessonIndex && rad.trim() === '[Rows]');
+  if (rowsIndex === -1) return [];
+
+  const dataStart = rowsIndex + 2;
+  const dataSlut = allaRader.findIndex((rad, index) =>
+    index > dataStart && /^\[[^\]]+\]$/.test(rad.trim())
+  );
+
+  return allaRader
+    .slice(dataStart, dataSlut === -1 ? undefined : dataSlut)
+    .filter((rad) => rad.trim() && !rad.startsWith('PK (7100)'));
 }
 
 function parsaLektionsrad(rad: string): NovaschemaLektion | null {
