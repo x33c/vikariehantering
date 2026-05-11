@@ -231,27 +231,44 @@ export default function Import() {
     const omatchade = förbehandlade.filter(r => r.status === 'omatchad' && !r.åsidosattPersonalId).length;
 
     return (
-      <div className="p-4 sm:p-6">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-center gap-3">
-          <button onClick={() => { setSteg('lista'); setFörbehandlade([]); }}
-            className="text-sm hover:underline" style={{ color: 'var(--text-muted)' }}>
-            ← Tillbaka
+          <button
+            onClick={() => { setSteg('lista'); setFörbehandlade([]); }}
+            className="rounded-lg border px-3 py-2 text-sm font-medium"
+            style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+          >
+            Tillbaka
           </button>
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>
-            Importera schema: {filnamn}
-          </h1>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Förhandsvisning</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              {filnamn}
+            </h1>
+          </div>
         </div>
 
         {fel && <Alert typ="error" className="mb-4">{fel}</Alert>}
         {personalMeddelande && <Alert typ="success" className="mb-4">{personalMeddelande}</Alert>}
 
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-4 text-sm">
-            <span className="text-green-600 font-medium">{matchade} matchade</span>
-            <span className="text-yellow-600 font-medium">{osäkra} osäkra</span>
-            <span className="text-red-600 font-medium">{omatchade} omatchade</span>
-            <span style={{ color: 'var(--text-muted)' }}>{förbehandlade.length} totalt</span>
-          </div>
+        <div className="mb-5 grid gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Matchade', värde: matchade, color: '#047857' },
+            { label: 'Osäkra', värde: osäkra, color: '#b45309' },
+            { label: 'Omatchade', värde: omatchade, color: '#b91c1c' },
+            { label: 'Totalt', värde: förbehandlade.length, color: 'var(--text)' },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-lg border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
+              <p className="mt-2 text-2xl font-semibold" style={{ color: stat.color }}>{stat.värde}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Visar en förhandsvisning av de första raderna. Alla rader sparas vid import.
+          </p>
           <div className="flex flex-wrap gap-2">
             {personalFrånFil.length > 0 && (
               <Button variant="secondary" loading={importerarPersonal} onClick={importeraPersonalFrånFil}>
@@ -264,7 +281,7 @@ export default function Import() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -332,39 +349,69 @@ export default function Import() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Schemaimport</h1>
+    <div className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+            Schema
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+            Schemaimport
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Importera Novaschem TXT, CSV eller Excel och matcha mot personal.
+          </p>
+        </div>
       </div>
 
-      <div className="mb-8 rounded-xl border-2 border-dashed p-8 text-center" style={{ borderColor: 'var(--border)' }}>
-        <p className="mb-1 text-sm" style={{ color: 'var(--text)' }}>
-          Ladda upp schema från Novaschem eller Skola24
-        </p>
-        <p className="mb-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Stöder Novaschem TXT-export (.txt) samt CSV och Excel (.xlsx/.xls)
-        </p>
-        <input
-          ref={filRef}
-          type="file"
-          accept=".txt,.csv,.xlsx,.xls"
-          onChange={hanteraFil}
-          className="hidden"
-          id="fil-upload"
-        />
-        <label htmlFor="fil-upload"
-          className="cursor-pointer rounded-md px-4 py-2 text-sm font-medium text-white"
-          style={{ background: 'var(--blue)' }}>
-          Välj fil
-        </label>
-        {fel && <Alert typ="error" className="mt-4">{fel}</Alert>}
+      <div
+        className="mb-8 rounded-lg border p-6 sm:p-8"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+      >
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>
+              Ladda upp schemafil
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm" style={{ color: 'var(--text-muted)' }}>
+              TXT-export från Novaschem kan även innehålla personal. Efter uppladdning får du förhandsgranska matchning innan importen sparas.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--border)' }}>.txt</span>
+              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--border)' }}>.csv</span>
+              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--border)' }}>.xlsx</span>
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <input
+              ref={filRef}
+              type="file"
+              accept=".txt,.csv,.xlsx,.xls"
+              onChange={hanteraFil}
+              className="hidden"
+              id="fil-upload"
+            />
+            <label
+              htmlFor="fil-upload"
+              className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+              style={{ background: 'var(--accent)' }}
+            >
+              Välj fil
+            </label>
+          </div>
+        </div>
+        {fel && <Alert typ="error" className="mt-5">{fel}</Alert>}
       </div>
 
-      <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Tidigare importer</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Tidigare importer</h2>
+        <span className="text-xs" style={{ color: 'var(--text-subtle)' }}>{importer.length} importer</span>
+      </div>
       {importer.length === 0 ? (
         <TomtTillstånd text="Inga importer genomförda ännu." />
       ) : (
-        <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text-muted)' }}>
