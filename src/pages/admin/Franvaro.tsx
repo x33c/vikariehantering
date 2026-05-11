@@ -127,7 +127,7 @@ function SchemaVal({
         <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Ta bort alla</Button>
       </div>
 
-      <div className="space-y-2">
+      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1 pb-20">
         {sorterade.map((rad) => {
           const vald = valda.has(rad.id);
 
@@ -136,7 +136,7 @@ function SchemaVal({
               key={rad.id}
               type="button"
               onClick={() => växla(rad.id)}
-              className="flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-sm"
+              className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition hover:shadow-sm"
               style={{
                 background: vald ? 'color-mix(in srgb, var(--accent) 14%, var(--bg-card))' : 'var(--bg-card)',
                 borderColor: vald ? 'var(--accent)' : 'var(--border)',
@@ -158,7 +158,7 @@ function SchemaVal({
                 <p className="font-semibold">
                   {tid(rad.tid_från)}-{tid(rad.tid_till)}
                 </p>
-                <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                <p className="mt-0.5 text-sm leading-tight" style={{ color: 'var(--text-muted)' }}>
                   {[rad.ämne || 'Lektion', rad.grupp, rad.sal ? `Sal ${rad.sal}` : '']
                     .filter(Boolean)
                     .join(' · ')}
@@ -397,7 +397,7 @@ function FrånvaroModal({
 
 
           <div
-            className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t px-6 py-4"
+            className="sticky bottom-0 -mx-6 flex flex-wrap justify-end gap-2 border-t px-6 py-4 shadow-lg"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
           >
             <Button variant="secondary" onClick={onStäng}>Spara utan vikarie</Button>
