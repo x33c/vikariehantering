@@ -10,6 +10,7 @@ const navItems = [
   { to: '/admin/vikariepass', label: 'Vikariepass' },
   { to: '/admin/import', label: 'Schemaimport' },
   { to: '/admin/historik', label: 'Historik' },
+  { to: '/admin/utskick', label: 'Utskick' },
 ];
 
 function useDarkMode() {

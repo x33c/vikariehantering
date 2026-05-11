@@ -17,6 +17,7 @@ import Franvaro from './pages/admin/Franvaro';
 import Vikariepass from './pages/admin/Vikariepass';
 import Import from './pages/admin/Import';
 import Historik from './pages/admin/Historik';
+import Utskick from './pages/admin/Utskick';
 
 // Vikarie pages
 import LedigaPass from './pages/vikarie/LedigaPass';
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="vikariepass" element={<Vikariepass />} />
             <Route path="import" element={<Import />} />
             <Route path="historik" element={<Historik />} />
+            <Route path="utskick" element={<Utskick />} />
           </Route>
 
           {/* Vikarie routes */}
