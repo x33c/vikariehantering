@@ -102,5 +102,13 @@
 .dark table thead tr {
   background-color: var(--bg) !important;
 }
+.dark input[type="search"] {
+  background-color: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
   }
+
+  
 }
