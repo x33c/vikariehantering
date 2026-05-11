@@ -1,5 +1,3 @@
-cat > vercel.json << 'EOF'
-{
+echo '{
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-EOF
+}' > vercel.json
