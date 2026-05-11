@@ -260,6 +260,7 @@ export default function Arbetslag() {
                       <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">E-post</th>
                       <th className="px-4 py-2.5" />
                     </tr>
+                    </thead>
                     <tbody className="divide-y divide-gray-100">
                       {personalFörArbetstag(al.id).map((p) => (
                         <PersonalRad key={p.id} personal={p}
