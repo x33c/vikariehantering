@@ -64,26 +64,36 @@ export default function Historik() {
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                {['Tidpunkt', 'Händelse', 'Pass', 'Utförd av', 'Anteckning'].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
-                ))}
-              </tr>
+<tr className="border-b bg-gray-50 text-xs text-gray-500">
+  <th className="px-4 py-2.5 text-left font-medium">Tidpunkt</th>
+  <th className="px-4 py-2.5 text-left font-medium">Händelse</th>
+  <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Pass</th>
+  <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Utförd av</th>
+  <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Anteckning</th>
+</tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rader.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{HÄNDELSE_LABELS[r.händelse]}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {r.vikariepass ? `${r.vikariepass.datum} – ${r.vikariepass.personal?.namn ?? '–'}` : '–'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? 'System'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{r.anteckning ?? '–'}</td>
+ <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+  {new Date(r.created_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}
+</td>
+
+<td className="px-4 py-3 font-medium text-gray-900">
+  {HÄNDELSE_LABELS[r.händelse]}
+</td>
+
+<td className="px-4 py-3 text-gray-600 hidden sm:table-cell">
+  {r.vikariepass ? `${r.vikariepass.datum} – ${r.vikariepass.personal?.namn ?? '–'}` : '–'}
+</td>
+
+<td className="px-4 py-3 text-gray-600 hidden md:table-cell">
+  {r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? 'System'}
+</td>
+
+<td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
+  {r.anteckning ?? '–'}
+</td>
                 </tr>
               ))}
             </tbody>

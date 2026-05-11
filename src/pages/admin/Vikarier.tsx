@@ -221,19 +221,23 @@ export default function Vikarier() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                {['Namn','E-post','Telefon','Ämnen','Stadier','Konto',''].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left font-medium">{h}</th>
-                ))}
+<th className="px-4 py-2.5 text-left font-medium">Namn</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">E-post</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Telefon</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Ämnen</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Stadier</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Konto</th>
+              <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtrerade.map(v => (
                 <tr key={v.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{v.namn}</td>
-                  <td className="px-4 py-3 text-gray-600">{v.epost ?? '–'}</td>
-                  <td className="px-4 py-3 text-gray-600">{v.telefon ?? '–'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{v.ämnen?.join(', ') || '–'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{v.stadier?.join(', ') || '–'}</td>
+<td className="px-4 py-3 font-medium text-gray-900">{v.namn}</td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{v.epost ?? '–'}</td>
+                  <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{v.telefon ?? '–'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600 hidden lg:table-cell">{v.ämnen?.join(', ') || '–'}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600 hidden lg:table-cell">{v.stadier?.join(', ') || '–'}</td>
                   <td className="px-4 py-3">
                     {v.profil_id
                       ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Aktivt konto</span>
