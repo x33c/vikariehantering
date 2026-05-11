@@ -129,33 +129,37 @@ function byggHtml({
 }) {
   const formatNamn = skapaNamnFormatter(frånvaro, pass);
 
+  const darkCell = 'border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;';
+  const darkHead = 'border:1px solid #666666;background-color:#3a3a3a;color:#ffffff;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const darkLabel = 'border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+
   const tableRows = [
-    `<tr><th style="border:1px solid #666;padding:8px;text-align:left;">Vecka</th>${dagar.map((dag) => `<th style="border:1px solid #666;padding:8px;text-align:center;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
-    `<tr><th style="border:1px solid #666;padding:8px;text-align:center;">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="border:1px solid #666;padding:8px;text-align:center;">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
-    `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Frånvaro</th>${dagar.map((dag) => {
+    `<tr><th style="${darkLabel};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${darkHead};width:145px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
+    `<tr><th style="${darkHead}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${darkHead}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
+    `<tr><th style="${darkLabel};height:120px;">Frånvaro</th>${dagar.map((dag) => {
       const rader = frånvaroFörDag(frånvaro, iso(dag));
-      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:120px;vertical-align:middle;">${rader.length ? rader.map((f) => esc(frånvaroText(f, formatNamn))).join('<br>') : '-'}</td>`;
+      return `<td style="${darkCell};height:120px;">${rader.length ? rader.map((f) => esc(frånvaroText(f, formatNamn))).join('<br>') : '-'}</td>`;
     }).join('')}</tr>`,
-    `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Vikarie</th>${dagar.map((dag) => {
+    `<tr><th style="${darkLabel};height:170px;">Vikarie</th>${dagar.map((dag) => {
       const rader = passFörDag(pass, iso(dag));
-      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:170px;vertical-align:middle;">${rader.length ? rader.map((p) => esc(vikarieText(p, formatNamn)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
+      return `<td style="${darkCell};height:170px;">${rader.length ? rader.map((p) => esc(vikarieText(p, formatNamn)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
     }).join('')}</tr>`,
-    `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Övrigt</th>${dagar.map(() => `<td style="border:1px solid #666;padding:14px;text-align:center;height:110px;vertical-align:middle;">-</td>`).join('')}</tr>`,
+    `<tr><th style="${darkLabel};height:110px;">Övrigt</th>${dagar.map(() => `<td style="${darkCell};height:110px;">-</td>`).join('')}</tr>`,
   ].join('');
 
   return `
-<div style="font-family:Arial,sans-serif;font-size:13px;color:#ffffff;background:#252525;padding:12px;">
-  <p>God morgon,<br>här är frånvaron för ${esc(datumText)}</p>
-  <p>Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.</p>
-  <table style="border-collapse:collapse;background:#333333;color:#ffffff;min-width:900px;">
+<div style="font-family:Arial,sans-serif;font-size:13px;color:#111111;background-color:#ffffff;">
+  <p style="margin:0 0 10px 0;">God morgon,<br>här är frånvaron för ${esc(datumText)}</p>
+  <p style="margin:0 0 16px 0;">Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.</p>
+  <table width="805" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;">
     ${tableRows}
   </table>
-  <p style="margin-top:24px;"><strong>Länkar:</strong><br>
-    ${länkar.map((l) => `<a href="${esc(l.url)}" style="color:#9bd3e8;">${esc(l.label)}</a>`).join('<br>')}
+  <p style="margin:22px 0 4px 0;"><strong>Länkar:</strong></p>
+  <p style="margin:0;">
+    ${länkar.map((l) => `<a href="${esc(l.url)}" style="color:#0969da;text-decoration:underline;">${esc(l.label)}</a>`).join('<br>')}
   </p>
-  <p style="margin-top:20px;"><strong>Kontaktuppgifter:</strong><br>
-    ${kontakter.map(esc).join('<br>')}
-  </p>
+  <p style="margin:18px 0 4px 0;"><strong>Kontaktuppgifter:</strong></p>
+  <p style="margin:0;">${kontakter.map(esc).join('<br>')}</p>
 </div>`.trim();
 }
 
@@ -228,10 +232,6 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
     setTimeout(() => setKopierat(false), 2000);
   }
 
-  function öppnaMejl() {
-    const body = encodeURIComponent(intro);
-    window.location.href = `mailto:?subject=${encodeURIComponent(ämne)}&body=${body}`;
-  }
 
   if (laddar) return <LaddaSida />;
 
@@ -257,8 +257,7 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
             onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(e.target.value))))}
             className="rounded-lg border px-3 py-2 text-sm"
           />
-          <Button variant="secondary" onClick={öppnaMejl}>Öppna mejl</Button>
-          <Button onClick={kopieraHtmlMejl}>{kopierat ? 'Kopierat' : 'Kopiera HTML-mejl'}</Button>
+          <Button onClick={kopieraHtmlMejl}>{kopierat ? 'Kopierat' : 'Kopiera utskick'}</Button>
         </div>
       </div>
 
