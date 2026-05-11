@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { frånvaroApi, passApi } from '../../lib/api';
-import type { DashboardStatistik, Frånvaro, PassStatus, Vikariepass } from '../../types';
+import { frånvaroApi, historikApi, passApi, vikariApi } from '../../lib/api';
+import type { DashboardStatistik, Frånvaro, PassStatus, Vikarie, Vikariepass } from '../../types';
 import { PASS_STATUS_LABELS } from '../../types';
 
 function formatTid(tid: string) {
@@ -74,9 +74,15 @@ function TomLista({ text }: { text: string }) {
 function FrånvaroRad({
   frånvaro,
   pass,
+  vikarier,
+  bemannarPassId,
+  onBemanna,
 }: {
   frånvaro: Frånvaro;
   pass?: Vikariepass;
+  vikarier: Vikarie[];
+  bemannarPassId: string | null;
+  onBemanna: (pass: Vikariepass, vikarieId: string) => void;
 }) {
   const navigate = useNavigate();
   const status = pass?.status;
@@ -89,39 +95,75 @@ function FrånvaroRad({
     ? statusTon[status]
     : { bg: '#fff7ed', text: '#c2410c', ring: '#fed7aa' };
 
+  const kanBemannasDirekt = pass && pass.status === 'obokat';
+
   return (
-    <button
-      onClick={() => navigate(pass ? '/admin/vikariepass' : '/admin/franvaro')}
-      className="group flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
+    <div
+      className="rounded-lg border px-4 py-3 transition-all hover:shadow-sm"
       style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
     >
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium" style={{ color: 'var(--text)' }}>
-          {frånvaro.personal?.namn ?? 'Okänd person'}
-        </p>
-        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          {pass
-            ? `${formatTid(pass.tid_från)}-${formatTid(pass.tid_till)}`
-            : frånvaro.hel_dag
-              ? 'Heldag'
-              : `${formatTid(frånvaro.tid_från ?? '08:00')}-${formatTid(frånvaro.tid_till ?? '17:00')}`}
-          {frånvaro.personal?.arbetslag && <> · {frånvaro.personal.arbetslag.namn}</>}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => navigate(pass ? '/admin/vikariepass' : '/admin/franvaro')}
+          className="min-w-0 flex-1 text-left"
+        >
+          <p className="truncate text-sm font-medium" style={{ color: 'var(--text)' }}>
+            {frånvaro.personal?.namn ?? 'Okänd person'}
+          </p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            {pass
+              ? `${formatTid(pass.tid_från)}-${formatTid(pass.tid_till)}`
+              : frånvaro.hel_dag
+                ? 'Heldag'
+                : `${formatTid(frånvaro.tid_från ?? '08:00')}-${formatTid(frånvaro.tid_till ?? '17:00')}`}
+            {frånvaro.personal?.arbetslag && <> · {frånvaro.personal.arbetslag.namn}</>}
+          </p>
+        </button>
+
+        <span
+          className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium"
+          style={{ background: färg.bg, color: färg.text, boxShadow: `inset 0 0 0 1px ${färg.ring}` }}
+        >
+          {badge}
+        </span>
       </div>
 
-      <span
-        className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium"
-        style={{ background: färg.bg, color: färg.text, boxShadow: `inset 0 0 0 1px ${färg.ring}` }}
-      >
-        {badge}
-      </span>
-    </button>
+      {kanBemannasDirekt && (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <select
+            className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"
+            value=""
+            disabled={bemannarPassId === pass.id}
+            onChange={(e) => {
+              if (e.target.value) onBemanna(pass, e.target.value);
+            }}
+          >
+            <option value="">Välj vikarie och boka direkt</option>
+            {vikarier.map((vikarie) => (
+              <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => navigate('/admin/vikariepass')}
+            className="rounded-lg border px-3 py-2 text-sm font-medium"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+          >
+            Fler val
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardStatistik | null>(null);
   const [dagensFrånvaro, setDagensFrånvaro] = useState<Frånvaro[]>([]);
+  const [vikarier, setVikarier] = useState<Vikarie[]>([]);
+  const [bemannarPassId, setBemannarPassId] = useState<string | null>(null);
   const [laddar, setLaddar] = useState(true);
   const navigate = useNavigate();
 
@@ -131,16 +173,47 @@ export default function Dashboard() {
     Promise.all([
       passApi.dashboardStatistik(),
       frånvaroApi.lista(),
-    ]).then(([statistik, frånvaroRes]) => {
+      vikariApi.lista(),
+    ]).then(([statistik, frånvaroRes, vikarierRes]) => {
       setData(statistik);
       setDagensFrånvaro(
         ((frånvaroRes.data ?? []) as Frånvaro[]).filter((frånvaro) =>
           frånvaro.datum_från <= idag && frånvaro.datum_till >= idag
         )
       );
+      setVikarier((vikarierRes.data ?? []) as Vikarie[]);
       setLaddar(false);
     });
   }, []);
+
+  async function bemannaDirekt(pass: Vikariepass, vikarieId: string) {
+    setBemannarPassId(pass.id);
+
+    const res = await passApi.tilldelVikarie(pass.id, vikarieId);
+    if (!res.error) {
+      await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: vikarieId });
+
+      setData((prev) => {
+        if (!prev) return prev;
+
+        const uppdateratPass = {
+          ...pass,
+          vikarie_id: vikarieId,
+          status: 'bokat' as PassStatus,
+        };
+
+        return {
+          ...prev,
+          obokade: Math.max(0, prev.obokade - 1),
+          bokade: prev.bokade + 1,
+          dagensPass: prev.dagensPass.map((p) => p.id === pass.id ? uppdateratPass : p),
+          kommandePass: prev.kommandePass.map((p) => p.id === pass.id ? uppdateratPass : p),
+        };
+      });
+    }
+
+    setBemannarPassId(null);
+  }
 
   if (laddar) {
     return (
@@ -219,7 +292,7 @@ export default function Dashboard() {
             ) : (
               dagensFrånvaro.map((frånvaro) => {
                 const kopplatPass = data.dagensPass.find((pass) => pass.frånvaro_id === frånvaro.id);
-                return <FrånvaroRad key={frånvaro.id} frånvaro={frånvaro} pass={kopplatPass} />;
+                return <FrånvaroRad key={frånvaro.id} frånvaro={frånvaro} pass={kopplatPass} vikarier={vikarier} bemannarPassId={bemannarPassId} onBemanna={bemannaDirekt} />;
               })
             )}
           </div>
