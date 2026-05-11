@@ -72,6 +72,14 @@ export default function AdminLayout() {
   onClick={() => document.documentElement.classList.toggle('dark')}
   className="rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
 >
+<button
+  onClick={() => {
+    const html = document.documentElement;
+    const isDark = html.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }}
+  className="rounded-md px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+>
   Växla läge
 </button>
             Logga ut
