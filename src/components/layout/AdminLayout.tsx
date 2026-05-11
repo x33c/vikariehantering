@@ -41,73 +41,74 @@ export default function AdminLayout() {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r
+          fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       >
-        <div className="px-4 pb-4 pt-5">
-          <div className="flex items-center gap-3 px-1">
+        <div className="px-5 pb-6 pt-6">
+          <div className="flex items-center gap-4">
             <img
               src={mörkt ? "/sundbyberg-silver.png" : "/sundbyberg-halm.png"}
               alt=""
-              className="h-11 w-11 rounded-xl object-cover"
+              className="h-16 w-16 shrink-0 object-contain"
             />
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Admin</p>
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+                Vikariehantering
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Admin
+              </p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               onClick={() => setMenyÖppen(false)}
-              className={({ isActive }) =>
-                `block rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'shadow-sm'
-                    : ''
-                }`
-              }
+              className="group flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition-all"
               style={({ isActive }) => ({
-                background: isActive ? (mörkt ? 'rgba(255,255,255,0.10)' : 'var(--accent-soft)') : 'transparent',
-                color: isActive ? (mörkt ? '#fff' : 'var(--brand-ink)') : 'var(--text-muted)',
+                background: isActive ? 'var(--nav-active)' : 'transparent',
+                color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                boxShadow: isActive ? 'var(--nav-active-shadow)' : 'none',
               })}
             >
-              {item.label}
+              <span className="truncate">{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="mb-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-            <p className="truncate text-xs font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
+        <div className="border-t p-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="mb-4 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              {profil?.namn ?? profil?.epost}
+            </p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
 
-          <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
+          <div className="mb-3 flex items-center justify-between px-1">
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
               onClick={toggla}
-              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-              style={{ background: mörkt ? 'var(--accent)' : 'var(--border)' }}
+              className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors"
+              style={{ background: mörkt ? 'var(--accent)' : 'var(--toggle-bg)' }}
               aria-label="Växla tema"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${mörkt ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
 
           <button
             onClick={loggaUt}
-            className="w-full rounded-xl px-3 py-2 text-left text-sm transition-colors hover:opacity-80"
-            style={{ color: 'var(--text-muted)' }}
+            className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition-colors hover:opacity-80"
+            style={{ color: 'var(--text)' }}
           >
             Logga ut
           </button>
@@ -119,24 +120,16 @@ export default function AdminLayout() {
           className="sticky top-0 z-10 flex h-16 items-center border-b px-4 backdrop-blur lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          <button onClick={() => setMenyÖppen(true)} className="rounded-lg border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
+          <button onClick={() => setMenyÖppen(true)} className="rounded-xl border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <button
-            onClick={toggla}
-            className="ml-auto relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-            style={{ background: mörkt ? 'var(--accent)' : 'var(--border)' }}
-            aria-label="Växla tema"
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-7xl">
+          <div className="mx-auto w-full max-w-7xl px-5 py-5 sm:px-8 lg:px-10">
             <Outlet />
           </div>
         </main>
