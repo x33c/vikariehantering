@@ -1,2 +1,8 @@
-export default { content: ["./index.html","./src/**/*.{ts,tsx}"], theme: { extend: {} }, plugins: [] };
-darkMode: 'class',
+export default {
+  darkMode: 'class',
+  content: ["./index.html","./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
