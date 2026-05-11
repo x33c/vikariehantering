@@ -254,13 +254,13 @@ export default function Arbetslag() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                        <th className="px-4 py-2.5 text-left font-medium">Namn</th>
-                        <th className="px-4 py-2.5 text-left font-medium">Titel</th>
-                        <th className="px-4 py-2.5 text-left font-medium">Signatur</th>
-                        <th className="px-4 py-2.5 text-left font-medium">E-post</th>
-                        <th className="px-4 py-2.5" />
-                      </tr>
-                    </thead>
+                        <tr className="border-b bg-gray-50 text-xs text-gray-500">
+                      <th className="px-4 py-2.5 text-left font-medium">Namn</th>
+                      <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Titel</th>
+                      <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Signatur</th>
+                      <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">E-post</th>
+                      <th className="px-4 py-2.5" />
+                    </tr>
                     <tbody className="divide-y divide-gray-100">
                       {personalFörArbetstag(al.id).map((p) => (
                         <PersonalRad key={p.id} personal={p}
@@ -367,13 +367,13 @@ function PersonalRad({
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-4 py-3 font-medium text-gray-900">{personal.namn}</td>
-      <td className="px-4 py-3 text-gray-600">{personal.titel ?? '–'}</td>
-      <td className="px-4 py-3 font-mono text-xs text-gray-500">{personal.signatur ?? '–'}</td>
-      <td className="px-4 py-3 text-gray-600">{personal.epost ?? '–'}</td>
+      <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{personal.titel ?? '–'}</td>
+      <td className="px-4 py-3 font-mono text-xs text-gray-500 hidden md:table-cell">{personal.signatur ?? '–'}</td>
+      <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{personal.epost ?? '–'}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" onClick={onRedigera}>Redigera</Button>
-          <Button size="sm" variant="ghost" onClick={onRadera}>Ta bort</Button>
+          <button onClick={onRedigera} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">Redigera</button>
+          <button onClick={onRadera} className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">Ta bort</button>
         </div>
       </td>
     </tr>
