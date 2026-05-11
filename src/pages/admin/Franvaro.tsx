@@ -105,7 +105,7 @@ function SchemaVal({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Klicka på lektionsblocken för att välja vilka vikariepass som ska skapas.
+          Klicka på lektionerna som ingår i frånvaron. Valda lektioner slås ihop till ett vikariepass per dag.
         </p>
         <div className="flex gap-2">
           <Button size="sm" variant="secondary" onClick={markeraAlla}>Välj alla</Button>
@@ -279,27 +279,59 @@ function FrånvaroModal({
     if (!skapadFrånvaro) return;
     setSkaparPass(true);
 
-    const valdaRader = schemarader.filter((r) => valda.has(r.id));
+    const valdaRader = schemarader
+      .filter((r) => valda.has(r.id))
+      .sort((a, b) =>
+        String(a.datum).localeCompare(String(b.datum)) ||
+        minuter(a.tid_från) - minuter(b.tid_från) ||
+        minuter(a.tid_till) - minuter(b.tid_till)
+      );
 
     if (valdaRader.length > 0) {
+      const raderPerDatum = new Map<string, Schemarad[]>();
+
       for (const rad of valdaRader) {
+        if (!rad.datum) continue;
+        raderPerDatum.set(rad.datum, [...(raderPerDatum.get(rad.datum) ?? []), rad]);
+      }
+
+      for (const [datum, dagensRader] of raderPerDatum) {
+        const sorterade = [...dagensRader].sort((a, b) =>
+          minuter(a.tid_från) - minuter(b.tid_från) ||
+          minuter(a.tid_till) - minuter(b.tid_till)
+        );
+
+        const första = sorterade[0];
+        const sista = sorterade.reduce((senast, rad) =>
+          minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
+        , sorterade[0]);
+
+        const ämnen = [...new Set(sorterade.map((r) => r.ämne).filter(Boolean))] as string[];
+        const grupper = [...new Set(sorterade.map((r) => r.grupp).filter(Boolean))] as string[];
+        const salar = [...new Set(sorterade.map((r) => r.sal).filter(Boolean))] as string[];
+
+        const lektionslista = sorterade
+          .map((rad) => `${tid(rad.tid_från)}-${tid(rad.tid_till)} ${rad.ämne ?? 'Lektion'}${rad.grupp ? ` · ${rad.grupp}` : ''}${rad.sal ? ` · ${rad.sal}` : ''}`)
+          .join('\n');
+
         const res = await passApi.skapa({
           frånvaro_id: skapadFrånvaro.id,
-          schemarad_id: rad.id,
+          schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
           personal_id: personalId,
           vikarie_id: null,
-          datum: rad.datum!,
-          tid_från: rad.tid_från!,
-          tid_till: rad.tid_till!,
+          datum,
+          tid_från: första.tid_från!,
+          tid_till: sista.tid_till!,
           typ: 'del_av_dag',
-          ämne: rad.ämne,
-          grupp: rad.grupp,
-          sal: rad.sal,
-          anteckning: null,
+          ämne: ämnen.length === 1 ? ämnen[0] : `${sorterade.length} lektioner`,
+          grupp: grupper.length <= 3 ? grupper.join(', ') || null : `${grupper.length} grupper`,
+          sal: salar.length === 1 ? salar[0] : null,
+          anteckning: `Sammanhållet pass från ${sorterade.length} lektioner:\n${lektionslista}`,
           riktad_till_vikarie_id: null,
           status: 'obokat',
           skapad_av: null,
         });
+
         if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
       }
     } else {
@@ -378,7 +410,7 @@ function FrånvaroModal({
           >
             <Button variant="secondary" onClick={onStäng}>Stäng utan pass</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
-              Skapa {valda.size > 0 ? `${valda.size} vikariepass` : 'vikariepass'}
+              Skapa {valda.size > 0 ? 'sammanhållet vikariepass' : 'vikariepass'}
             </Button>
           </div>
         </div>
