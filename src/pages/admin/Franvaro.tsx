@@ -81,11 +81,17 @@ function SchemaVal({
   valda: Set<string>;
   setValda: (valda: Set<string>) => void;
 }) {
-  const startMin = 8 * 60;
-  const slutMin = 17 * 60;
-  const totalMin = slutMin - startMin;
-  const datum = [...new Set(rader.map((r) => r.datum).filter(Boolean))] as string[];
-  const layout = byggLayout(rader);
+  const sorterade = [...rader].sort((a, b) =>
+    String(a.datum).localeCompare(String(b.datum)) ||
+    minuter(a.tid_från) - minuter(b.tid_från) ||
+    minuter(a.tid_till) - minuter(b.tid_till)
+  );
+
+  const valdaRader = sorterade.filter((rad) => valda.has(rad.id));
+  const första = valdaRader[0];
+  const sista = valdaRader.reduce((senast, rad) =>
+    minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
+  , valdaRader[0] ?? valdaRader[0]);
 
   function växla(id: string) {
     const ny = new Set(valda);
@@ -103,105 +109,64 @@ function SchemaVal({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Välj vilka lektioner som behöver vikarie. Appen skapar ett sammanhållet pass per dag.
+      <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+          {valda.size === 0
+            ? 'Inga lektioner valda'
+            : `${valda.size} lektioner blir 1 sammanhållet vikariepass`}
         </p>
-        <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={markeraAlla}>Alla</Button>
-          <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Ingen</Button>
-        </div>
+        {valda.size > 0 && första && sista && (
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            {kortDatum(första.datum!)} · {tid(första.tid_från)}-{tid(sista.tid_till)}
+          </p>
+        )}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-        <div className="min-w-[760px]">
-          <div
-            className="grid border-b text-xs font-medium"
-            style={{ gridTemplateColumns: `64px repeat(${datum.length}, minmax(190px, 1fr))`, borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-          >
-            <div className="px-3 py-3">Tid</div>
-            {datum.map((d) => (
-              <div key={d} className="border-l px-3 py-3" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
-                {kortDatum(d)}
-              </div>
-            ))}
-          </div>
-
-          <div
-            className="grid"
-            style={{ gridTemplateColumns: `64px repeat(${datum.length}, minmax(190px, 1fr))` }}
-          >
-            <div className="relative h-[500px] border-r" style={{ borderColor: 'var(--border)' }}>
-              {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((h) => (
-                <div
-                  key={h}
-                  className="absolute left-0 right-0 px-2 text-xs"
-                  style={{ top: `${((h * 60 - startMin) / totalMin) * 100}%`, color: 'var(--text-muted)' }}
-                >
-                  {String(h).padStart(2, '0')}:00
-                </div>
-              ))}
-            </div>
-
-            {datum.map((d) => (
-              <div key={d} className="relative h-[500px] border-r last:border-r-0" style={{ borderColor: 'var(--border)' }}>
-                {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((h) => (
-                  <div
-                    key={h}
-                    className="absolute left-0 right-0 border-t"
-                    style={{ top: `${((h * 60 - startMin) / totalMin) * 100}%`, borderColor: 'var(--border)', opacity: 0.55 }}
-                  />
-                ))}
-
-                {rader.filter((r) => r.datum === d).map((rad) => {
-                  const från = Math.max(minuter(rad.tid_från), startMin);
-                  const till = Math.min(minuter(rad.tid_till), slutMin);
-                  const top = ((från - startMin) / totalMin) * 100;
-                  const height = Math.max(((till - från) / totalMin) * 100, 6);
-                  const vald = valda.has(rad.id);
-                  const lane = layout.get(rad.id) ?? { index: 0, antal: 1 };
-                  const width = 100 / lane.antal;
-                  const left = lane.index * width;
-
-                  return (
-                    <button
-                      key={rad.id}
-                      onClick={() => växla(rad.id)}
-                      className="absolute overflow-hidden rounded-md border px-2 py-1 text-left text-xs transition hover:shadow-sm"
-                      style={{
-                        top: `${top}%`,
-                        height: `${height}%`,
-                        left: `calc(${left}% + 4px)`,
-                        width: `calc(${width}% - 8px)`,
-                        background: vald ? 'color-mix(in srgb, var(--accent) 22%, var(--bg-card))' : 'var(--bg-card)',
-                        borderColor: vald ? 'var(--accent)' : 'var(--border)',
-                        color: 'var(--text)',
-                      }}
-                      title={`${tid(rad.tid_från)}-${tid(rad.tid_till)} ${rad.ämne ?? ''} ${rad.grupp ?? ''}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-semibold">{tid(rad.tid_från)}</span>
-                        <span
-                          className="mt-0.5 h-2 w-2 shrink-0 rounded-full"
-                          style={{ background: vald ? 'var(--accent)' : 'var(--text-subtle)' }}
-                        />
-                      </div>
-                      <div className="mt-1 truncate font-medium">{rad.ämne || 'Lektion'}</div>
-                      <div className="truncate" style={{ color: 'var(--text-muted)' }}>{rad.grupp || '-'}</div>
-                      {rad.sal && <div className="truncate" style={{ color: 'var(--text-subtle)' }}>Sal {rad.sal}</div>}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" onClick={markeraAlla}>Ta med alla</Button>
+        <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Ta bort alla</Button>
       </div>
 
-      <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-        <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-          {valda.size} av {rader.length} lektioner valda
-        </p>
+      <div className="space-y-2">
+        {sorterade.map((rad) => {
+          const vald = valda.has(rad.id);
+
+          return (
+            <button
+              key={rad.id}
+              type="button"
+              onClick={() => växla(rad.id)}
+              className="flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition hover:shadow-sm"
+              style={{
+                background: vald ? 'color-mix(in srgb, var(--accent) 14%, var(--bg-card))' : 'var(--bg-card)',
+                borderColor: vald ? 'var(--accent)' : 'var(--border)',
+                color: 'var(--text)',
+              }}
+            >
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold"
+                style={{
+                  background: vald ? 'var(--accent)' : 'transparent',
+                  borderColor: vald ? 'var(--accent)' : 'var(--border)',
+                  color: vald ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                {vald ? '✓' : ''}
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">
+                  {tid(rad.tid_från)}-{tid(rad.tid_till)}
+                </p>
+                <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {[rad.ämne || 'Lektion', rad.grupp, rad.sal ? `Sal ${rad.sal}` : '']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -405,6 +370,22 @@ function FrånvaroModal({
         <div className="space-y-4">
           <Alert typ="success">Frånvaron är sparad.</Alert>
 
+          <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <Select
+              label="Vem ska vikariera?"
+              value={valdVikarieId}
+              onChange={(e) => setValdVikarieId(e.target.value)}
+            >
+              <option value="">Välj senare</option>
+              {vikarier.map((vikarie) => (
+                <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
+              ))}
+            </Select>
+            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Om du väljer vikarie nu blir passet bokat direkt. Annars hamnar det under Bemanning.
+            </p>
+          </div>
+
           {schemarader.length > 0 ? (
             <SchemaVal rader={schemarader} valda={valda} setValda={setValda} />
           ) : (
@@ -414,21 +395,6 @@ function FrånvaroModal({
           )}
 
 
-          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-            <Select
-              label="Vikarie, valfritt"
-              value={valdVikarieId}
-              onChange={(e) => setValdVikarieId(e.target.value)}
-            >
-              <option value="">Ingen vald ännu</option>
-              {vikarier.map((vikarie) => (
-                <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
-              ))}
-            </Select>
-            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Välj en vikarie här om du redan vet vem som ska ta passet. Annars kan du bemanna senare.
-            </p>
-          </div>
 
           <div
             className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t px-6 py-4"
@@ -436,7 +402,7 @@ function FrånvaroModal({
           >
             <Button variant="secondary" onClick={onStäng}>Spara utan vikarie</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
-              Skapa vikariepass
+              {valdVikarieId ? 'Boka vikarie' : 'Skapa pass för bemanning'}
             </Button>
           </div>
         </div>
