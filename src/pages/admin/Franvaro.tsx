@@ -264,7 +264,8 @@ export default function Franvaro() {
           <Button size="sm" onClick={() => setModal({ öppen: true })}>Registrera frånvaro</Button>
         } />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        {/* Tabell på desktop */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
@@ -284,15 +285,43 @@ export default function Franvaro() {
                   <td className="px-4 py-3 text-gray-600">{f.personal?.arbetslag?.namn ?? '–'}</td>
                   <td className="px-4 py-3 text-gray-700">{f.datum_från}</td>
                   <td className="px-4 py-3 text-gray-700">{f.datum_till}</td>
-                  <td className="px-4 py-3 text-gray-600">{f.hel_dag ? 'Heldag' : `${f.tid_från?.slice(0, 5)}–${f.tid_till?.slice(0, 5)}`}</td>
+                  <td className="px-4 py-3 text-gray-600">{f.hel_dag ? 'Heldag' : `${f.tid_från?.slice(0,5)}–${f.tid_till?.slice(0,5)}`}</td>
                   <td className="px-4 py-3 text-gray-600">{f.orsak ?? '–'}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="ghost" onClick={() => setRaderaId(f.id)}>Ta bort</Button>
+                    <button onClick={() => setRaderaId(f.id)}
+                      className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">
+                      Ta bort
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Kort på mobil */}
+        <div className="md:hidden space-y-2">
+          {filtrerade.map((f) => (
+            <div key={f.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{f.personal?.namn ?? '–'}</p>
+                  {f.personal?.arbetslag && (
+                    <p className="text-xs text-gray-500">{f.personal.arbetslag.namn}</p>
+                  )}
+                </div>
+                <button onClick={() => setRaderaId(f.id)}
+                  className="shrink-0 rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100">
+                  Ta bort
+                </button>
+              </div>
+              <div className="mt-2 space-y-0.5 text-xs text-gray-600">
+                <p>{f.datum_från} – {f.datum_till}</p>
+                <p>{f.hel_dag ? 'Heldag' : `${f.tid_från?.slice(0,5)}–${f.tid_till?.slice(0,5)}`}</p>
+                {f.orsak && <p>Orsak: {f.orsak}</p>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
