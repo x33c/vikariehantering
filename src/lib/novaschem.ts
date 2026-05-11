@@ -209,3 +209,43 @@ function isoDatumFörVecka(år: number, vecka: number, veckodag: number): string
   datum.setUTCDate(måndagVeckaEtt.getUTCDate() + (vecka - 1) * 7 + (veckodag - 1));
   return datum.toISOString().slice(0, 10);
 }
+
+export interface NovaschemaPersonal {
+  signatur: string;
+  namn: string;
+  förnamn: string;
+  efternamn: string;
+  titel: string;
+  telefon: string;
+  epost: string;
+}
+
+export function parsaPersonalFrånNovaschema(text: string): NovaschemaPersonal[] {
+  const allaRader = text.split(/\r?\n/);
+  const teacherIndex = allaRader.findIndex((rad) => rad.trim() === 'Teacher (6000)');
+  if (teacherIndex === -1) return [];
+
+  const rowsIndex = allaRader.findIndex((rad, index) => index > teacherIndex && rad.trim() === '[Rows]');
+  if (rowsIndex === -1) return [];
+
+  const dataStart = rowsIndex + 2;
+  const dataSlut = allaRader.findIndex((rad, index) =>
+    index > dataStart && /^\[[^\]]+\]$/.test(rad.trim())
+  );
+
+  return allaRader
+    .slice(dataStart, dataSlut === -1 ? undefined : dataSlut)
+    .map((rad) => {
+      const kolumner = rad.split('\t').map((kolumn) => kolumn.trim());
+      const signatur = kolumner[0] ?? '';
+      const efternamn = kolumner[4] ?? '';
+      const titel = kolumner[5] ?? '';
+      const förnamn = kolumner[6] ?? '';
+      const telefon = kolumner[7] ?? '';
+      const epost = kolumner[8] ?? '';
+      const namn = [förnamn, efternamn].filter(Boolean).join(' ').trim();
+
+      return { signatur, namn, förnamn, efternamn, titel, telefon, epost };
+    })
+    .filter((person) => person.signatur && person.namn);
+}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { importApi, personalApi } from '../../lib/api';
-import { parsaNovaschemaFil, expanderaLektioner, detekteraNovaschema } from '../../lib/novaschem';
-import type { NovaschemaImportRad } from '../../lib/novaschem';
+import { parsaNovaschemaFil, expanderaLektioner, detekteraNovaschema, parsaPersonalFrånNovaschema } from '../../lib/novaschem';
+import type { NovaschemaImportRad, NovaschemaPersonal } from '../../lib/novaschem';
 import type { Schemarad, Personal, Schemaimport, Matchningsstatus } from '../../types';
 import { Button, Alert, TomtTillstånd, LaddaSida } from '../../components/ui';
 
@@ -42,6 +42,9 @@ export default function Import() {
   const [filnamn, setFilnamn] = useState('');
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
+  const [importerarPersonal, setImporterarPersonal] = useState(false);
+  const [personalFrånFil, setPersonalFrånFil] = useState<NovaschemaPersonal[]>([]);
+  const [personalMeddelande, setPersonalMeddelande] = useState('');
   const filRef = useRef<HTMLInputElement>(null);
 
   const [förbehandlade, setFörbehandlade] = useState<{
@@ -64,6 +67,7 @@ export default function Import() {
     if (!fil) return;
     setFilnamn(fil.name);
     setFel('');
+    setPersonalMeddelande('');
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -80,6 +84,7 @@ export default function Import() {
             setFel('Inga lektioner hittades i filen. Kontrollera att det är en giltig Novaschem-export.');
             return;
           }
+          setPersonalFrånFil(parsaPersonalFrånNovaschema(text));
           const expanderade = expanderaLektioner(lektioner);
           const fb = expanderade.map(rad => {
             const { match, status } = matchaPersonal(rad.signatur, personal);
@@ -88,6 +93,7 @@ export default function Import() {
           setFörbehandlade(fb);
           setSteg('förhandsvisning');
         } else {
+          setPersonalFrånFil([]);
           // Excel/CSV-format
           const data = ev.target?.result;
           const wb = XLSX.read(data, { type: 'binary', cellDates: true });
@@ -125,6 +131,46 @@ export default function Import() {
     } else {
       reader.readAsBinaryString(fil);
     }
+  }
+
+  async function importeraPersonalFrånFil() {
+    setImporterarPersonal(true);
+    setFel('');
+    setPersonalMeddelande('');
+
+    const befintligaSignaturer = new Set(
+      personal.map(p => p.signatur?.toLowerCase()).filter(Boolean)
+    );
+    const befintligaEposter = new Set(
+      personal.map(p => p.epost?.toLowerCase()).filter(Boolean)
+    );
+
+    const nya = personalFrånFil.filter(p => {
+      const signaturFinns = befintligaSignaturer.has(p.signatur.toLowerCase());
+      const epostFinns = p.epost ? befintligaEposter.has(p.epost.toLowerCase()) : false;
+      return !signaturFinns && !epostFinns;
+    });
+
+    let skapade = 0;
+    for (const person of nya) {
+      const res = await personalApi.skapa({
+        arbetslag_id: null,
+        namn: person.namn,
+        epost: person.epost || null,
+        telefon: person.telefon || null,
+        signatur: person.signatur,
+        skola24_id: null,
+        titel: person.titel || null,
+        aktiv: true,
+      });
+
+      if (!res.error) skapade += 1;
+    }
+
+    const pRes = await personalApi.lista();
+    setPersonal((pRes.data ?? []) as Personal[]);
+    setPersonalMeddelande(`Importerade ${skapade} ny personal. ${personalFrånFil.length - skapade} fanns redan eller hoppades över.`);
+    setImporterarPersonal(false);
   }
 
   async function spara() {
@@ -189,6 +235,7 @@ export default function Import() {
         </div>
 
         {fel && <Alert typ="error" className="mb-4">{fel}</Alert>}
+        {personalMeddelande && <Alert typ="success" className="mb-4">{personalMeddelande}</Alert>}
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-4 text-sm">
@@ -197,9 +244,16 @@ export default function Import() {
             <span className="text-red-600 font-medium">{omatchade} omatchade</span>
             <span style={{ color: 'var(--text-muted)' }}>{förbehandlade.length} totalt</span>
           </div>
-          <Button loading={sparar} onClick={spara}>
-            Spara import ({förbehandlade.length} rader)
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {personalFrånFil.length > 0 && (
+              <Button variant="secondary" loading={importerarPersonal} onClick={importeraPersonalFrånFil}>
+                Importera personal ({personalFrånFil.length})
+              </Button>
+            )}
+            <Button loading={sparar} onClick={spara}>
+              Spara import ({förbehandlade.length} rader)
+            </Button>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
