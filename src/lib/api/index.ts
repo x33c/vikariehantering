@@ -127,7 +127,7 @@ export const frånvaroApi = {
 export const passApi = {
   async lista(filter?: PassFilter) {
     let q = supabase.from('vikariepass')
-      .select('*, personal(*, arbetslag(*)), vikarie(*), frånvaro(*)')
+      .select('*, personal(*, arbetslag(*)), vikarie:vikarier(*), frånvaro(*)')
       .order('datum').order('tid_från');
     if (filter?.datumFrån) q = q.gte('datum', filter.datumFrån);
     if (filter?.datumTill) q = q.lte('datum', filter.datumTill);
