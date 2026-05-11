@@ -46,7 +46,7 @@ export default function Dashboard() {
           <button
             key={label}
             onClick={() => status && navigate(`/admin/vikariepass?status=${status}`)}
-            className="flex flex-col gap-1 rounded-xl border p-4 shadow-sm text-left hover:shadow-md transition-shadow"
+            className="flex flex-col gap-1 rounded-xl border p-4 shadow-sm text-left hover:shadow-md transition-shadow" style={{ background: "var(--bg-card)", color: "var(--text)" }}
           >
             <span className="text-xs text-gray-500">{label}</span>
             <span className={`text-2xl sm:text-3xl font-bold text-${färg}-600`}>{värde}</span>
@@ -73,7 +73,7 @@ export default function Dashboard() {
                 <div
                   key={pass.id}
                   onClick={() => navigate(`/admin/vikariepass`)}
-                  className="flex items-center justify-between rounded-xl border px-4 py-3 shadow-sm cursor-pointer hover:opacity-90"
+                  className="flex items-center justify-between rounded-xl border px-4 py-3 shadow-sm cursor-pointer hover:opacity-90" style={{ background: "var(--bg-card)" }}
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900">{pass.personal?.namn ?? '–'}</p>
@@ -106,7 +106,7 @@ export default function Dashboard() {
                 <div
                   key={pass.id}
                   onClick={() => navigate('/admin/vikariepass')}
-                  className="flex items-center justify-between rounded-xl border px-4 py-3 shadow-sm cursor-pointer hover:opacity-90"
+                  className="flex items-center justify-between rounded-xl border px-4 py-3 shadow-sm cursor-pointer hover:opacity-90" style={{ background: "var(--bg-card)" }}
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900">{pass.personal?.namn ?? '–'}</p>

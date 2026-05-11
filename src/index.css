@@ -78,3 +78,12 @@
   border-color: var(--border) !important;
   color-scheme: dark;
 }
+
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: var(--text) !important;
+}
+
+.dark h1, .dark h2, .dark h3, .dark p, .dark span, .dark td, .dark th, .dark label {
+  color: inherit;
+}
