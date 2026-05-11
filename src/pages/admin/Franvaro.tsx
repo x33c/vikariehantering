@@ -131,7 +131,7 @@ function SchemaVal({
             className="grid"
             style={{ gridTemplateColumns: `64px repeat(${datum.length}, minmax(190px, 1fr))` }}
           >
-            <div className="relative h-[640px] border-r" style={{ borderColor: 'var(--border)' }}>
+            <div className="relative h-[500px] border-r" style={{ borderColor: 'var(--border)' }}>
               {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((h) => (
                 <div
                   key={h}
@@ -144,7 +144,7 @@ function SchemaVal({
             </div>
 
             {datum.map((d) => (
-              <div key={d} className="relative h-[640px] border-r last:border-r-0" style={{ borderColor: 'var(--border)' }}>
+              <div key={d} className="relative h-[500px] border-r last:border-r-0" style={{ borderColor: 'var(--border)' }}>
                 {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((h) => (
                   <div
                     key={h}
@@ -372,7 +372,10 @@ function FrånvaroModal({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div
+            className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t px-6 py-4"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+          >
             <Button variant="secondary" onClick={onStäng}>Stäng utan pass</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
               Skapa {valda.size > 0 ? `${valda.size} vikariepass` : 'vikariepass'}
