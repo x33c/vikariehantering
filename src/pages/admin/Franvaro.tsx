@@ -416,7 +416,7 @@ function FrånvaroModal({
             className="sticky bottom-0 -mx-6 flex flex-wrap justify-end gap-2 border-t px-6 py-4 shadow-lg"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
           >
-            <Button variant="secondary" onClick={onStäng}>Spara utan vikarie</Button>
+            <Button variant="secondary" onClick={() => { onRegistrerad(); onStäng(); }}>Spara utan vikarie</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
               {valdVikarieId ? 'Boka vikarie' : 'Skapa pass för bemanning'}
             </Button>
