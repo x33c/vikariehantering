@@ -50,11 +50,11 @@ export default function AdminLayout() {
       >
         <div className="px-4 pb-4 pt-5">
           <div className="flex items-center gap-3 px-1">
-            {!mörkt ? (
-              <img src="/sundbyberg-logo.svg" alt="" className="h-9 w-9 object-contain" />
-            ) : (
-              <div className="h-9 w-9 rounded-lg" style={{ background: 'var(--accent)' }} />
-            )}
+            <img
+              src={mörkt ? "/sundbyberg-silver.jpg" : "/sundbyberg-halm.jpg"}
+              alt=""
+              className="h-11 w-11 rounded-xl object-cover"
+            />
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Admin</p>
