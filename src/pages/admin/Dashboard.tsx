@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { passApi } from '../../lib/api';
-import type { DashboardStatistik, PassStatus, Vikariepass } from '../../types';
+import { frånvaroApi, passApi } from '../../lib/api';
+import type { DashboardStatistik, Frånvaro, PassStatus, Vikariepass } from '../../types';
 import { PASS_STATUS_LABELS } from '../../types';
 
 function formatTid(tid: string) {
@@ -71,14 +71,73 @@ function TomLista({ text }: { text: string }) {
   );
 }
 
+function FrånvaroRad({
+  frånvaro,
+  pass,
+}: {
+  frånvaro: Frånvaro;
+  pass?: Vikariepass;
+}) {
+  const navigate = useNavigate();
+  const status = pass?.status;
+
+  const badge = status
+    ? PASS_STATUS_LABELS[status]
+    : 'Ingen vikarie';
+
+  const färg = status
+    ? statusTon[status]
+    : { bg: '#fff7ed', text: '#c2410c', ring: '#fed7aa' };
+
+  return (
+    <button
+      onClick={() => navigate(pass ? '/admin/vikariepass' : '/admin/franvaro')}
+      className="group flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
+      style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium" style={{ color: 'var(--text)' }}>
+          {frånvaro.personal?.namn ?? 'Okänd person'}
+        </p>
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {pass
+            ? `${formatTid(pass.tid_från)}-${formatTid(pass.tid_till)}`
+            : frånvaro.hel_dag
+              ? 'Heldag'
+              : `${formatTid(frånvaro.tid_från ?? '08:00')}-${formatTid(frånvaro.tid_till ?? '17:00')}`}
+          {frånvaro.personal?.arbetslag && <> · {frånvaro.personal.arbetslag.namn}</>}
+        </p>
+      </div>
+
+      <span
+        className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium"
+        style={{ background: färg.bg, color: färg.text, boxShadow: `inset 0 0 0 1px ${färg.ring}` }}
+      >
+        {badge}
+      </span>
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardStatistik | null>(null);
+  const [dagensFrånvaro, setDagensFrånvaro] = useState<Frånvaro[]>([]);
   const [laddar, setLaddar] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    passApi.dashboardStatistik().then((d) => {
-      setData(d);
+    const idag = new Date().toISOString().slice(0, 10);
+
+    Promise.all([
+      passApi.dashboardStatistik(),
+      frånvaroApi.lista(),
+    ]).then(([statistik, frånvaroRes]) => {
+      setData(statistik);
+      setDagensFrånvaro(
+        ((frånvaroRes.data ?? []) as Frånvaro[]).filter((frånvaro) =>
+          frånvaro.datum_från <= idag && frånvaro.datum_till >= idag
+        )
+      );
       setLaddar(false);
     });
   }, []);
@@ -155,10 +214,13 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="space-y-2">
-            {data.dagensPass.length === 0 ? (
-              <TomLista text="Inget att lösa just nu." />
+            {dagensFrånvaro.length === 0 ? (
+              <TomLista text="Ingen frånvaro idag." />
             ) : (
-              data.dagensPass.map((pass) => <PassRad key={pass.id} pass={pass} />)
+              dagensFrånvaro.map((frånvaro) => {
+                const kopplatPass = data.dagensPass.find((pass) => pass.frånvaro_id === frånvaro.id);
+                return <FrånvaroRad key={frånvaro.id} frånvaro={frånvaro} pass={kopplatPass} />;
+              })
             )}
           </div>
         </section>
