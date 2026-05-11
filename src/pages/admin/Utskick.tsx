@@ -75,13 +75,42 @@ function esc(text: string) {
     .replaceAll('"', '&quot;');
 }
 
-function frånvaroText(f: Frånvaro) {
-  const tidText = f.hel_dag ? '' : ` (${tid(f.tid_från)}-${tid(f.tid_till)})`;
-  return `${f.personal?.namn ?? 'Okänd'}${tidText}`;
+type NamnFormatter = (namn?: string | null, fallback?: string) => string;
+
+function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[]): NamnFormatter {
+  const namn = [
+    ...frånvaro.map((f) => f.personal?.namn),
+    ...pass.map((p) => p.vikarie?.namn),
+  ].filter(Boolean) as string[];
+
+  const antalFörnamn = new Map<string, number>();
+  for (const heltNamn of namn) {
+    const förnamn = heltNamn.trim().split(/\s+/)[0]?.toLowerCase();
+    if (förnamn) antalFörnamn.set(förnamn, (antalFörnamn.get(förnamn) ?? 0) + 1);
+  }
+
+  return (heltNamn, fallback = 'Okänd') => {
+    if (!heltNamn) return fallback;
+    const delar = heltNamn.trim().split(/\s+/);
+    const förnamn = delar[0] ?? heltNamn;
+    const behöverInitial = (antalFörnamn.get(förnamn.toLowerCase()) ?? 0) > 1;
+
+    if (!behöverInitial || delar.length < 2) return förnamn;
+
+    const efternamn = delar[delar.length - 1];
+    return `${förnamn} ${efternamn[0]?.toUpperCase()}.`;
+  };
 }
 
-function vikarieText(pass: Vikariepass) {
-  const vikarie = pass.vikarie?.namn ?? (pass.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas');
+function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
+  const tidText = f.hel_dag ? '' : ` (${tid(f.tid_från)}-${tid(f.tid_till)})`;
+  return `${formatNamn(f.personal?.namn)}${tidText}`;
+}
+
+function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter) {
+  const vikarie = pass.vikarie?.namn
+    ? formatNamn(pass.vikarie.namn)
+    : (pass.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas');
   const grupp = pass.grupp ? ` - ${pass.grupp}` : '';
   const ämne = pass.ämne ? ` (${pass.ämne})` : '';
   return `${vikarie}${grupp}${ämne}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
@@ -98,16 +127,18 @@ function byggHtml({
   frånvaro: Frånvaro[];
   pass: Vikariepass[];
 }) {
+  const formatNamn = skapaNamnFormatter(frånvaro, pass);
+
   const tableRows = [
     `<tr><th style="border:1px solid #666;padding:8px;text-align:left;">Vecka</th>${dagar.map((dag) => `<th style="border:1px solid #666;padding:8px;text-align:center;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
     `<tr><th style="border:1px solid #666;padding:8px;text-align:center;">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="border:1px solid #666;padding:8px;text-align:center;">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
     `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Frånvaro</th>${dagar.map((dag) => {
       const rader = frånvaroFörDag(frånvaro, iso(dag));
-      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:120px;vertical-align:middle;">${rader.length ? rader.map((f) => esc(frånvaroText(f))).join('<br>') : '-'}</td>`;
+      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:120px;vertical-align:middle;">${rader.length ? rader.map((f) => esc(frånvaroText(f, formatNamn))).join('<br>') : '-'}</td>`;
     }).join('')}</tr>`,
     `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Vikarie</th>${dagar.map((dag) => {
       const rader = passFörDag(pass, iso(dag));
-      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:170px;vertical-align:middle;">${rader.length ? rader.map((p) => esc(vikarieText(p)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
+      return `<td style="border:1px solid #666;padding:14px;text-align:center;height:170px;vertical-align:middle;">${rader.length ? rader.map((p) => esc(vikarieText(p, formatNamn)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
     }).join('')}</tr>`,
     `<tr><th style="border:1px solid #666;padding:12px;text-align:left;">Övrigt</th>${dagar.map(() => `<td style="border:1px solid #666;padding:14px;text-align:center;height:110px;vertical-align:middle;">-</td>`).join('')}</tr>`,
   ].join('');
@@ -140,6 +171,7 @@ export default function Utskick() {
   const slut = iso(dagar[4]);
   const datumText = långDatum(new Date());
   const ämne = `Frånvarolista - ${datumText}`;
+  const formatNamn = useMemo(() => skapaNamnFormatter(frånvaro, pass), [frånvaro, pass]);
 
   useEffect(() => {
     async function ladda() {
@@ -168,8 +200,8 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
       '',
       ...dagar.map((dag) => {
         const nyckel = iso(dag);
-        const frånvaroRader = frånvaroFörDag(frånvaro, nyckel).map(frånvaroText).join(', ') || '-';
-        const vikarieRader = passFörDag(pass, nyckel).map(vikarieText).join('; ') || '-';
+        const frånvaroRader = frånvaroFörDag(frånvaro, nyckel).map((f) => frånvaroText(f, formatNamn)).join(', ') || '-';
+        const vikarieRader = passFörDag(pass, nyckel).map((p) => vikarieText(p, formatNamn)).join('; ') || '-';
         return `${dag.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'numeric' })}\nFrånvaro: ${frånvaroRader}\nVikarie: ${vikarieRader}`;
       }),
       '',
@@ -265,7 +297,7 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
                 return (
                   <td key={iso(dag)} className="h-36 border px-3 py-4 text-center align-middle" style={{ borderColor: '#5a5a56' }}>
                     {rader.length === 0 ? <span className="text-white/35">-</span> : (
-                      <div className="space-y-1">{rader.map((f) => <div key={f.id}>{frånvaroText(f)}</div>)}</div>
+                      <div className="space-y-1">{rader.map((f) => <div key={f.id}>{frånvaroText(f, formatNamn)}</div>)}</div>
                     )}
                   </td>
                 );
@@ -281,7 +313,7 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
                       <div className="space-y-3">
                         {rader.map((p) => (
                           <div key={p.id}>
-                            <div className="font-semibold">{p.vikarie?.namn ?? (p.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas')}</div>
+                            <div className="font-semibold">{p.vikarie?.namn ? formatNamn(p.vikarie.namn) : (p.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas')}</div>
                             <div>{p.grupp}{p.ämne ? ` · ${p.ämne}` : ''}</div>
                             <div className="text-xs text-white/80">({tid(p.tid_från)}-{tid(p.tid_till)})</div>
                           </div>
