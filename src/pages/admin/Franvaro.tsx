@@ -385,8 +385,8 @@ function FrånvaroModal({
               <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
             </div>
           )}
-          <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak, valfritt(e.target.value)} placeholder="Sjukdom, VAB..." />
-          <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning, valfritt(e.target.value)} rows={2} />
+          <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak(e.target.value)} placeholder="Sjukdom, VAB..." />
+          <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={2} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
             <Button loading={laddar} onClick={registreraFrånvaro}>Fortsätt</Button>
@@ -456,7 +456,7 @@ export default function Franvaro() {
             Frånvaro
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Ny frånvaro och välj lektioner visuellt ur schemat.
+            Lägg in frånvaro och välj vid behov vilka lektioner som behöver vikarie.
           </p>
         </div>
         <Button onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
@@ -520,7 +520,7 @@ export default function Franvaro() {
       <Confirm
         öppen={!!raderaId}
         titel="Ta bort"
-        text="Ta bortregistreringen? Kopplade vikariepass påverkas inte."
+        text="Ta bort frånvaron? Kopplade vikariepass påverkas inte."
         bekräftaText="Ta bort"
         farlig
         onBekräfta={async () => {
