@@ -26,6 +26,10 @@ function kortDatum(datum: string) {
   });
 }
 
+function datumÖverlappar(startA: string, slutA: string, startB: string, slutB: string) {
+  return startA <= slutB && slutA >= startB;
+}
+
 function unikNyckel(rad: Schemarad) {
   return [
     rad.datum,
@@ -173,12 +177,13 @@ function SchemaVal({
 }
 
 function FrånvaroModal({
-  öppen, onStäng, personal, vikarier, valtPersonalId, onRegistrerad,
+  öppen, onStäng, personal, vikarier, frånvaron, valtPersonalId, onRegistrerad,
 }: {
   öppen: boolean;
   onStäng: () => void;
   personal: Personal[];
   vikarier: Vikarie[];
+  frånvaron: Frånvaro[];
   valtPersonalId?: string;
   onRegistrerad: () => void;
 }) {
@@ -215,6 +220,17 @@ function FrånvaroModal({
   async function registreraFrånvaro() {
     if (!personalId) { setFel('Sök eller välj person.'); return; }
     if (datumTill < datumFrån) { setFel('Slutdatum kan inte vara före startdatum.'); return; }
+
+    const finnsRedan = frånvaron.find((frånvaro) =>
+      frånvaro.personal_id === personalId &&
+      datumÖverlappar(datumFrån, datumTill, frånvaro.datum_från, frånvaro.datum_till)
+    );
+
+    if (finnsRedan) {
+      const namn = personal.find((p) => p.id === personalId)?.namn ?? 'Personen';
+      setFel(`${namn} har redan frånvaro ${finnsRedan.datum_från} - ${finnsRedan.datum_till}. Ta bort eller ändra den först.`);
+      return;
+    }
 
     setLaddar(true);
     setFel('');
@@ -509,6 +525,7 @@ export default function Franvaro() {
         onStäng={() => setModal({ öppen: false })}
         personal={personal}
         vikarier={vikarier}
+        frånvaron={frånvaron}
         valtPersonalId={modal.personalId}
         onRegistrerad={ladda}
       />
