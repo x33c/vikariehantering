@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="260" height="64" viewBox="0 0 260 64">
+  <rect width="260" height="64" fill="none"/>
+  <rect x="0" y="8" width="48" height="48" rx="8" fill="#b83a2f"/>
+  <path d="M12 23h24v6H12zM12 35h24v6H12z" fill="#fff"/>
+  <text x="62" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#231f20">Sundbybergs</text>
+  <text x="62" y="50" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#231f20">stad</text>
+</svg>

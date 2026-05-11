@@ -46,16 +46,22 @@ export default function AdminLayout() {
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
         `}
-        style={{ background: 'var(--bg-sidebar)', borderColor: 'rgba(255,255,255,0.08)' }}
+        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       >
-        <div className="flex h-16 items-center justify-between px-5">
-          <div>
-            <p className="text-sm font-semibold tracking-wide text-white">Vikariehantering</p>
-            <p className="text-xs text-white/50">Admin</p>
-          </div>
-          <button onClick={() => setMenyÖppen(false)} className="rounded-md p-2 text-white/60 hover:bg-white/10 lg:hidden">
-            ×
-          </button>
+        <div className="px-4 pb-4 pt-5">
+          {!mörkt ? (
+            <div className="rounded-xl bg-white p-3">
+              <img src="/sundbyberg-logo.svg" alt="Sundbybergs stad" className="h-12 w-auto object-contain" />
+            </div>
+          ) : (
+            <div className="rounded-xl px-2 py-3">
+              <p className="text-sm font-semibold tracking-wide text-white">Vikariehantering</p>
+              <p className="text-xs text-white/50">Admin</p>
+            </div>
+          )}
+          <p className="mt-3 px-2 text-xs" style={{ color: 'var(--text-subtle)' }}>
+            Levande, nytänkande, tillsammans
+          </p>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
@@ -66,30 +72,34 @@ export default function AdminLayout() {
               end={item.end}
               onClick={() => setMenyÖppen(false)}
               className={({ isActive }) =>
-                `block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                `block rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-white text-neutral-950 shadow-sm'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'shadow-sm'
+                    : ''
                 }`
               }
+              style={({ isActive }) => ({
+                background: isActive ? (mörkt ? 'rgba(255,255,255,0.10)' : 'var(--accent-soft)') : 'transparent',
+                color: isActive ? (mörkt ? '#fff' : 'var(--brand-ink)') : 'var(--text-muted)',
+              })}
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="border-t border-white/10 p-3">
-          <div className="mb-3 rounded-lg bg-white/[0.06] px-3 py-2">
-            <p className="truncate text-xs font-medium text-white">{profil?.namn ?? profil?.epost}</p>
-            <p className="text-xs text-white/50">Administratör</p>
+        <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
+          <div className="mb-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <p className="truncate text-xs font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
 
           <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-xs text-white/50">{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
               onClick={toggla}
               className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-              style={{ background: mörkt ? 'var(--accent)' : 'rgba(255,255,255,0.18)' }}
+              style={{ background: mörkt ? 'var(--accent)' : 'var(--border)' }}
               aria-label="Växla tema"
             >
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -98,7 +108,8 @@ export default function AdminLayout() {
 
           <button
             onClick={loggaUt}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            className="w-full rounded-xl px-3 py-2 text-left text-sm transition-colors hover:opacity-80"
+            style={{ color: 'var(--text-muted)' }}
           >
             Logga ut
           </button>
