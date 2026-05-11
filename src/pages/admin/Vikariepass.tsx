@@ -1,22 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { passApi, historikApi, vikariApi, notisApi, personalApi } from '../../lib/api';
 import type { Vikariepass, PassStatus, Vikarie, Passhistorik, Notis, Personal } from '../../types';
-import { PASS_STATUS_LABELS } from '../../types';
+import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import {
-  Button, Input, Select, Modal, Confirm, TomtTillstånd, LaddaSida,
+  Button, Input, Select, Modal, TomtTillstånd, LaddaSida,
   StatusBadge, Alert
 } from '../../components/ui';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 
-// ============================================================
-// Pass detail side panel
-// ============================================================
 function PassDetaljer({
-  pass,
-  vikarier,
-  onStäng,
-  onUppdaterad,
+  pass, vikarier, onStäng, onUppdaterad,
 }: {
   pass: Vikariepass;
   vikarier: Vikarie[];
@@ -77,85 +71,57 @@ function PassDetaljer({
         <h2 className="text-sm font-semibold text-gray-900">Vikariepass</h2>
         <button onClick={onStäng} className="text-gray-400 hover:text-gray-600">✕</button>
       </div>
-
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {fel && <Alert typ="error">{fel}</Alert>}
-
-        {/* Passinfo */}
         <div className="space-y-1.5 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Datum</span>
-            <span className="font-medium">{pass.datum}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Tid</span>
-            <span className="font-medium">{pass.tid_från.slice(0,5)}–{pass.tid_till.slice(0,5)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Personal</span>
-            <span className="font-medium">{pass.personal?.namn ?? '–'}</span>
-          </div>
-          {pass.ämne && (
-            <div className="flex justify-between">
-              <span className="text-gray-500">Ämne</span>
-              <span>{pass.ämne}</span>
+          {[
+            { label: 'Datum', värde: pass.datum },
+            { label: 'Tid', värde: `${pass.tid_från.slice(0,5)}–${pass.tid_till.slice(0,5)}` },
+            { label: 'Personal', värde: pass.personal?.namn ?? '–' },
+            pass.ämne ? { label: 'Ämne', värde: pass.ämne } : null,
+            pass.grupp ? { label: 'Grupp/klass', värde: pass.grupp } : null,
+            pass.sal ? { label: 'Sal', värde: pass.sal } : null,
+          ].filter(Boolean).map((r: any) => (
+            <div key={r.label} className="flex justify-between">
+              <span className="text-gray-500">{r.label}</span>
+              <span className="font-medium">{r.värde}</span>
             </div>
-          )}
-          {pass.grupp && (
-            <div className="flex justify-between">
-              <span className="text-gray-500">Grupp/klass</span>
-              <span>{pass.grupp}</span>
-            </div>
-          )}
-          {pass.sal && (
-            <div className="flex justify-between">
-              <span className="text-gray-500">Sal</span>
-              <span>{pass.sal}</span>
-            </div>
-          )}
+          ))}
           <div className="flex justify-between">
             <span className="text-gray-500">Status</span>
             <StatusBadge status={pass.status} />
           </div>
-          {pass.vikarie && (
+          {pass.vikarie_id && (
             <div className="flex justify-between">
               <span className="text-gray-500">Vikarie</span>
-              <span className="font-medium">{pass.vikarie.namn}</span>
+              <span className="font-medium">{vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? '–'}</span>
             </div>
           )}
         </div>
 
-        {/* Statusbyte */}
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Ändra status</p>
           <div className="flex flex-wrap gap-1.5">
             {ALLA_STATUSAR.map((s) => (
-              <button
-                key={s}
-                onClick={() => uppdateraStatus(s)}
-                disabled={pass.status === s}
+              <button key={s} onClick={() => uppdateraStatus(s)} disabled={pass.status === s}
                 className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors border ${
                   pass.status === s
                     ? 'border-transparent bg-gray-100 text-gray-400 cursor-default'
                     : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                }`}
-              >
+                }`}>
                 {PASS_STATUS_LABELS[s]}
               </button>
             ))}
           </div>
         </div>
 
-{/* Tilldela vikarie */}
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Tilldela vikarie</p>
           <div className="flex gap-2">
             <select value={tilldela} onChange={(e) => setTilldela(e.target.value)}
               className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">– Välj vikarie –</option>
-              {vikarier.map((v) => (
-                <option key={v.id} value={v.id}>{v.namn}</option>
-              ))}
+              {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
             </select>
             <button onClick={tilldelaVikarie} disabled={!tilldela}
               className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
@@ -164,26 +130,21 @@ function PassDetaljer({
           </div>
         </div>
 
-        {/* Rikta pass */}
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Rikta pass till specifik vikarie</p>
-          <p className="mb-2 text-xs text-gray-400">Passet syns bara för den valda vikarien och ingen annan.</p>
-          <div className="flex gap-2">
-            <select
-              value={pass.riktad_till_vikarie_id ?? ''}
-              onChange={async (e) => {
-                const val = e.target.value || null;
-                const res = await passApi.uppdatera(pass.id, { riktad_till_vikarie_id: val } as any);
-                if (res.data) onUppdaterad({ ...pass, riktad_till_vikarie_id: val });
-              }}
-              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">– Publikt (alla vikarier) –</option>
-              {vikarier.map((v) => (
-                <option key={v.id} value={v.id}>{v.namn}</option>
-              ))}
-            </select>
-          </div>
+          <p className="mb-2 text-xs text-gray-400">Passet syns bara för den valda vikarien.</p>
+          <select
+            value={pass.riktad_till_vikarie_id ?? ''}
+            onChange={async (e) => {
+              const val = e.target.value || null;
+              const res = await passApi.uppdatera(pass.id, { riktad_till_vikarie_id: val } as any);
+              if (res.data) onUppdaterad({ ...pass, riktad_till_vikarie_id: val });
+            }}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">– Publikt (alla vikarier) –</option>
+            {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+          </select>
           {pass.riktad_till_vikarie_id && (
             <p className="mt-1.5 text-xs text-yellow-600">
               Riktat till: {vikarier.find(v => v.id === pass.riktad_till_vikarie_id)?.namn ?? '–'}
@@ -191,7 +152,6 @@ function PassDetaljer({
           )}
         </div>
 
-        {/* Notifiera vikarier */}
         {pass.status === 'obokat' && (
           <div>
             <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Notifiera vikarier</p>
@@ -207,23 +167,17 @@ function PassDetaljer({
                     className="h-3.5 w-3.5 rounded border-gray-300"
                   />
                   <span className="text-sm text-gray-700">{v.namn}</span>
-                  {v.epost && <span className="text-xs text-gray-400">{v.epost}</span>}
+                  {v.epost && <span className="text-xs text-gray-400 truncate">{v.epost}</span>}
                 </label>
               ))}
             </div>
-            <Button
-              size="sm"
-              className="mt-2"
-              loading={skickarNotis}
-              disabled={valdaVikarier.size === 0}
-              onClick={skickaNotiser}
-            >
+            <Button size="sm" className="mt-2" loading={skickarNotis}
+              disabled={valdaVikarier.size === 0} onClick={skickaNotiser}>
               Skicka notiser ({valdaVikarier.size})
             </Button>
           </div>
         )}
 
-        {/* Historik */}
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Historik</p>
           {laddar ? (
@@ -246,20 +200,12 @@ function PassDetaljer({
   );
 }
 
-// ============================================================
-// New pass modal
-// ============================================================
-function NyttPassModal({
-  öppen, onStäng, personal, onSkapad,
-}: {
-  öppen: boolean;
-  onStäng: () => void;
-  personal: Personal[];
-  onSkapad: () => void;
+function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
+  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void;
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
-    tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '', anteckning: '',
+    tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '',
   });
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
@@ -268,13 +214,10 @@ function NyttPassModal({
     if (!form.personal_id) { setFel('Välj personal.'); return; }
     setLaddar(true);
     const res = await passApi.skapa({
-      personal_id: form.personal_id || null,
-      frånvaro_id: null, schemarad_id: null, vikarie_id: null,
-      datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till,
-      typ: 'del_av_dag',
+      personal_id: form.personal_id, frånvaro_id: null, schemarad_id: null, vikarie_id: null,
+      datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till, typ: 'del_av_dag',
       ämne: form.ämne || null, grupp: form.grupp || null, sal: form.sal || null,
-      anteckning: form.anteckning || null,
-      status: 'obokat', skapad_av: null,
+      anteckning: null, status: 'obokat', skapad_av: null,
     });
     setLaddar(false);
     if (res.error) { setFel(res.error.message); return; }
@@ -310,9 +253,6 @@ function NyttPassModal({
   );
 }
 
-// ============================================================
-// Main page
-// ============================================================
 export default function Vikariepass() {
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
@@ -346,67 +286,85 @@ export default function Vikariepass() {
 
   return (
     <div className="flex h-full">
-      {/* Main */}
-      <div className={`flex flex-col flex-1 p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-6 flex items-center justify-between">
+      <div className={`flex flex-col flex-1 p-4 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+        <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Vikariepass</h1>
           <Button onClick={() => setSkapaModal(true)}>+ Skapa pass</Button>
         </div>
 
-        {/* Filter */}
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="mb-4 flex flex-wrap gap-2">
           <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as PassStatus | '')}>
             <option value="">Alla statusar</option>
             {ALLA_STATUSAR.map((s) => (
               <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>
             ))}
           </Select>
-          <Input type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} placeholder="Från datum" />
-          <Input type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} placeholder="Till datum" />
+          <Input type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
+          <Input type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
         </div>
 
         {pass.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                  <th className="px-4 py-2.5 text-left font-medium">Datum</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Tid</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Personal</th>
-                  <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Ämne</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Vikarie</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pass.map((p) => (
-                  <tr
-                    key={p.id}
-                    className={`cursor-pointer hover:bg-gray-50 ${valtPass?.id === p.id ? 'bg-blue-50' : ''}`}
-                    onClick={() => setValtPass(p)}
-                  >
-                    <td className="px-4 py-3 text-gray-700">{p.datum}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.tid_från.slice(0,5)}–{p.tid_till.slice(0,5)}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{p.personal?.namn ?? '–'}</p>
-                      {p.personal?.arbetslag && <p className="text-xs text-gray-500">{p.personal.arbetslag.namn}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{p.ämne ?? '–'}</td>
-                    <td className="px-4 py-3 text-gray-700">{p.vikarie?.namn ?? '–'}</td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+          <>
+            {/* Tabell på desktop */}
+            <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-xs text-gray-500">
+                    <th className="px-4 py-2.5 text-left font-medium">Datum</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Tid</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Personal</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Ämne</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pass.map((p) => (
+                    <tr key={p.id}
+                      className={`cursor-pointer hover:bg-gray-50 ${valtPass?.id === p.id ? 'bg-blue-50' : ''}`}
+                      onClick={() => setValtPass(p)}>
+                      <td className="px-4 py-3 text-gray-700">{p.datum}</td>
+                      <td className="px-4 py-3 text-gray-700">{p.tid_från.slice(0,5)}–{p.tid_till.slice(0,5)}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{p.personal?.namn ?? '–'}</p>
+                        {p.personal?.arbetslag && <p className="text-xs text-gray-500">{p.personal.arbetslag.namn}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{p.ämne ?? '–'}</td>
+                      <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Kort på mobil */}
+            <div className="md:hidden space-y-2">
+              {pass.map((p) => (
+                <div key={p.id} onClick={() => setValtPass(p)}
+                  className={`rounded-xl border bg-white p-4 shadow-sm cursor-pointer ${valtPass?.id === p.id ? 'border-blue-400' : 'border-gray-200'}`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {new Date(p.datum).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className="text-xs text-gray-500">{p.tid_från.slice(0,5)}–{p.tid_till.slice(0,5)}</p>
+                    </div>
+                    <StatusBadge status={p.status} />
+                  </div>
+                  <p className="text-sm text-gray-700">{p.personal?.namn ?? '–'}</p>
+                  {p.personal?.arbetslag && <p className="text-xs text-gray-400">{p.personal.arbetslag.namn}</p>}
+                  {p.ämne && <p className="text-xs text-gray-500 mt-1">Ämne: {p.ämne}</p>}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Side panel */}
+      {/* Side panel – på mobil: fullskärm */}
       {valtPass && (
-        <div className="w-80 shrink-0 border-l border-gray-200 bg-white lg:flex flex-col hidden">
+        <div className="flex flex-col flex-1 lg:flex-none lg:w-80 lg:shrink-0 border-l border-gray-200 bg-white">
           <PassDetaljer
             pass={valtPass}
             vikarier={vikarier}
@@ -419,12 +377,7 @@ export default function Vikariepass() {
         </div>
       )}
 
-      <NyttPassModal
-        öppen={skapaModal}
-        onStäng={() => setSkapaModal(false)}
-        personal={personal}
-        onSkapad={ladda}
-      />
+      <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} />
     </div>
   );
 }
