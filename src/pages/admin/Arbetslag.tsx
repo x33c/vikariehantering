@@ -253,7 +253,6 @@ export default function Arbetslag() {
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-gray-50 text-xs text-gray-500">
                         <tr className="border-b bg-gray-50 text-xs text-gray-500">
                       <th className="px-4 py-2.5 text-left font-medium">Namn</th>
                       <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Titel</th>
