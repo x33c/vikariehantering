@@ -162,6 +162,7 @@ function FrånvaroRad({
 export default function Dashboard() {
   const [data, setData] = useState<DashboardStatistik | null>(null);
   const [dagensFrånvaro, setDagensFrånvaro] = useState<Frånvaro[]>([]);
+  const [kommandeFrånvaro, setKommandeFrånvaro] = useState<Frånvaro[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [bemannarPassId, setBemannarPassId] = useState<string | null>(null);
   const [laddar, setLaddar] = useState(true);
@@ -169,16 +170,25 @@ export default function Dashboard() {
 
   useEffect(() => {
     const idag = new Date().toISOString().slice(0, 10);
+    const imorgon = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const omSjuDagar = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
     Promise.all([
       passApi.dashboardStatistik(),
       frånvaroApi.lista(),
       vikariApi.lista(),
     ]).then(([statistik, frånvaroRes, vikarierRes]) => {
+      const allFrånvaro = (frånvaroRes.data ?? []) as Frånvaro[];
+
       setData(statistik);
       setDagensFrånvaro(
-        ((frånvaroRes.data ?? []) as Frånvaro[]).filter((frånvaro) =>
+        allFrånvaro.filter((frånvaro) =>
           frånvaro.datum_från <= idag && frånvaro.datum_till >= idag
+        )
+      );
+      setKommandeFrånvaro(
+        allFrånvaro.filter((frånvaro) =>
+          frånvaro.datum_till >= imorgon && frånvaro.datum_från <= omSjuDagar
         )
       );
       setVikarier((vikarierRes.data ?? []) as Vikarie[]);
@@ -306,10 +316,22 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="space-y-2">
-            {data.kommandePass.length === 0 ? (
-              <TomLista text="Inget planerat de kommande dagarna." />
+            {kommandeFrånvaro.length === 0 ? (
+              <TomLista text="Ingen kommande frånvaro." />
             ) : (
-              data.kommandePass.map((pass) => <PassRad key={pass.id} pass={pass} visaDatum />)
+              kommandeFrånvaro.map((frånvaro) => {
+                const kopplatPass = data.kommandePass.find((pass) => pass.frånvaro_id === frånvaro.id);
+                return (
+                  <FrånvaroRad
+                    key={frånvaro.id}
+                    frånvaro={frånvaro}
+                    pass={kopplatPass}
+                    vikarier={vikarier}
+                    bemannarPassId={bemannarPassId}
+                    onBemanna={bemannaDirekt}
+                  />
+                );
+              })
             )}
           </div>
         </section>
