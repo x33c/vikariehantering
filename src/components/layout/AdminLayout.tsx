@@ -71,11 +71,14 @@ export default function AdminLayout() {
               to={item.to}
               end={item.end}
               onClick={() => setMenyÖppen(false)}
-              className="group flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition-all"
+              className="group flex items-center rounded-2xl border px-4 py-3 text-sm font-medium transition-all"
               style={({ isActive }) => ({
                 background: isActive ? 'var(--nav-active)' : 'transparent',
                 color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
-                boxShadow: isActive ? 'var(--nav-active-shadow)' : 'none',
+                borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                boxShadow: isActive
+                  ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)`
+                  : 'none',
               })}
             >
               <span className="truncate">{item.label}</span>
