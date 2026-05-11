@@ -49,19 +49,17 @@ export default function AdminLayout() {
         style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       >
         <div className="px-4 pb-4 pt-5">
-          {!mörkt ? (
-            <div className="rounded-xl bg-white p-3">
-              <img src="/sundbyberg-logo.svg" alt="Sundbybergs stad" className="h-12 w-auto object-contain" />
+          <div className="flex items-center gap-3 px-1">
+            {!mörkt ? (
+              <img src="/sundbyberg-logo.svg" alt="" className="h-9 w-9 object-contain" />
+            ) : (
+              <div className="h-9 w-9 rounded-lg" style={{ background: 'var(--accent)' }} />
+            )}
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Admin</p>
             </div>
-          ) : (
-            <div className="rounded-xl px-2 py-3">
-              <p className="text-sm font-semibold tracking-wide text-white">Vikariehantering</p>
-              <p className="text-xs text-white/50">Admin</p>
-            </div>
-          )}
-          <p className="mt-3 px-2 text-xs" style={{ color: 'var(--text-subtle)' }}>
-            Levande, nytänkande, tillsammans
-          </p>
+          </div>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
