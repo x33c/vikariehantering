@@ -1,4 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@layer base { html { font-family: "Inter", system-ui, sans-serif; } }
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :root {
+    --bg: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-header: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+    --input-bg: #ffffff;
+    --hover: #f3f4f6;
+    --blue: #2563eb;
+    --blue-hover: #1d4ed8;
+  }
+
+  .dark {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-sidebar: #1e293b;
+    --bg-header: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-subtle: #64748b;
+    --input-bg: #0f172a;
+    --hover: #334155;
+    --blue: #3b82f6;
+    --blue-hover: #2563eb;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+  }
+}
