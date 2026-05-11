@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { frånvaroApi, personalApi, passApi, historikApi } from '../../lib/api';
-import type { Frånvaro, Personal, Schemarad } from '../../types';
+import { frånvaroApi, personalApi, passApi, historikApi, vikariApi } from '../../lib/api';
+import type { Frånvaro, Personal, Schemarad, Vikarie } from '../../types';
 import {
   Button, Input, Select, Textarea, Modal, Confirm, TomtTillstånd, LaddaSida, Alert
 } from '../../components/ui';
@@ -208,11 +208,12 @@ function SchemaVal({
 }
 
 function FrånvaroModal({
-  öppen, onStäng, personal, valtPersonalId, onRegistrerad,
+  öppen, onStäng, personal, vikarier, valtPersonalId, onRegistrerad,
 }: {
   öppen: boolean;
   onStäng: () => void;
   personal: Personal[];
+  vikarier: Vikarie[];
   valtPersonalId?: string;
   onRegistrerad: () => void;
 }) {
@@ -228,6 +229,7 @@ function FrånvaroModal({
   const [schemarader, setSchemarader] = useState<Schemarad[]>([]);
   const [skapadFrånvaro, setSkapadFrånvaro] = useState<Frånvaro | null>(null);
   const [valda, setValda] = useState<Set<string>>(new Set());
+  const [valdVikarieId, setValdVikarieId] = useState('');
   const [laddar, setLaddar] = useState(false);
   const [skaparPass, setSkaparPass] = useState(false);
   const [fel, setFel] = useState('');
@@ -242,6 +244,7 @@ function FrånvaroModal({
     setFel('');
     setSchemarader([]);
     setValda(new Set());
+    setValdVikarieId('');
   }, [öppen, valtPersonalId]);
 
   async function registreraFrånvaro() {
@@ -318,7 +321,7 @@ function FrånvaroModal({
           frånvaro_id: skapadFrånvaro.id,
           schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
           personal_id: personalId,
-          vikarie_id: null,
+          vikarie_id: valdVikarieId || null,
           datum,
           tid_från: första.tid_från!,
           tid_till: sista.tid_till!,
@@ -328,18 +331,21 @@ function FrånvaroModal({
           sal: salar.length === 1 ? salar[0] : null,
           anteckning: `Sammanhållet pass från ${sorterade.length} lektioner:\n${lektionslista}`,
           riktad_till_vikarie_id: null,
-          status: 'obokat',
+          status: valdVikarieId ? 'bokat' : 'obokat',
           skapad_av: null,
         });
 
-        if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
+        if (res.data) {
+          await historikApi.skapa(res.data.id, 'pass_skapat');
+          if (valdVikarieId) await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
+        }
       }
     } else {
       const res = await passApi.skapa({
         frånvaro_id: skapadFrånvaro.id,
         schemarad_id: null,
         personal_id: personalId,
-        vikarie_id: null,
+        vikarie_id: valdVikarieId || null,
         datum: datumFrån,
         tid_från: helDag ? '08:00' : tidFrån,
         tid_till: helDag ? '17:00' : tidTill,
@@ -349,10 +355,13 @@ function FrånvaroModal({
         sal: null,
         anteckning: null,
         riktad_till_vikarie_id: null,
-        status: 'obokat',
+        status: valdVikarieId ? 'bokat' : 'obokat',
         skapad_av: null,
       });
-      if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
+      if (res.data) {
+        await historikApi.skapa(res.data.id, 'pass_skapat');
+        if (valdVikarieId) await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
+      }
     }
 
     setSkaparPass(false);
@@ -404,6 +413,23 @@ function FrånvaroModal({
             </p>
           )}
 
+
+          <div className="rounded-lg border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <Select
+              label="Vikarie, valfritt"
+              value={valdVikarieId}
+              onChange={(e) => setValdVikarieId(e.target.value)}
+            >
+              <option value="">Ingen vald ännu</option>
+              {vikarier.map((vikarie) => (
+                <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
+              ))}
+            </Select>
+            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Välj en vikarie här om du redan vet vem som ska ta passet. Annars kan du bemanna senare.
+            </p>
+          </div>
+
           <div
             className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t px-6 py-4"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
@@ -422,6 +448,7 @@ function FrånvaroModal({
 export default function Franvaro() {
   const [frånvaron, setFrånvaron] = useState<Frånvaro[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
+  const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
   const [modal, setModal] = useState<{ öppen: boolean; personalId?: string }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
@@ -430,12 +457,14 @@ export default function Franvaro() {
   useEffect(() => { ladda(); }, []);
 
   async function ladda() {
-    const [fRes, pRes] = await Promise.all([
+    const [fRes, pRes, vRes] = await Promise.all([
       frånvaroApi.lista(),
       personalApi.lista(),
+      vikariApi.lista(),
     ]);
     setFrånvaron((fRes.data ?? []) as Frånvaro[]);
     setPersonal((pRes.data ?? []) as Personal[]);
+    setVikarier((vRes.data ?? []) as Vikarie[]);
     setLaddar(false);
   }
 
@@ -513,6 +542,7 @@ export default function Franvaro() {
         öppen={modal.öppen}
         onStäng={() => setModal({ öppen: false })}
         personal={personal}
+        vikarier={vikarier}
         valtPersonalId={modal.personalId}
         onRegistrerad={ladda}
       />
