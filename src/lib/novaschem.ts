@@ -23,24 +23,33 @@ export interface NovaschemaImportRad {
 }
 
 const VECKODAGAR: Record<string, number> = {
-  måndag: 1, tisdag: 2, onsdag: 3, torsdag: 4, fredag: 5, lördag: 6, söndag: 7,
-  monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 7,
+  måndag: 1, mån: 1, må: 1, monday: 1, mon: 1,
+  tisdag: 2, tis: 2, ti: 2, tuesday: 2, tue: 2,
+  onsdag: 3, ons: 3, on: 3, wednesday: 3, wed: 3,
+  torsdag: 4, tor: 4, to: 4, thursday: 4, thu: 4,
+  fredag: 5, fre: 5, fr: 5, friday: 5, fri: 5,
+  lördag: 6, lör: 6, lö: 6, saturday: 6, sat: 6,
+  söndag: 7, sön: 7, sö: 7, sunday: 7, sun: 7,
 };
 
 export function detekteraNovaschema(text: string): boolean {
-  return text.split(/\r?\n/).slice(0, 80).some((rad) => {
-    const kolumner = rad.split('\t');
-    return kolumner.length >= 10 && parseVeckodag(kolumner[2]) !== null && /^\d{1,2}:\d{2}$/.test(kolumner[3]?.trim() ?? '');
-  });
+  return text
+    .split(/\r?\n/)
+    .slice(0, 300)
+    .some((rad) => parsaLektionsrad(rad) !== null);
 }
 
 export function parsaNovaschemaFil(text: string): NovaschemaLektion[] {
-  return text.split(/\r?\n/).map(parsaLektionsrad).filter((rad): rad is NovaschemaLektion => rad !== null);
+  return text
+    .split(/\r?\n/)
+    .map(parsaLektionsrad)
+    .filter((rad): rad is NovaschemaLektion => rad !== null);
 }
 
 export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaImportRad[] {
   return lektioner.flatMap((lektion) => {
     const tidTill = läggTillMinuter(lektion.tidFrån, lektion.minuter);
+
     return lektion.veckor.map((vecka) => ({
       datum: isoDatumFörVecka(vecka >= 27 ? 2025 : 2026, vecka, lektion.veckodag),
       tidFrån: lektion.tidFrån,
@@ -57,14 +66,21 @@ export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaIm
 
 function parsaLektionsrad(rad: string): NovaschemaLektion | null {
   const kolumner = rad.split('\t').map((kolumn) => kolumn.trim());
-  if (kolumner.length < 10) return null;
+  if (kolumner.length < 6) return null;
 
+  const fast = parsaFastNovaschemRad(kolumner);
+  if (fast) return fast;
+
+  return parsaFlexibelNovaschemRad(kolumner);
+}
+
+function parsaFastNovaschemRad(kolumner: string[]): NovaschemaLektion | null {
   const veckodag = parseVeckodag(kolumner[2]);
   const tidFrån = normaliseraTid(kolumner[3]);
-  const minuter = Number.parseInt(kolumner[4], 10);
-  const veckor = parseVeckor(kolumner.slice(10).find((kolumn) => /\d/.test(kolumn)) ?? kolumner[13] ?? '');
+  const minuter = parseMinuter(kolumner[4]);
+  const veckor = parseVeckor(kolumner.slice(10).join(' '));
 
-  if (!veckodag || !tidFrån || !Number.isFinite(minuter) || minuter <= 0 || veckor.length === 0) return null;
+  if (!veckodag || !tidFrån || !minuter || veckor.length === 0) return null;
 
   return {
     lektionsId: kolumner[0] || kolumner[1] || `${kolumner[2]}-${kolumner[3]}-${kolumner[7]}`,
@@ -79,35 +95,81 @@ function parsaLektionsrad(rad: string): NovaschemaLektion | null {
   };
 }
 
+function parsaFlexibelNovaschemRad(kolumner: string[]): NovaschemaLektion | null {
+  const tidIndex = kolumner.findIndex((kolumn) => normaliseraTid(kolumn) !== null);
+  if (tidIndex === -1) return null;
+
+  const veckodagIndex = Math.max(0, tidIndex - 1);
+  const veckodag = parseVeckodag(kolumner[veckodagIndex]);
+  const tidFrån = normaliseraTid(kolumner[tidIndex]);
+  const minuter = parseMinuter(kolumner[tidIndex + 1]);
+  const veckor = parseVeckor(kolumner.slice(tidIndex + 2).join(' '));
+
+  if (!veckodag || !tidFrån || !minuter || veckor.length === 0) return null;
+
+  const efterTid = kolumner.slice(tidIndex + 2).filter(Boolean);
+  const utanVeckor = efterTid.filter((kolumn) => parseVeckor(kolumn).length === 0);
+
+  const ämne = utanVeckor[0] ?? '';
+  const signatur = utanVeckor.find((kolumn, index) =>
+    index > 0 && /^[A-Za-zÅÄÖåäö]{2,8}$/.test(kolumn)
+  ) ?? utanVeckor[1] ?? '';
+  const signaturIndex = utanVeckor.indexOf(signatur);
+
+  return {
+    lektionsId: kolumner[0] || `${kolumner[veckodagIndex]}-${kolumner[tidIndex]}-${signatur}`,
+    veckodag,
+    tidFrån,
+    minuter,
+    ämne,
+    signatur,
+    grupp: signaturIndex >= 0 ? utanVeckor[signaturIndex + 1] ?? '' : '',
+    sal: signaturIndex >= 0 ? utanVeckor[signaturIndex + 2] ?? '' : '',
+    veckor,
+  };
+}
+
 function parseVeckodag(värde: string | undefined): number | null {
-  const text = värde?.trim().toLowerCase();
+  const text = värde?.trim().toLowerCase().replace(/\.$/, '');
   if (!text) return null;
+
   const nummer = Number.parseInt(text, 10);
   if (nummer >= 1 && nummer <= 7) return nummer;
   if (nummer === 0) return 7;
+
   return VECKODAGAR[text] ?? null;
 }
 
 function normaliseraTid(värde: string | undefined): string | null {
-  const match = värde?.trim().match(/^(\d{1,2})[:.](\d{2})$/);
-  if (!match) return null;
-  return `${match[1].padStart(2, '0')}:${match[2]}`;
+  const text = värde?.trim();
+  if (!text) return null;
+
+  const kolon = text.match(/^(\d{1,2})[:.](\d{2})$/);
+  if (kolon) return `${kolon[1].padStart(2, '0')}:${kolon[2]}`;
+
+  const kompakt = text.match(/^(\d{1,2})(\d{2})$/);
+  if (kompakt) return `${kompakt[1].padStart(2, '0')}:${kompakt[2]}`;
+
+  return null;
+}
+
+function parseMinuter(värde: string | undefined): number | null {
+  const minuter = Number.parseInt(värde?.trim() ?? '', 10);
+  return Number.isFinite(minuter) && minuter > 0 && minuter <= 300 ? minuter : null;
 }
 
 function parseVeckor(värde: string): number[] {
   const veckor = new Set<number>();
+  const text = värde.replace(/[vV]\.?/g, '');
 
-  for (const del of värde.split(/[,;\s]+/)) {
-    if (!del) continue;
-    const intervall = del.match(/^(\d{1,2})\s*-\s*(\d{1,2})$/);
-
-    if (intervall) {
-      const start = Number.parseInt(intervall[1], 10);
-      const slut = Number.parseInt(intervall[2], 10);
+  for (const match of text.matchAll(/(\d{1,2})\s*-\s*(\d{1,2})|(\d{1,2})/g)) {
+    if (match[1] && match[2]) {
+      const start = Number.parseInt(match[1], 10);
+      const slut = Number.parseInt(match[2], 10);
       const steg = start <= slut ? 1 : -1;
       for (let vecka = start; vecka !== slut + steg; vecka += steg) läggTillVecka(veckor, vecka);
-    } else {
-      läggTillVecka(veckor, Number.parseInt(del, 10));
+    } else if (match[3]) {
+      läggTillVecka(veckor, Number.parseInt(match[3], 10));
     }
   }
 
