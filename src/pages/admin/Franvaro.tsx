@@ -263,7 +263,8 @@ export default function Franvaro() {
         <TomtTillstånd text="Ingen frånvaro registrerad." åtgärd={
           <Button size="sm" onClick={() => setModal({ öppen: true })}>Registrera frånvaro</Button>
         } />
-      ) : (
+) : (
+        <>
         {/* Tabell på desktop */}
         <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
@@ -322,7 +323,8 @@ export default function Franvaro() {
               </div>
             </div>
           ))}
-        </div>
+</div>
+        </>
       )}
 
       <FrånvaroModal
