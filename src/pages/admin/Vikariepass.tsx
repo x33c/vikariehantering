@@ -4,18 +4,19 @@ import type { Vikariepass, PassStatus, Vikarie, Passhistorik, Notis, Personal } 
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import {
   Button, Input, Select, Modal, TomtTillstånd, LaddaSida,
-  StatusBadge, Alert
+  StatusBadge, Alert, Confirm
 } from '../../components/ui';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 
 function PassDetaljer({
-  pass, vikarier, onStäng, onUppdaterad,
+  pass, vikarier, onStäng, onUppdaterad, onRadera,
 }: {
   pass: Vikariepass;
   vikarier: Vikarie[];
   onStäng: () => void;
   onUppdaterad: (p: Vikariepass) => void;
+  onRadera: (p: Vikariepass) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
   const [notiser, setNotiser] = useState<Notis[]>([]);
@@ -178,6 +179,13 @@ function PassDetaljer({
           </div>
         )}
 
+        <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Farlig åtgärd</p>
+          <Button variant="danger" size="sm" onClick={() => onRadera(pass)}>
+            Ta bort pass
+          </Button>
+        </div>
+
         <div>
           <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Historik</p>
           {laddar ? (
@@ -260,6 +268,7 @@ export default function Vikariepass() {
   const [laddar, setLaddar] = useState(true);
   const [valtPass, setValtPass] = useState<Vikariepass | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
+  const [raderaPass, setRaderaPass] = useState<Vikariepass | null>(null);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
@@ -373,11 +382,30 @@ export default function Vikariepass() {
               setPass((prev) => prev.map((p) => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
               setValtPass(uppdaterad);
             }}
+            onRadera={setRaderaPass}
           />
         </div>
       )}
 
       <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} />
+
+      <Confirm
+        öppen={!!raderaPass}
+        titel="Ta bort vikariepass"
+        text={`Ta bort passet ${raderaPass?.datum} ${raderaPass?.tid_från.slice(0, 5)}-${raderaPass?.tid_till.slice(0, 5)}? Historik och notiser för passet tas också bort.`}
+        bekräftaText="Ta bort pass"
+        farlig
+        onBekräfta={async () => {
+          if (!raderaPass) return;
+          const res = await passApi.radera(raderaPass.id);
+          if (!res.error) {
+            setPass((prev) => prev.filter((p) => p.id !== raderaPass.id));
+            setValtPass((prev) => prev?.id === raderaPass.id ? null : prev);
+            setRaderaPass(null);
+          }
+        }}
+        onAvbryt={() => setRaderaPass(null)}
+      />
     </div>
   );
 }

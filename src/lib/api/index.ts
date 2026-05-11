@@ -162,6 +162,11 @@ export const passApi = {
   async hämtaVikarie(vikarieId: string) {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
   },
+  async radera(id: string) {
+    await supabase.from('notiser').delete().eq('pass_id', id);
+    await supabase.from('passhistorik').delete().eq('pass_id', id);
+    return supabase.from('vikariepass').delete().eq('id', id);
+  },
   async dashboardStatistik(): Promise<DashboardStatistik> {
     const idag = new Date().toISOString().slice(0, 10);
     const omSjuDagar = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
