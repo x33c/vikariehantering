@@ -51,7 +51,7 @@ export default function AdminLayout() {
         <div className="px-4 pb-4 pt-5">
           <div className="flex items-center gap-3 px-1">
             <img
-              src={mörkt ? "/sundbyberg-silver.jpg" : "/sundbyberg-halm.jpg"}
+              src={mörkt ? "/sundbyberg-silver.png" : "/sundbyberg-halm.png"}
               alt=""
               className="h-11 w-11 rounded-xl object-cover"
             />
