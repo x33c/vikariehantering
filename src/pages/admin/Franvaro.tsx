@@ -105,11 +105,11 @@ function SchemaVal({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Klicka på lektionerna som ingår i frånvaron. Valda lektioner slås ihop till ett vikariepass per dag.
+          Välj vilka lektioner som behöver vikarie. Appen skapar ett sammanhållet pass per dag.
         </p>
         <div className="flex gap-2">
-          <Button size="sm" variant="secondary" onClick={markeraAlla}>Välj alla</Button>
-          <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Avmarkera</Button>
+          <Button size="sm" variant="secondary" onClick={markeraAlla}>Alla</Button>
+          <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Ingen</Button>
         </div>
       </div>
 
@@ -222,8 +222,8 @@ function FrånvaroModal({
   const [helDag, setHelDag] = useState(true);
   const [tidFrån, setTidFrån] = useState('08:00');
   const [tidTill, setTidTill] = useState('17:00');
-  const [orsak, setOrsak] = useState('');
-  const [anteckning, setAnteckning] = useState('');
+  const [orsak, setOrsak, valfritt] = useState('');
+  const [anteckning, setAnteckning, valfritt] = useState('');
   const [steg, setSteg] = useState<'formulär' | 'pass'>('formulär');
   const [schemarader, setSchemarader] = useState<Schemarad[]>([]);
   const [skapadFrånvaro, setSkapadFrånvaro] = useState<Frånvaro | null>(null);
@@ -245,7 +245,7 @@ function FrånvaroModal({
   }, [öppen, valtPersonalId]);
 
   async function registreraFrånvaro() {
-    if (!personalId) { setFel('Välj personal.'); return; }
+    if (!personalId) { setFel('Sök eller välj person.'); return; }
     if (datumTill < datumFrån) { setFel('Slutdatum kan inte vara före startdatum.'); return; }
 
     setLaddar(true);
@@ -361,19 +361,19 @@ function FrånvaroModal({
   }
 
   return (
-    <Modal öppen={öppen} onStäng={onStäng} titel="Registrera frånvaro" bredd="xl">
+    <Modal öppen={öppen} onStäng={onStäng} titel="Ny frånvaro" bredd="xl">
       {steg === 'formulär' ? (
         <div className="space-y-4">
           {fel && <Alert typ="error">{fel}</Alert>}
-          <Select label="Personal *" value={personalId} onChange={(e) => setPersonalId(e.target.value)}>
-            <option value="">Välj personal</option>
+          <Select label="Vem är frånvarande? *" value={personalId} onChange={(e) => setPersonalId(e.target.value)}>
+            <option value="">Sök eller välj person</option>
             {personal.map((p) => (
               <option key={p.id} value={p.id}>{p.namn} {p.arbetslag ? `(${p.arbetslag.namn})` : ''}</option>
             ))}
           </Select>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Från datum *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
-            <Input label="Till datum *" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
+            <Input label="Första dag *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
+            <Input label="Sista dag *" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
           </div>
           <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
             <input type="checkbox" checked={helDag} onChange={(e) => setHelDag(e.target.checked)} className="h-4 w-4 rounded" />
@@ -381,20 +381,20 @@ function FrånvaroModal({
           </label>
           {!helDag && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input label="Från kl" type="time" value={tidFrån} onChange={(e) => setTidFrån(e.target.value)} />
-              <Input label="Till kl" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
+              <Input label="Från" type="time" value={tidFrån} onChange={(e) => setTidFrån(e.target.value)} />
+              <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
             </div>
           )}
-          <Input label="Orsak" value={orsak} onChange={(e) => setOrsak(e.target.value)} placeholder="Sjukdom, VAB..." />
-          <Textarea label="Anteckning" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={2} />
+          <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak, valfritt(e.target.value)} placeholder="Sjukdom, VAB..." />
+          <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning, valfritt(e.target.value)} rows={2} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
-            <Button loading={laddar} onClick={registreraFrånvaro}>Nästa</Button>
+            <Button loading={laddar} onClick={registreraFrånvaro}>Fortsätt</Button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <Alert typ="success">Frånvaron är registrerad.</Alert>
+          <Alert typ="success">Frånvaron är sparad.</Alert>
 
           {schemarader.length > 0 ? (
             <SchemaVal rader={schemarader} valda={valda} setValda={setValda} />
@@ -408,9 +408,9 @@ function FrånvaroModal({
             className="sticky bottom-0 -mx-6 flex justify-end gap-2 border-t px-6 py-4"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
           >
-            <Button variant="secondary" onClick={onStäng}>Stäng utan pass</Button>
+            <Button variant="secondary" onClick={onStäng}>Spara utan vikarie</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
-              Skapa {valda.size > 0 ? 'sammanhållet vikariepass' : 'vikariepass'}
+              Skapa vikariepass
             </Button>
           </div>
         </div>
@@ -456,23 +456,23 @@ export default function Franvaro() {
             Frånvaro
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Registrera frånvaro och välj lektioner visuellt ur schemat.
+            Ny frånvaro och välj lektioner visuellt ur schemat.
           </p>
         </div>
-        <Button onClick={() => setModal({ öppen: true })}>Registrera frånvaro</Button>
+        <Button onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
       </div>
 
       <input
         type="search"
-        placeholder="Filtrera på namn"
+        placeholder="Sök person"
         value={sök}
         onChange={(e) => setSök(e.target.value)}
         className="mb-4 w-full max-w-xs rounded-lg border px-3 py-2 text-sm"
       />
 
       {filtrerade.length === 0 ? (
-        <TomtTillstånd text="Ingen frånvaro registrerad." åtgärd={
-          <Button size="sm" onClick={() => setModal({ öppen: true })}>Registrera frånvaro</Button>
+        <TomtTillstånd text="Ingen frånvaro ännu." åtgärd={
+          <Button size="sm" onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
         } />
       ) : (
         <div className="overflow-hidden rounded-lg border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
@@ -483,7 +483,7 @@ export default function Franvaro() {
                 <th className="hidden px-4 py-3 text-left font-medium md:table-cell">Arbetslag</th>
                 <th className="px-4 py-3 text-left font-medium">Datum</th>
                 <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">Typ</th>
-                <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak</th>
+                <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak, valfritt</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -519,8 +519,8 @@ export default function Franvaro() {
 
       <Confirm
         öppen={!!raderaId}
-        titel="Ta bort frånvaro"
-        text="Ta bort frånvaroregistreringen? Kopplade vikariepass påverkas inte."
+        titel="Ta bort"
+        text="Ta bortregistreringen? Kopplade vikariepass påverkas inte."
         bekräftaText="Ta bort"
         farlig
         onBekräfta={async () => {

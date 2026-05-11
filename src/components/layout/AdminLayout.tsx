@@ -3,14 +3,14 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
-  { to: '/admin', label: 'Översikt', end: true },
+  { to: '/admin', label: 'Start', end: true },
+  { to: '/admin/franvaro', label: 'Frånvaro' },
+  { to: '/admin/vikariepass', label: 'Bemanning' },
+  { to: '/admin/utskick', label: 'Utskick' },
   { to: '/admin/arbetslag', label: 'Personal' },
   { to: '/admin/vikarier', label: 'Vikarier' },
-  { to: '/admin/franvaro', label: 'Frånvaro' },
-  { to: '/admin/vikariepass', label: 'Vikariepass' },
-  { to: '/admin/import', label: 'Schemaimport' },
+  { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
-  { to: '/admin/utskick', label: 'Utskick' },
 ];
 
 function useDarkMode() {
@@ -57,11 +57,9 @@ export default function AdminLayout() {
             />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-                Vikariehantering
+                Vikarier
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Admin
-              </p>
+              
             </div>
           </div>
         </div>

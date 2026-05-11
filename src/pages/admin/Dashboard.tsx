@@ -94,10 +94,10 @@ export default function Dashboard() {
   if (!data) return null;
 
   const statistik = [
-    { label: 'Obokade', värde: data.obokade, status: 'obokat' as PassStatus },
-    { label: 'Notifierade', värde: data.notifierade, status: 'notifierat' as PassStatus },
-    { label: 'Bokade', värde: data.bokade, status: 'bokat' as PassStatus },
-    { label: 'Bekräftade', värde: data.bekräftade, status: 'bekräftat' as PassStatus },
+    { label: 'Behöver vikarie', värde: data.obokade, status: 'obokat' as PassStatus },
+    { label: 'Förfrågan skickad', värde: data.notifierade, status: 'notifierat' as PassStatus },
+    { label: 'Vikarie bokad', värde: data.bokade, status: 'bokat' as PassStatus },
+    { label: 'Klart', värde: data.bekräftade, status: 'bekräftat' as PassStatus },
     { label: 'Avbokade', värde: data.avbokade, status: 'avbokat' as PassStatus },
   ];
 
@@ -109,15 +109,10 @@ export default function Dashboard() {
             Idag
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-            Översikt
+            Start
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {new Date().toLocaleDateString('sv-SE', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+            Registrera frånvaro, bemanna pass och förbered dagens utskick.
           </p>
         </div>
         <button
@@ -154,14 +149,14 @@ export default function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Dagens pass</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Att lösa idag</h2>
             <button onClick={() => navigate('/admin/vikariepass')} className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-              Visa alla
+              Visa
             </button>
           </div>
           <div className="space-y-2">
             {data.dagensPass.length === 0 ? (
-              <TomLista text="Inga pass idag." />
+              <TomLista text="Inget att lösa just nu." />
             ) : (
               data.dagensPass.map((pass) => <PassRad key={pass.id} pass={pass} />)
             )}
@@ -170,14 +165,14 @@ export default function Dashboard() {
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Kommande 7 dagar</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Kommande</h2>
             <button onClick={() => navigate('/admin/vikariepass')} className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-              Planering
+              Visa
             </button>
           </div>
           <div className="space-y-2">
             {data.kommandePass.length === 0 ? (
-              <TomLista text="Inga kommande pass." />
+              <TomLista text="Inget planerat de kommande dagarna." />
             ) : (
               data.kommandePass.map((pass) => <PassRad key={pass.id} pass={pass} visaDatum />)
             )}
@@ -186,12 +181,12 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Snabbåtgärder</h2>
+        <h2 className="mb-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vanliga åtgärder</h2>
         <div className="grid gap-2 sm:grid-cols-3">
           {[
             { label: 'Registrera frånvaro', to: '/admin/franvaro' },
-            { label: 'Skapa vikariepass', to: '/admin/vikariepass' },
-            { label: 'Importera schema', to: '/admin/import' },
+            { label: 'Lägg till pass', to: '/admin/vikariepass' },
+            { label: 'Läs in schema', to: '/admin/import' },
           ].map(({ label, to }) => (
             <button
               key={to}

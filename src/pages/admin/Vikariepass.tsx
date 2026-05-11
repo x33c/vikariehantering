@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { passApi, historikApi, vikariApi, notisApi, personalApi } from '../../lib/api';
-import type { Vikariepass, PassStatus, Vikarie, Passhistorik, Notis, Personal } from '../../types';
+import type { Bemanning, PassStatus, Vikarie, Passhistorik, Notis, Personal } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import {
   Button, Input, Select, Modal, TomtTillstånd, LaddaSida,
@@ -12,16 +12,16 @@ const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräfta
 function PassDetaljer({
   pass, vikarier, onStäng, onUppdaterad, onRadera,
 }: {
-  pass: Vikariepass;
+  pass: Bemanning;
   vikarier: Vikarie[];
   onStäng: () => void;
-  onUppdaterad: (p: Vikariepass) => void;
-  onRadera: (p: Vikariepass) => void;
+  onUppdaterad: (p: Bemanning) => void;
+  onRadera: (p: Bemanning) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
   const [notiser, setNotiser] = useState<Notis[]>([]);
   const [valdaVikarier, setValdaVikarier] = useState<Set<string>>(new Set());
-  const [tilldela, setTilldela] = useState(pass.vikarie_id ?? '');
+  const [tilldela, setSpara] = useState(pass.vikarie_id ?? '');
   const [skickarNotis, setSkickarNotis] = useState(false);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
@@ -49,7 +49,7 @@ function PassDetaljer({
     const res = await passApi.tilldelVikarie(pass.id, tilldela);
     if (res.error) { setFel(res.error.message); return; }
     await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: tilldela });
-    onUppdaterad(res.data as Vikariepass);
+    onUppdaterad(res.data as Bemanning);
   }
 
   async function skickaNotiser() {
@@ -69,7 +69,7 @@ function PassDetaljer({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-5 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">Vikariepass</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Bemanning</h2>
         <button onClick={onStäng} className="text-gray-400 hover:text-gray-600">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
@@ -101,7 +101,7 @@ function PassDetaljer({
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Ändra status</p>
+          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</p>
           <div className="flex flex-wrap gap-1.5">
             {ALLA_STATUSAR.map((s) => (
               <button key={s} onClick={() => uppdateraStatus(s)} disabled={pass.status === s}
@@ -117,16 +117,16 @@ function PassDetaljer({
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Tilldela vikarie</p>
+          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Välj vikarie</p>
           <div className="flex gap-2">
-            <select value={tilldela} onChange={(e) => setTilldela(e.target.value)}
+            <select value={tilldela} onChange={(e) => setSpara(e.target.value)}
               className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">– Välj vikarie –</option>
+              <option value="">Välj vikarie</option>
               {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
             </select>
             <button onClick={tilldelaVikarie} disabled={!tilldela}
               className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-              Tilldela
+              Spara
             </button>
           </div>
         </div>
@@ -155,7 +155,7 @@ function PassDetaljer({
 
         {pass.status === 'obokat' && (
           <div>
-            <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Notifiera vikarier</p>
+            <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Fråga vikarier</p>
             <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-1">
               {vikarier.map((v) => (
                 <label key={v.id} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1 hover:bg-gray-50">
@@ -174,7 +174,7 @@ function PassDetaljer({
             </div>
             <Button size="sm" className="mt-2" loading={skickarNotis}
               disabled={valdaVikarier.size === 0} onClick={skickaNotiser}>
-              Skicka notiser ({valdaVikarier.size})
+              Skicka fråga ({valdaVikarier.size})
             </Button>
           </div>
         )}
@@ -235,7 +235,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   }
 
   return (
-    <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
+    <Modal öppen={öppen} onStäng={onStäng} titel="Lägg till pass" bredd="lg">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
         <Select label="Personal *" value={form.personal_id} onChange={(e) => setForm({ ...form, personal_id: e.target.value })}>
@@ -261,14 +261,14 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   );
 }
 
-export default function Vikariepass() {
-  const [pass, setPass] = useState<Vikariepass[]>([]);
+export default function Bemanning() {
+  const [pass, setPass] = useState<Bemanning[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [laddar, setLaddar] = useState(true);
-  const [valtPass, setValtPass] = useState<Vikariepass | null>(null);
+  const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
-  const [raderaPass, setRaderaPass] = useState<Vikariepass | null>(null);
+  const [raderaPass, setRaderaPass] = useState<Bemanning | null>(null);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
@@ -283,7 +283,7 @@ export default function Vikariepass() {
       vikariApi.lista(),
       personalApi.lista(),
     ]);
-    setPass((pRes.data ?? []) as Vikariepass[]);
+    setPass((pRes.data ?? []) as Bemanning[]);
     setVikarier((vRes.data ?? []) as Vikarie[]);
     setPersonal((perRes.data ?? []) as Personal[]);
     setLaddar(false);
@@ -297,13 +297,13 @@ export default function Vikariepass() {
     <div className="flex h-full">
       <div className={`flex flex-col flex-1 p-4 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Vikariepass</h1>
-          <Button onClick={() => setSkapaModal(true)}>+ Skapa pass</Button>
+          <h1 className="text-xl font-semibold text-gray-900">Bemanning</h1>
+          <Button onClick={() => setSkapaModal(true)}>+ Lägg till</Button>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
           <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as PassStatus | '')}>
-            <option value="">Alla statusar</option>
+            <option value="">Alla</option>
             {ALLA_STATUSAR.map((s) => (
               <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>
             ))}
@@ -313,7 +313,7 @@ export default function Vikariepass() {
         </div>
 
         {pass.length === 0 ? (
-          <TomtTillstånd text="Inga vikariepass matchar filtret." />
+          <TomtTillstånd text="Inga pass här." />
         ) : (
           <>
             {/* Tabell på desktop */}
@@ -391,7 +391,7 @@ export default function Vikariepass() {
 
       <Confirm
         öppen={!!raderaPass}
-        titel="Ta bort vikariepass"
+        titel="Ta bort pass"
         text={`Ta bort passet ${raderaPass?.datum} ${raderaPass?.tid_från.slice(0, 5)}-${raderaPass?.tid_till.slice(0, 5)}? Historik och notiser för passet tas också bort.`}
         bekräftaText="Ta bort pass"
         farlig
