@@ -222,8 +222,8 @@ function FrånvaroModal({
   const [helDag, setHelDag] = useState(true);
   const [tidFrån, setTidFrån] = useState('08:00');
   const [tidTill, setTidTill] = useState('17:00');
-  const [orsak, setOrsak, valfritt] = useState('');
-  const [anteckning, setAnteckning, valfritt] = useState('');
+  const [orsak, setOrsak] = useState('');
+  const [anteckning, setAnteckning] = useState('');
   const [steg, setSteg] = useState<'formulär' | 'pass'>('formulär');
   const [schemarader, setSchemarader] = useState<Schemarad[]>([]);
   const [skapadFrånvaro, setSkapadFrånvaro] = useState<Frånvaro | null>(null);
