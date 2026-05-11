@@ -58,6 +58,9 @@ export const personalApi = {
   async radera(id: string) {
     return supabase.from('personal').update({ aktiv: false }).eq('id', id);
   },
+  async raderaMånga(ids: string[]) {
+    return supabase.from('personal').update({ aktiv: false }).in('id', ids);
+  },
   async sök(term: string) {
     return supabase.from('personal').select('*, arbetslag(*)').eq('aktiv', true)
       .or(`namn.ilike.%${term}%,signatur.ilike.%${term}%,epost.ilike.%${term}%`);
@@ -230,5 +233,15 @@ export const importApi = {
   },
   async uppdateraImportStatistik(importId: string, matchade: number, omatchade: number) {
     return supabase.from('schemaimport').update({ matchade, omatchade }).eq('id', importId);
+  },
+  async matchaSchemaraderMotPersonal(personer: Pick<Personal, 'id' | 'signatur'>[]) {
+    for (const person of personer) {
+      if (!person.signatur) continue;
+      const res = await supabase.from('schemarader')
+        .update({ personal_id: person.id, matchningsstatus: 'matchad' })
+        .ilike('signatur', person.signatur);
+      if (res.error) return res;
+    }
+    return { data: null, error: null };
   },
 };

@@ -168,8 +168,16 @@ export default function Import() {
     }
 
     const pRes = await personalApi.lista();
-    setPersonal((pRes.data ?? []) as Personal[]);
-    setPersonalMeddelande(`Importerade ${skapade} ny personal. ${personalFrånFil.length - skapade} fanns redan eller hoppades över.`);
+    const uppdateradPersonal = (pRes.data ?? []) as Personal[];
+    const importeradeSignaturer = new Set(personalFrånFil.map(p => p.signatur.toLowerCase()));
+    const personalMedImporteradSignatur = uppdateradPersonal.filter(p =>
+      p.signatur && importeradeSignaturer.has(p.signatur.toLowerCase())
+    );
+
+    await importApi.matchaSchemaraderMotPersonal(personalMedImporteradSignatur);
+
+    setPersonal(uppdateradPersonal);
+    setPersonalMeddelande(`Importerade ${skapade} ny personal. ${personalFrånFil.length - skapade} fanns redan eller hoppades över. Befintliga schemarader har matchats om mot signaturer.`);
     setImporterarPersonal(false);
   }
 

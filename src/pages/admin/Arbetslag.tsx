@@ -164,6 +164,8 @@ export default function Arbetslag() {
   const [arbetslagModal, setArbetslagModal] = useState<{ öppen: boolean; rad?: Arbetslag }>({ öppen: false });
   const [personalModal, setPersonalModal] = useState<{ öppen: boolean; rad?: Personal }>({ öppen: false });
   const [raderaPersonal, setRaderaPersonal] = useState<Personal | null>(null);
+  const [raderaMarkerade, setRaderaMarkerade] = useState(false);
+  const [markeradePersonalIds, setMarkeradePersonalIds] = useState<Set<string>>(new Set());
   const [raderaArbetstag, setRaderaArbetstag] = useState<Arbetslag | null>(null);
 
   useEffect(() => {
@@ -181,6 +183,14 @@ export default function Arbetslag() {
 
   function personalFörArbetstag(arbetslagId: string) {
     return personal.filter((p) => p.arbetslag_id === arbetslagId);
+  }
+
+  function växlaMarkeradPersonal(personalId: string, markerad: boolean) {
+    setMarkeradePersonalIds((prev) => {
+      const ny = new Set(prev);
+      markerad ? ny.add(personalId) : ny.delete(personalId);
+      return ny;
+    });
   }
 
   const ingenArbetstag = personal.filter((p) => !p.arbetslag_id);
@@ -216,13 +226,21 @@ export default function Arbetslag() {
         className="mb-5 w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
+      {markeradePersonalIds.size > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border px-4 py-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <span className="text-sm" style={{ color: 'var(--text)' }}>{markeradePersonalIds.size} markerade</span>
+          <Button size="sm" variant="danger" onClick={() => setRaderaMarkerade(true)}>Ta bort markerade</Button>
+          <Button size="sm" variant="secondary" onClick={() => setMarkeradePersonalIds(new Set())}>Avmarkera</Button>
+        </div>
+      )}
+
       {filtreradPersonal ? (
         <div className="space-y-1">
           {filtreradPersonal.length === 0 ? (
             <TomtTillstånd text="Ingen personal matchade sökningen." />
           ) : filtreradPersonal.map((p) => (
             <PersonalRad key={p.id} personal={p} onRedigera={() => setPersonalModal({ öppen: true, rad: p })}
-              onRadera={() => setRaderaPersonal(p)} />
+              markerad={markeradePersonalIds.has(p.id)} onMarkera={(markerad) => växlaMarkeradPersonal(p.id, markerad)} onRadera={() => setRaderaPersonal(p)} />
           ))}
         </div>
       ) : (
@@ -254,6 +272,7 @@ export default function Arbetslag() {
                   <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b bg-gray-50 text-xs text-gray-500">
+                      <th className="w-10 px-4 py-2.5" />
                       <th className="px-4 py-2.5 text-left font-medium">Namn</th>
                       <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Titel</th>
                       <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Signatur</th>
@@ -265,7 +284,7 @@ export default function Arbetslag() {
                       {personalFörArbetstag(al.id).map((p) => (
                         <PersonalRad key={p.id} personal={p}
                           onRedigera={() => setPersonalModal({ öppen: true, rad: p })}
-                          onRadera={() => setRaderaPersonal(p)} />
+                          markerad={markeradePersonalIds.has(p.id)} onMarkera={(markerad) => växlaMarkeradPersonal(p.id, markerad)} onRadera={() => setRaderaPersonal(p)} />
                       ))}
                     </tbody>
                   </table>
@@ -284,7 +303,7 @@ export default function Arbetslag() {
                     {ingenArbetstag.map((p) => (
                       <PersonalRad key={p.id} personal={p}
                         onRedigera={() => setPersonalModal({ öppen: true, rad: p })}
-                        onRadera={() => setRaderaPersonal(p)} />
+                        markerad={markeradePersonalIds.has(p.id)} onMarkera={(markerad) => växlaMarkeradPersonal(p.id, markerad)} onRadera={() => setRaderaPersonal(p)} />
                     ))}
                   </tbody>
                 </table>
@@ -338,6 +357,23 @@ export default function Arbetslag() {
       />
 
       <Confirm
+        öppen={raderaMarkerade}
+        titel="Ta bort markerade personal"
+        text={`Ta bort ${markeradePersonalIds.size} markerade personer? Registrerade frånvaron och pass påverkas inte.`}
+        bekräftaText="Ta bort markerade"
+        farlig
+        onBekräfta={async () => {
+          const ids = [...markeradePersonalIds];
+          if (ids.length === 0) return;
+          await personalApi.raderaMånga(ids);
+          setPersonal((prev) => prev.filter((p) => !markeradePersonalIds.has(p.id)));
+          setMarkeradePersonalIds(new Set());
+          setRaderaMarkerade(false);
+        }}
+        onAvbryt={() => setRaderaMarkerade(false)}
+      />
+
+      <Confirm
         öppen={!!raderaArbetstag}
         titel="Ta bort arbetslag"
         text={`Ta bort ${raderaArbetstag?.namn}? Personal kopplas loss från arbetslaget men tas inte bort.`}
@@ -357,15 +393,27 @@ export default function Arbetslag() {
 
 function PersonalRad({
   personal,
+  markerad,
+  onMarkera,
   onRedigera,
   onRadera,
 }: {
   personal: Personal;
+  markerad: boolean;
+  onMarkera: (markerad: boolean) => void;
   onRedigera: () => void;
   onRadera: () => void;
 }) {
   return (
     <tr className="hover:bg-gray-50">
+      <td className="w-10 px-4 py-3">
+        <input
+          type="checkbox"
+          checked={markerad}
+          onChange={(e) => onMarkera(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-blue-600"
+        />
+      </td>
       <td className="px-4 py-3 font-medium text-gray-900">{personal.namn}</td>
       <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{personal.titel ?? '–'}</td>
       <td className="px-4 py-3 font-mono text-xs text-gray-500 hidden md:table-cell">{personal.signatur ?? '–'}</td>
