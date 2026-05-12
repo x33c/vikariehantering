@@ -335,6 +335,7 @@ export default function Bemanning() {
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [raderaValda, setRaderaValda] = useState(false);
   const [raderar, setRaderar] = useState(false);
+  const [senastMarkeradIndex, setSenastMarkeradIndex] = useState<number | null>(null);
 
   const ladda = useCallback(async () => {
     const [pRes, vRes, perRes] = await Promise.all([
@@ -368,13 +369,46 @@ export default function Bemanning() {
   if (laddar) return <LaddaSida />;
 
   const grupper = grupperaPasser(pass);
+  const allaSynligaIds = grupper.flatMap(grupp => grupp.pass.map(p => p.id));
+  const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
+
+  function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
+    const ny = new Set(valda);
+
+    if (shiftKey && senastMarkeradIndex !== null) {
+      const start = Math.min(senastMarkeradIndex, index);
+      const slut = Math.max(senastMarkeradIndex, index);
+      grupper.slice(start, slut + 1).forEach(g => {
+        g.pass.forEach(p => markerad ? ny.add(p.id) : ny.delete(p.id));
+      });
+    } else {
+      grupp.pass.forEach(p => markerad ? ny.add(p.id) : ny.delete(p.id));
+    }
+
+    setValda(ny);
+    setSenastMarkeradIndex(index);
+  }
+
+  function växlaAllaSynliga() {
+    if (allaSynligaMarkerade) {
+      setValda(new Set());
+    } else {
+      setValda(new Set(allaSynligaIds));
+    }
+  }
+
 
   return (
     <div className="flex h-full">
       <div className={`flex flex-col flex-1 p-4 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {grupper.length > 0 && (
+              <Button variant="secondary" size="sm" onClick={växlaAllaSynliga}>
+                {allaSynligaMarkerade ? 'Avmarkera alla' : 'Markera alla'}
+              </Button>
+            )}
             {valda.size > 0 && (
               <Button variant="danger" size="sm" onClick={() => setRaderaValda(true)}>
                 Ta bort ({valda.size})
@@ -397,7 +431,7 @@ export default function Bemanning() {
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : (
           <div className="space-y-3">
-            {grupper.map(grupp => {
+            {grupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
               const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
@@ -410,16 +444,35 @@ export default function Bemanning() {
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}
                   className="rounded-xl border p-4 shadow-sm"
-                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                  style={{
+                    background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
+                    borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
+                  }}>
                   <div className="flex items-start gap-3">
-                    <input type="checkbox" checked={alleMarkerade}
-                      onChange={e => {
-                        const ny = new Set(valda);
-                        grupp.pass.forEach(p => e.target.checked ? ny.add(p.id) : ny.delete(p.id));
-                        setValda(ny);
+                    <button
+                      type="button"
+                      aria-pressed={alleMarkerade}
+                      aria-label={alleMarkerade ? 'Avmarkera pass' : 'Markera pass'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey);
                       }}
-                      className="mt-1 h-4 w-4 rounded border-gray-300"
-                    />
+                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                      style={{
+                        background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)',
+                        borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
+                        color: alleMarkerade ? '#fff' : 'var(--text-subtle)',
+                        boxShadow: alleMarkerade ? '0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent)' : 'none',
+                      }}
+                    >
+                      {alleMarkerade ? (
+                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                          <path d="M5 10.5 8.2 13.5 15 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <span className="h-2 w-2 rounded-full" style={{ background: 'currentColor' }} />
+                      )}
+                    </button>
                     <div className="flex-1 min-w-0" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div>
