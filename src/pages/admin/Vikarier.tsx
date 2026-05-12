@@ -78,9 +78,10 @@ function KontoModal({ öppen, onStäng, vikarie }: {
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
   const [ok, setOk] = useState('');
+  const [kontoLank, setKontoLank] = useState('');
 
   useEffect(() => {
-    if (öppen) { setEpost(vikarie.epost ?? ''); setFel(''); setOk(''); }
+    if (öppen) { setEpost(vikarie.epost ?? ''); setFel(''); setOk(''); setKontoLank(''); }
   }, [öppen, vikarie]);
 
   async function skapaKonto() {
@@ -91,18 +92,20 @@ function KontoModal({ öppen, onStäng, vikarie }: {
     });
     setLaddar(false);
     if (error || data?.error) { setFel(error?.message ?? data?.error ?? 'Kunde inte skapa konto.'); return; }
-    setOk('Konto skapat. Skicka lösenordslänken till vikarien om inget mejl går ut automatiskt.');
+    setKontoLank(data?.action_link ?? '');
+    setOk(data?.email_sent ? 'Konto skapat och mejl skickat till vikarien.' : 'Konto skapat, men mejlet kunde inte skickas automatiskt. Använd länken nedan.');
   }
 
   async function återställLösenord() {
     if (!vikarie.epost) { setFel('Vikarie saknar e-post.'); return; }
     setLaddar(true); setFel('');
     const { data, error } = await anropaHanteraAnvandare({
-      åtgärd: 'återställ_lösenord', epost: vikarie.epost,
+      åtgärd: 'återställ_lösenord', epost: vikarie.epost, namn: vikarie.namn,
     });
     setLaddar(false);
     if (error || data?.error) { setFel(error?.message ?? data?.error ?? 'Misslyckades.'); return; }
-    setOk('Återställningslänk skickad till ' + vikarie.epost);
+    setKontoLank(data?.action_link ?? '');
+    setOk(data?.email_sent ? 'Återställningslänk skickad till ' + vikarie.epost : 'Mejlet kunde inte skickas automatiskt. Använd länken nedan.');
   }
 
   if (!öppen) return null;
@@ -117,6 +120,12 @@ function KontoModal({ öppen, onStäng, vikarie }: {
         <div className="space-y-4 px-6 py-4">
           {fel && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{fel}</p>}
           {ok && <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</p>}
+          {kontoLank && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
+              <p className="mb-1 font-medium">Lösenordslänk</p>
+              <input readOnly value={kontoLank} className="w-full rounded border border-yellow-300 px-2 py-1 text-xs" />
+            </div>
+          )}
 
           {!vikarie.profil_id ? (
             <>

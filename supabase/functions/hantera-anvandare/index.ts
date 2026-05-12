@@ -4,6 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +17,35 @@ function json(body: Record<string, unknown>, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function skickaKontoMejl(epost: string, namn: string | null | undefined, link: string) {
+  if (!RESEND_API_KEY) return false;
+
+  const resp = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: [epost],
+      subject: 'Skapa lösenord till Vikariehantering',
+      text: [
+        `Hej ${namn ?? ''}`.trim() + ',',
+        '',
+        'Ett konto har skapats åt dig i Vikariehantering.',
+        'Klicka på länken nedan för att sätta ditt lösenord:',
+        '',
+        link,
+        '',
+        'Om du inte väntade dig detta kan du ignorera mejlet.',
+      ].join('\n'),
+    }),
+  });
+
+  return resp.ok;
 }
 
 serve(async (req) => {
@@ -92,21 +123,36 @@ serve(async (req) => {
       });
       if (recoveryError) throw recoveryError;
 
+      const actionLink = recoveryData.properties?.action_link ?? null;
+      const mejlSkickat = actionLink
+        ? await skickaKontoMejl(normaliseradEpost, typeof namn === 'string' ? namn : null, actionLink)
+        : false;
+
       return json({
         ok: true,
         user_id: userId,
-        action_link: recoveryData.properties?.action_link ?? null,
+        email_sent: mejlSkickat,
+        action_link: actionLink,
       });
     }
 
     if (åtgärd === 'återställ_lösenord') {
-      const { epost } = data;
-      const { error } = await supabaseAdmin.auth.admin.generateLink({
+      const { epost, namn } = data;
+      if (!epost || typeof epost !== 'string') return json({ error: 'E-post krävs.' }, 400);
+
+      const normaliseradEpost = epost.trim().toLowerCase();
+      const { data: recoveryData, error } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
-        email: epost,
+        email: normaliseradEpost,
       });
       if (error) throw error;
-      return json({ ok: true });
+
+      const actionLink = recoveryData.properties?.action_link ?? null;
+      const mejlSkickat = actionLink
+        ? await skickaKontoMejl(normaliseradEpost, typeof namn === 'string' ? namn : null, actionLink)
+        : false;
+
+      return json({ ok: true, email_sent: mejlSkickat, action_link: actionLink });
     }
 
     if (åtgärd === 'uppdatera_roll') {
