@@ -1,4 +1,3 @@
-cat > src/pages/admin/Vikariepass.tsx << 'ENDOFFILE'
 import { useEffect, useState, useCallback } from 'react';
 import { passApi, historikApi, vikariApi, notisApi, personalApi } from '../../lib/api';
 import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet } from '../../types';
