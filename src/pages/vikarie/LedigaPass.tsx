@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { passApi, vikariApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie } from '../../types';
-import { visaKortNamn } from '../../lib/display';
+import { visaArskurs, visaKortNamn } from '../../lib/display';
 
 interface Passgrupp {
   personal_id: string;
@@ -50,6 +50,7 @@ function PassKort({
 }) {
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
+  const arskurs = visaArskurs(grupp.pass.map(p => p.grupp));
 
   return (
     <div
@@ -74,10 +75,11 @@ function PassKort({
         </span>
       </div>
 
-      <p className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Ersätter: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
-        {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
-      </p>
+      <div className="mb-3 grid gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <p>Vikarierar för: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span></p>
+        <p>Årskurs: <span className="font-medium" style={{ color: 'var(--text)' }}>{arskurs}</span></p>
+        <p>Tid: <span className="font-medium" style={{ color: 'var(--text)' }}>{tidFrån}-{tidTill}</span></p>
+      </div>
       <button
         onClick={onKlick}
         className="mt-3 w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
@@ -275,8 +277,9 @@ export default function LedigaPass() {
 
             <div className="mb-4 space-y-1 rounded-lg p-3 text-sm" style={{ background: 'var(--bg)', color: 'var(--text-muted)' }}>
               <p>Datum: <strong style={{ color: 'var(--text)' }}>{valdGrupp.datum}</strong></p>
-              <p>Ersätter: <strong style={{ color: 'var(--text)' }}>{valdGrupp.personalNamn}</strong></p>
-              <p>Antal pass: <strong style={{ color: 'var(--text)' }}>{valdGrupp.pass.length}</strong></p>
+              <p>Vikarierar för: <strong style={{ color: 'var(--text)' }}>{valdGrupp.personalNamn}</strong></p>
+              <p>Årskurs: <strong style={{ color: 'var(--text)' }}>{visaArskurs(valdGrupp.pass.map(p => p.grupp))}</strong></p>
+              <p>Tid: <strong style={{ color: 'var(--text)' }}>{valdGrupp.pass[0].tid_från.slice(0, 5)}-{valdGrupp.pass[valdGrupp.pass.length - 1].tid_till.slice(0, 5)}</strong></p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

@@ -22,6 +22,18 @@ function kortNamn(namn: string | null | undefined) {
   return `${delar[0]} ${delar[delar.length - 1].slice(0, 1)}.`;
 }
 
+function arskurs(grupp: string | null | undefined) {
+  const text = (grupp ?? '').toLowerCase();
+  if (!text.trim()) return 'Ej angiven årskurs';
+  if (/fsk|förskoleklass|f-klass|fk/.test(text)) return 'FSK';
+
+  const siffror = [...text.matchAll(/\b[1-6]\b/g)].map((m) => Number(m[0]));
+  if (siffror.some((n) => n >= 1 && n <= 3)) return 'åk. 1-3';
+  if (siffror.some((n) => n >= 4 && n <= 6)) return 'åk. 4-6';
+
+  return 'Ej angiven årskurs';
+}
+
 async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: string | null, title: string, body: string, url: string) {
   if (!profilId || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
 
@@ -79,23 +91,25 @@ serve(async (req) => {
   let någotSkickades = false;
 
   for (const vikarie of (vikarier ?? [])) {
-    const ämne = `Vikariepass ${pass.datum} - ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+    const namn = kortNamn(pass.personal?.namn) ?? 'personal';
+    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+    const årskurs = arskurs(pass.grupp);
+    const ämne = `Vikariepass ${pass.datum} ${tid}`;
     const rader = [
       `Hej ${vikarie.namn},`,
       '',
-      'Ett vikariepass är tillgängligt:',
+      'Du har en vikariefråga:',
       '',
+      `Vikarierar för: ${namn}`,
+      `Årskurs: ${årskurs}`,
+      `Tid: ${tid}`,
       `Datum: ${pass.datum}`,
-      `Tid: ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`,
-      pass.personal ? `Ersätter: ${kortNamn(pass.personal.namn)}` : null,
-      pass.personal?.arbetslag ? `Arbetslag: ${pass.personal.arbetslag.namn}` : null,
-      pass.grupp ? `Grupp/klass: ${pass.grupp}` : null,
       pass.anteckning ? `Kommentar: ${pass.anteckning}` : null,
       '',
       'Logga in i systemet för att svara.',
     ].filter(r => r !== null).join('\n');
 
-    await skickaPush(supabase, vikarie.profil_id, ämne, `${pass.datum} ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`, '/vikarie');
+    await skickaPush(supabase, vikarie.profil_id, ämne, `${namn} · ${årskurs} · ${tid}`, '/vikarie');
 
     const { data: notis } = await supabase.from('notiser').insert({
       pass_id, vikarie_id: vikarie.id, kanal: 'epost',
