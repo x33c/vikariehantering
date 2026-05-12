@@ -251,7 +251,7 @@ export default function LedigaPass() {
 
         {ledigaGrupper.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed py-10 text-center" style={{ borderColor: 'var(--border)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga publicerade lediga pass just nu.</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga lediga pass just nu. Bokade pass finns under Mina pass.</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

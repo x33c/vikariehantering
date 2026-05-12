@@ -14,8 +14,6 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
   const [form, setForm] = useState<NyVikarie>({
     profil_id: null, namn: '', epost: '', telefon: '', ämnen: [], stadier: [], anteckning: '', aktiv: true,
   });
-  const [ämnenText, setÄmnenText] = useState('');
-  const [stadierText, setStadierText] = useState('');
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
 
@@ -23,8 +21,6 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
     if (öppen) {
       setForm({ profil_id: vikarie?.profil_id ?? null, namn: vikarie?.namn ?? '', epost: vikarie?.epost ?? '',
         telefon: vikarie?.telefon ?? '', ämnen: [], stadier: [], anteckning: vikarie?.anteckning ?? '', aktiv: true });
-      setÄmnenText((vikarie?.ämnen ?? []).join(', '));
-      setStadierText((vikarie?.stadier ?? []).join(', '));
       setFel('');
     }
   }, [öppen, vikarie]);
@@ -32,10 +28,7 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
   async function spara() {
     if (!form.namn.trim()) { setFel('Namn krävs.'); return; }
     setLaddar(true);
-    const data = { ...form,
-      ämnen: ämnenText ? ämnenText.split(',').map(s => s.trim()).filter(Boolean) : [],
-      stadier: stadierText ? stadierText.split(',').map(s => s.trim()).filter(Boolean) : [],
-    };
+    const data = { ...form, ämnen: [], stadier: [] };
     const res = vikarie ? await vikariApi.uppdatera(vikarie.id, data) : await vikariApi.skapa(data);
     setLaddar(false);
     if (res.error) { setFel(res.error.message); return; }
@@ -66,16 +59,6 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
                 className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           ))}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Ämnen (kommaseparerat)</label>
-            <input value={ämnenText} onChange={e => setÄmnenText(e.target.value)} placeholder="Matematik, Engelska"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Stadier (kommaseparerat)</label>
-            <input value={stadierText} onChange={e => setStadierText(e.target.value)} placeholder="F-3, 4-6, 7-9"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={onStäng} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Avbryt</button>
             <button onClick={spara} disabled={laddar} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
@@ -224,8 +207,6 @@ export default function Vikarier() {
 <th className="px-4 py-2.5 text-left font-medium">Namn</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">E-post</th>
               <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Telefon</th>
-              <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Ämnen</th>
-              <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Stadier</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Konto</th>
               <th className="px-4 py-2.5" />
               </tr>
@@ -236,8 +217,6 @@ export default function Vikarier() {
 <td className="px-4 py-3 font-medium text-gray-900">{v.namn}</td>
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{v.epost ?? '–'}</td>
                   <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{v.telefon ?? '–'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600 hidden lg:table-cell">{v.ämnen?.join(', ') || '–'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600 hidden lg:table-cell">{v.stadier?.join(', ') || '–'}</td>
                   <td className="px-4 py-3">
                     {v.profil_id
                       ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Aktivt konto</span>

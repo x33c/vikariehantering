@@ -3,7 +3,7 @@ import { passApi, vikariApi, passmeddelandeApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie, Passmeddelande } from '../../types';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS } from '../../types';
-import { visaArskurs, visaKortNamn } from '../../lib/display';
+import { visaArskurs, visaKommentar, visaKortNamn } from '../../lib/display';
 
 export default function MinaPass() {
   const { användare } = useAuth();
@@ -87,8 +87,8 @@ export default function MinaPass() {
                     <p>Vikarierar för: <span style={{ color: 'var(--text)' }}>{visaKortNamn(p.personal?.namn)}</span></p>
                     <p>Årskurs: <span style={{ color: 'var(--text)' }}>{visaArskurs([p.grupp])}</span></p>
                   </div>
-                  {p.anteckning && (
-                    <p className="mt-2 text-xs" style={{ color: 'var(--text)' }}>{p.anteckning}</p>
+                  {visaKommentar(p.anteckning) && (
+                    <p className="mt-2 text-xs" style={{ color: 'var(--text)' }}>{visaKommentar(p.anteckning)}</p>
                   )}
                 </div>
                 <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${PASS_STATUS_COLORS[p.status]}`}>

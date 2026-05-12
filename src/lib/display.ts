@@ -17,3 +17,13 @@ export function visaArskurs(grupper: Array<string | null | undefined>) {
 
   return 'Ej angiven årskurs';
 }
+
+export function visaKommentar(anteckning?: string | null) {
+  const text = anteckning?.trim();
+  if (!text) return null;
+
+  if (/^sammanhållet pass från/i.test(text)) return null;
+  if (/\b\d+\s+lektioner\b/i.test(text) && /\d{2}:\d{2}/.test(text)) return null;
+
+  return text;
+}
