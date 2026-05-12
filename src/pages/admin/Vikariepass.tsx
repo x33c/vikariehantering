@@ -48,6 +48,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
   const [valdaVikarier, setValdaVikarier] = useState<Set<string>>(new Set());
   const [tilldela, setTilldela] = useState(pass.vikarie_id ?? '');
+  const [tidFrån, setTidFrån] = useState(pass.tid_från.slice(0, 5));
+  const [tidTill, setTidTill] = useState(pass.tid_till.slice(0, 5));
   const [skickarNotis, setSkickarNotis] = useState(false);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
@@ -55,6 +57,11 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
+
+  useEffect(() => {
+    setTidFrån(pass.tid_från.slice(0, 5));
+    setTidTill(pass.tid_till.slice(0, 5));
+  }, [pass.id, pass.tid_från, pass.tid_till]);
 
   useEffect(() => {
     async function laddaPassdata() {
@@ -86,6 +93,32 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     }
     if (vikarier.length > 0) laddaTillgänglighet();
   }, [pass.datum, vikarier]);
+
+  async function sparaTider() {
+    setFel('');
+
+    if (!tidFrån || !tidTill || tidFrån >= tidTill) {
+      setFel('Ange en giltig start- och sluttid.');
+      return;
+    }
+
+    const res = await passApi.uppdatera(pass.id, {
+      tid_från: tidFrån,
+      tid_till: tidTill,
+    } as any);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', {
+      tid_från: tidFrån,
+      tid_till: tidTill,
+    });
+
+    onUppdaterad({ ...pass, tid_från: tidFrån, tid_till: tidTill });
+  }
 
   async function uppdateraStatus(status: PassStatus) {
     const res = await passApi.uppdateraStatus(pass.id, status);
@@ -147,7 +180,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         <div className="space-y-1.5 text-sm">
           {[
             { label: 'Datum', värde: pass.datum },
-            { label: 'Tid', värde: `${pass.tid_från.slice(0,5)}–${pass.tid_till.slice(0,5)}` },
+
             { label: 'Personal', värde: pass.personal?.namn ?? '–' },
             pass.ämne ? { label: 'Ämne', värde: pass.ämne } : null,
             pass.grupp ? { label: 'Grupp', värde: pass.grupp } : null,
@@ -158,6 +191,38 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               <span className="font-medium" style={{ color: 'var(--text)' }}>{r.värde}</span>
             </div>
           ))}
+          <div>
+            <div className="mb-1 flex justify-between">
+              <span style={{ color: 'var(--text-muted)' }}>Tid</span>
+              <span className="font-medium" style={{ color: 'var(--text)' }}>{pass.tid_från.slice(0,5)}-{pass.tid_till.slice(0,5)}</span>
+            </div>
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <input
+                type="time"
+                value={tidFrån}
+                onChange={e => setTidFrån(e.target.value)}
+                className="rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+              <input
+                type="time"
+                value={tidTill}
+                onChange={e => setTidTill(e.target.value)}
+                className="rounded-md border px-2 py-1.5 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+              <button
+                type="button"
+                onClick={sparaTider}
+                disabled={tidFrån === pass.tid_från.slice(0, 5) && tidTill === pass.tid_till.slice(0, 5)}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                style={{ background: 'var(--blue)' }}
+              >
+                Spara
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-between">
             <span style={{ color: 'var(--text-muted)' }}>Status</span>
             <StatusBadge status={pass.status} />
