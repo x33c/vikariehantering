@@ -15,6 +15,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function kortNamn(namn: string | null | undefined) {
+  if (!namn) return null;
+  const delar = namn.trim().split(/\s+/).filter(Boolean);
+  if (delar.length <= 1) return delar[0] ?? null;
+  return `${delar[0]} ${delar[delar.length - 1].slice(0, 1)}.`;
+}
+
 async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: string | null, title: string, body: string, url: string) {
   if (!profilId || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
 
@@ -80,7 +87,7 @@ serve(async (req) => {
       '',
       `Datum: ${pass.datum}`,
       `Tid: ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`,
-      pass.personal ? `Ersätter: ${pass.personal.namn}` : null,
+      pass.personal ? `Ersätter: ${kortNamn(pass.personal.namn)}` : null,
       pass.personal?.arbetslag ? `Arbetslag: ${pass.personal.arbetslag.namn}` : null,
       pass.grupp ? `Grupp/klass: ${pass.grupp}` : null,
       pass.anteckning ? `Kommentar: ${pass.anteckning}` : null,

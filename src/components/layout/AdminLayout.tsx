@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import PushButton from '../PushButton';
 
 const navItems = [
   { to: '/admin', label: 'Start', end: true },
@@ -95,10 +94,6 @@ export default function AdminLayout() {
               {profil?.namn ?? profil?.epost}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
-          </div>
-
-          <div className="mb-3">
-            <PushButton />
           </div>
 
           <div className="mb-3 flex items-center justify-between px-1">
