@@ -123,7 +123,7 @@ export const frånvaroApi = {
     return supabase.from('frånvaro').select('*, personal(*, arbetslag(*))').eq('id', id).single();
   },
   async skapa(data: NyFrånvaro) {
-    return supabase.from('frånvaro').insert(data).select('*, personal(*, arbetslag(*))').single();
+    return supabase.from('frånvaro').insert(data).select('*').single();
   },
   async uppdatera(id: string, data: Partial<NyFrånvaro>) {
     return supabase.from('frånvaro').update(data).eq('id', id).select('*, personal(*)').single();
@@ -179,13 +179,13 @@ export const passApi = {
     return supabase.from('vikariepass')
       .update({ vikarie_id: vikarieId, status: 'bokat', riktad_till_vikarie_id: null })
       .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
-      .select('*, personal(*, arbetslag(*)), vikarie:vikarier(*)').single();
+      .select('*').single();
   },
   async tackaNej(passId: string, vikarieId: string) {
     return supabase.from('vikariepass')
       .update({ status: 'obokat', riktad_till_vikarie_id: null })
       .eq('id', passId).eq('riktad_till_vikarie_id', vikarieId).eq('status', 'notifierat')
-      .select('*, personal(*, arbetslag(*))').single();
+      .select('*').single();
   },
   async hämtaVikarie(vikarieId: string) {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
