@@ -6,6 +6,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
+const APP_URL = Deno.env.get('APP_URL') ?? 'https://vikariehantering.vercel.app';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -127,6 +128,7 @@ serve(async (req) => {
       const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: normaliseradEpost,
+        options: { redirectTo: `${APP_URL}/nytt-losenord` },
       });
       if (recoveryError) throw recoveryError;
 
@@ -151,6 +153,7 @@ serve(async (req) => {
       const { data: recoveryData, error } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: normaliseradEpost,
+        options: { redirectTo: `${APP_URL}/nytt-losenord` },
       });
       if (error) throw error;
 

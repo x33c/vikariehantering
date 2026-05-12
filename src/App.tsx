@@ -8,6 +8,7 @@ import VikarieLayout from './components/layout/VikarieLayout';
 
 // Auth
 import Login from './pages/auth/Login';
+import NyttLosenord from './pages/auth/NyttLosenord';
 
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
@@ -57,6 +58,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/nytt-losenord" element={<NyttLosenord />} />
 
           {/* Admin routes */}
           <Route
