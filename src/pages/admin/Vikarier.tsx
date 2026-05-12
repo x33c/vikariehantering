@@ -86,7 +86,8 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   const [ok, setOk] = useState('');
 
   useEffect(() => {
-    setEpost(vikarie?.epost ?? '');
+    if (!öppen || !vikarie) return;
+    setEpost(vikarie.epost ?? '');
     setLösenord(STANDARD_LOSENORD);
     setFel('');
     setOk('');
@@ -102,12 +103,14 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
       setFel('Ange e-post.');
       return;
     }
+
     if (lösenord.length < 8) {
       setFel('Lösenordet måste vara minst 8 tecken.');
       return;
     }
 
     setLaddar(true);
+
     const { error } = await anropaHanteraAnvandare({
       åtgärd: 'skapa',
       epost: epost.trim(),
@@ -115,10 +118,11 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
       vikarie_id: vikarie.id,
       tillfalligt_losenord: lösenord,
     });
+
     setLaddar(false);
 
     if (error) {
-      setFel(error.message);
+      setFel(error.message || 'Kunde inte skapa eller återställa kontot.');
       return;
     }
 
@@ -130,7 +134,19 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
     <Modal öppen={öppen} onStäng={onStäng} titel={`Kontoinställningar – ${vikarie.namn}`} bredd="md">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
-        {ok && <Alert typ="success">{ok}</Alert>}
+
+        {ok && (
+          <div
+            className="rounded-lg border px-3 py-2 text-sm"
+            style={{
+              background: 'rgba(22, 163, 74, 0.12)',
+              borderColor: 'rgba(22, 163, 74, 0.35)',
+              color: '#22c55e',
+            }}
+          >
+            {ok}
+          </div>
+        )}
 
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           Skapa eller återställ vikariens konto med ett tillfälligt lösenord. Vid första inloggning måste vikarien välja ett nytt lösenord.
