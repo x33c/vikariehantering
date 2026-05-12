@@ -19,6 +19,7 @@ import Import from './pages/admin/Import';
 import Historik from './pages/admin/Historik';
 import Utskick from './pages/admin/Utskick';
 import Konton from './pages/admin/Konton';
+import Notiser from './pages/admin/Notiser';
 
 // Vikarie pages
 import LedigaPass from './pages/vikarie/LedigaPass';
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="historik" element={<Historik />} />
             <Route path="konton" element={<Konton />} />
             <Route path="utskick" element={<Utskick />} />
+            <Route path="notiser" element={<Notiser />} />
           </Route>
 
           {/* Vikarie routes */}

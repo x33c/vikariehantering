@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi } from '../../lib/api';
-import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad } from '../../types';
+import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi } from '../../lib/api';
+import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 
@@ -52,12 +52,21 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
   const [tillgänglighet, setTillgänglighet] = useState<Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'>>({});
+  const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
+  const [nyttMeddelande, setNyttMeddelande] = useState('');
+  const [skickarMeddelande, setSkickarMeddelande] = useState(false);
 
   useEffect(() => {
-    historikApi.listaFörPass(pass.id).then(res => {
-      setHistorik((res.data ?? []) as Passhistorik[]);
+    async function laddaPassdata() {
+      const [historikRes, meddelandeRes] = await Promise.all([
+        historikApi.listaFörPass(pass.id),
+        passmeddelandeApi.lista(pass.id),
+      ]);
+      setHistorik((historikRes.data ?? []) as Passhistorik[]);
+      setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
       setLaddar(false);
-    });
+    }
+    laddaPassdata();
   }, [pass.id]);
 
   useEffect(() => {
@@ -91,6 +100,25 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     if (res.error) { setFel(res.error.message); return; }
     await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: tilldela });
     onUppdaterad(res.data as Bemanning);
+  }
+
+  async function skickaMeddelande() {
+    if (!nyttMeddelande.trim()) return;
+    setSkickarMeddelande(true);
+    setFel('');
+
+    const res = await passmeddelandeApi.skapa(pass.id, nyttMeddelande.trim(), 'admin');
+
+    if (res.error) {
+      setFel(res.error.message);
+    } else {
+      await historikApi.skapa(pass.id, 'pass_uppdaterat', { typ: 'admin_meddelande' }, nyttMeddelande.trim());
+      const ny = await passmeddelandeApi.lista(pass.id);
+      setMeddelanden((ny.data ?? []) as Passmeddelande[]);
+      setNyttMeddelande('');
+    }
+
+    setSkickarMeddelande(false);
   }
 
   async function skickaNotiser() {
@@ -272,6 +300,37 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             </Button>
           </div>
         )}
+
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Meddelanden</p>
+          <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+            <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
+              {meddelanden.length === 0 ? (
+                <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Inga meddelanden ännu.</p>
+              ) : meddelanden.map(m => (
+                <div key={m.id} className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                  <div className="mb-1 flex justify-between gap-2" style={{ color: 'var(--text-muted)' }}>
+                    <span>{m.avsandare_roll === 'admin' ? 'Admin' : 'Vikarie'}</span>
+                    <span>{new Date(m.created_at).toLocaleString('sv-SE')}</span>
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--text)' }}>{m.meddelande}</p>
+                </div>
+              ))}
+            </div>
+            <textarea
+              value={nyttMeddelande}
+              onChange={e => setNyttMeddelande(e.target.value)}
+              rows={3}
+              placeholder={pass.vikarie_id ? 'Skriv meddelande till vikarien...' : 'Meddelande kan skrivas när passet är bokat.'}
+              disabled={!pass.vikarie_id}
+              className="mb-2 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <Button size="sm" onClick={skickaMeddelande} loading={skickarMeddelande} disabled={!pass.vikarie_id || !nyttMeddelande.trim()}>
+              Skicka meddelande
+            </Button>
+          </div>
+        </div>
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Historik</p>

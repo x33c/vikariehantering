@@ -263,6 +263,14 @@ export const passmeddelandeApi = {
 };
 
 export const notisApi = {
+  async listaAdmin() {
+    return supabase
+      .from('notiser')
+      .select('*, vikarie:vikarier(namn, epost), pass:vikariepass(*, personal(namn))')
+      .eq('mottagare', 'admin')
+      .order('created_at', { ascending: false })
+      .limit(100);
+  },
   async listaFörPass(passId: string) {
     return supabase.from('notiser').select('*')
       .eq('pass_id', passId).order('created_at', { ascending: false });
