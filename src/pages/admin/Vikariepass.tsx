@@ -161,8 +161,14 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               type="checkbox"
               checked={!!pass.publicerad}
               onChange={async e => {
-                const res = await passApi.uppdatera(pass.id, { publicerad: e.target.checked } as any);
-                if (res.data) onUppdaterad({ ...pass, publicerad: e.target.checked });
+                const publicerad = e.target.checked;
+                setFel('');
+                const res = await passApi.uppdatera(pass.id, { publicerad } as any);
+                if (res.error) {
+                  setFel('Kunde inte ändra publicering. Kontrollera att databasmigrationen för publicerad är körd.');
+                  return;
+                }
+                onUppdaterad({ ...pass, publicerad });
               }}
               className="h-4 w-4 rounded border-gray-300"
             />
@@ -188,13 +194,31 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Rikta pass</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Rikta som förfrågan</p>
           <select
             value={pass.riktad_till_vikarie_id ?? ''}
             onChange={async e => {
               const val = e.target.value || null;
-              const res = await passApi.uppdatera(pass.id, { riktad_till_vikarie_id: val } as any);
-              if (res.data) onUppdaterad({ ...pass, riktad_till_vikarie_id: val });
+              setFel('');
+
+              const uppdatering = val
+                ? { riktad_till_vikarie_id: val, status: 'notifierat' as PassStatus, publicerad: false }
+                : { riktad_till_vikarie_id: null, status: 'obokat' as PassStatus };
+
+              const res = await passApi.uppdatera(pass.id, uppdatering as any);
+              if (res.error) {
+                setFel('Kunde inte rikta passet.');
+                return;
+              }
+
+              if (val) {
+                await notisApi.skickaNotiser(pass.id, [val]);
+                await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: val });
+              } else {
+                await historikApi.skapa(pass.id, 'pass_uppdaterat', { riktad_till_vikarie_id: null });
+              }
+
+              onUppdaterad({ ...pass, ...uppdatering });
             }}
             className="w-full rounded-md border px-3 py-2 text-sm"
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
