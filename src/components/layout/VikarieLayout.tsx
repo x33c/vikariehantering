@@ -3,10 +3,10 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
-  { to: '/vikarie', label: 'Lediga pass', end: true },
-  { to: '/vikarie/mina-pass', label: 'Mina bokade pass' },
-  { to: '/vikarie/tillganglighet', label: 'Min tillgänglighet' },
-  { to: '/vikarie/profil', label: 'Profil & kontakt' },
+  { to: '/vikarie', label: 'Pass', end: true },
+  { to: '/vikarie/mina-pass', label: 'Mina pass' },
+  { to: '/vikarie/tillganglighet', label: 'Tillgänglighet' },
+  { to: '/vikarie/profil', label: 'Profil' },
 ];
 
 function useDarkMode() {
@@ -92,7 +92,7 @@ export default function VikarieLayout() {
             <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vikarie</p>
           </div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 hidden items-center justify-between lg:flex">
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
               onClick={toggla}
@@ -127,13 +127,6 @@ export default function VikarieLayout() {
             </svg>
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
-          <button
-            onClick={toggla}
-            className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-            style={{ background: mörkt ? 'var(--blue)' : 'var(--border)' }}
-          >
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-4' : 'translate-x-1'}`} />
-          </button>
         </header>
         <main className="flex-1 overflow-y-auto">
           <Outlet />

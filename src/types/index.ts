@@ -171,6 +171,16 @@ export interface Passhistorik {
   utförd_av_profil?: Profil;
 }
 
+export interface Passmeddelande {
+  id: string;
+  pass_id: string;
+  avsandare_profil_id: string | null;
+  avsandare_roll: 'admin' | 'vikarie';
+  meddelande: string;
+  created_at: string;
+  avsandare?: Profil;
+}
+
 export interface Notis {
   id: string;
   pass_id: string;

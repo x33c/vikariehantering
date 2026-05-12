@@ -294,7 +294,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
-    tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '', publicerad: false,
+    tid_från: '08:00', tid_till: '17:00', grupp: '', anteckning: '', publicerad: false,
   });
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
@@ -331,9 +331,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
       ...prev,
       tid_från: första.tid_från!.slice(0, 5),
       tid_till: sista.tid_till!.slice(0, 5),
-      ämne: rader.length === 1 ? första.ämne ?? prev.ämne : `${rader.length} lektioner`,
       grupp: [...new Set(rader.map(r => r.grupp).filter(Boolean))].slice(0, 3).join(', ') || prev.grupp,
-      sal: [...new Set(rader.map(r => r.sal).filter(Boolean))].length === 1 ? rader[0].sal ?? prev.sal : prev.sal,
     }));
 
     setSchemaInfo(`Tider hämtade från schema: ${första.tid_från!.slice(0, 5)}-${sista.tid_till!.slice(0, 5)} (${rader.length} lektioner).`);
@@ -345,8 +343,8 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     const res = await passApi.skapa({
       personal_id: form.personal_id, frånvaro_id: null, schemarad_id: null, vikarie_id: null,
       datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till, typ: 'del_av_dag',
-      ämne: form.ämne || null, grupp: form.grupp || null, sal: form.sal || null,
-      anteckning: null, riktad_till_vikarie_id: null, publicerad: form.publicerad, status: 'obokat', skapad_av: null,
+      ämne: null, grupp: form.grupp || null, sal: null,
+      anteckning: form.anteckning || null, riktad_till_vikarie_id: null, publicerad: form.publicerad, status: 'obokat', skapad_av: null,
     });
     setLaddar(false);
     if (res.error) { setFel(res.error.message); return; }
@@ -391,10 +389,16 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
           <Input label="Från kl *" type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
           <Input label="Till kl *" type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <Input label="Ämne" value={form.ämne} onChange={e => setForm({ ...form, ämne: e.target.value })} />
-          <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
-          <Input label="Sal" value={form.sal} onChange={e => setForm({ ...form, sal: e.target.value })} />
+        <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>Kommentar</label>
+          <textarea
+            value={form.anteckning}
+            onChange={e => setForm({ ...form, anteckning: e.target.value })}
+            rows={3}
+            className="rounded-md border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          />
         </div>
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
           <input
@@ -549,7 +553,7 @@ export default function Bemanning() {
                         e.stopPropagation();
                         sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey);
                       }}
-                      className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+                      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition"
                       style={{
                         background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)',
                         borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
@@ -558,11 +562,11 @@ export default function Bemanning() {
                       }}
                     >
                       {alleMarkerade ? (
-                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                           <path d="M5 10.5 8.2 13.5 15 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (
-                        <span className="h-2 w-2 rounded-full" style={{ background: 'currentColor' }} />
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
                       )}
                     </button>
                     <div className="flex-1 min-w-0" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { passApi, vikariApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie } from '../../types';
+import { visaKortNamn } from '../../lib/display';
 
 interface Passgrupp {
   personal_id: string;
@@ -22,7 +23,7 @@ function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[]
     if (!grupper.has(nyckel)) {
       grupper.set(nyckel, {
         personal_id: p.personal_id ?? 'okänd',
-        personalNamn: p.personal?.namn ?? 'Okänd personal',
+        personalNamn: visaKortNamn(p.personal?.namn),
         arbetslagNamn: p.personal?.arbetslag?.namn,
         datum: p.datum,
         riktad,
@@ -49,7 +50,6 @@ function PassKort({
 }) {
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
-  const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
 
   return (
     <div
@@ -78,10 +78,6 @@ function PassKort({
         Ersätter: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
         {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
       </p>
-      {ämnen.length > 0 && (
-        <p className="mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>{ämnen.join(', ')}</p>
-      )}
-
       <button
         onClick={onKlick}
         className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"

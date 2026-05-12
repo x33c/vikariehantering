@@ -6,7 +6,7 @@ import type {
   VikarieTillgänglighet,
   Frånvaro, NyFrånvaro,
   Vikariepass, NyttVikariepass, UppdateraVikariepass,
-  PassStatus, HändelsTyp,
+  PassStatus, HändelsTyp, Passmeddelande,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
 } from '../../types';
@@ -228,9 +228,37 @@ export const historikApi = {
       .eq('pass_id', passId).order('created_at', { ascending: false });
   },
   async skapa(passId: string, händelse: HändelsTyp, metadata?: Record<string, unknown>, anteckning?: string) {
+    const { data: userRes } = await supabase.auth.getUser();
     return supabase.from('passhistorik').insert({
-      pass_id: passId, händelse, metadata: metadata ?? null, anteckning: anteckning ?? null,
+      pass_id: passId,
+      händelse,
+      utförd_av: userRes.user?.id ?? null,
+      metadata: metadata ?? null,
+      anteckning: anteckning ?? null,
     });
+  },
+};
+
+export const passmeddelandeApi = {
+  async lista(passId: string) {
+    return supabase
+      .from('passmeddelanden')
+      .select('*, avsandare:profiler(namn, epost, roll)')
+      .eq('pass_id', passId)
+      .order('created_at', { ascending: true });
+  },
+  async skapa(passId: string, meddelande: string, roll: 'admin' | 'vikarie') {
+    const { data: userRes } = await supabase.auth.getUser();
+    return supabase
+      .from('passmeddelanden')
+      .insert({
+        pass_id: passId,
+        avsandare_profil_id: userRes.user?.id ?? null,
+        avsandare_roll: roll,
+        meddelande,
+      })
+      .select()
+      .single();
   },
 };
 
