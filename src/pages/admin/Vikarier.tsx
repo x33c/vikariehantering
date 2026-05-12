@@ -93,7 +93,7 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
     setOk('');
   }, [vikarie, öppen]);
 
-  if (!vikarie) return null;
+  if (!öppen || !vikarie) return null;
 
   async function sparaKonto() {
     setFel('');
@@ -110,7 +110,6 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
     }
 
     setLaddar(true);
-
     const { error } = await anropaHanteraAnvandare({
       åtgärd: 'skapa',
       epost: epost.trim(),
@@ -118,11 +117,10 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
       vikarie_id: vikarie.id,
       tillfalligt_losenord: lösenord,
     });
-
     setLaddar(false);
 
     if (error) {
-      setFel(error.message || 'Kunde inte skapa eller återställa kontot.');
+      setFel(error.message || 'Kunde inte spara kontot.');
       return;
     }
 
@@ -131,38 +129,90 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   }
 
   return (
-    <Modal öppen={öppen} onStäng={onStäng} titel={`Kontoinställningar`} bredd="md">
-      <div className="space-y-4">
-        {fel && <Alert typ="error">{fel}</Alert>}
-
-        {ok && (
-          <div
-            className="rounded-lg border px-3 py-2 text-sm"
-            style={{
-              background: 'rgba(22, 163, 74, 0.12)',
-              borderColor: 'rgba(22, 163, 74, 0.35)',
-              color: '#22c55e',
-            }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div
+        className="w-full max-w-md rounded-xl border shadow-xl"
+        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+      >
+        <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            Kontoinställningar
+          </h2>
+          <button
+            type="button"
+            onClick={onStäng}
+            className="rounded px-2 py-1 text-xl leading-none"
+            style={{ color: 'var(--text-muted)' }}
           >
-            {ok}
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          <p className="text-sm" style={{ color: 'var(--text)' }}>
+            {vikarie.namn}
+          </p>
+
+          {fel && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {fel}
+            </div>
+          )}
+
+          {ok && (
+            <div className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-500">
+              {ok}
+            </div>
+          )}
+
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Skapa eller återställ vikariens konto med ett tillfälligt lösenord. Vid första inloggning måste vikarien välja ett nytt lösenord.
+          </p>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>E-post</span>
+            <input
+              type="email"
+              value={epost}
+              onChange={e => setEpost(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Tillfälligt lösenord</span>
+            <input
+              type="text"
+              value={lösenord}
+              onChange={e => setLösenord(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onStäng}
+              className="rounded-lg border px-4 py-2 text-sm font-medium"
+              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+            >
+              Avbryt
+            </button>
+            <button
+              type="button"
+              onClick={sparaKonto}
+              disabled={laddar}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              style={{ background: 'var(--blue)' }}
+            >
+              {laddar ? 'Sparar…' : 'Spara konto'}
+            </button>
           </div>
-        )}
-
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Skapa eller återställ vikariens konto med ett tillfälligt lösenord. Vid första inloggning måste vikarien välja ett nytt lösenord.
-        </p>
-
-        <Input label="E-post" type="email" value={epost} onChange={e => setEpost(e.target.value)} />
-        <Input label="Tillfälligt lösenord" type="text" value={lösenord} onChange={e => setLösenord(e.target.value)} />
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
-          <Button loading={laddar} onClick={sparaKonto}>
-            Spara konto
-          </Button>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 }
 
