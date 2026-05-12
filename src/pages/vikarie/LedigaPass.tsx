@@ -38,9 +38,65 @@ function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[]
   );
 }
 
+function PassKort({
+  grupp,
+  knappText,
+  onKlick,
+}: {
+  grupp: Passgrupp;
+  knappText: string;
+  onKlick: () => void;
+}) {
+  const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
+  const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
+  const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
+
+  return (
+    <div
+      className="rounded-xl border p-4 shadow-sm"
+      style={{ background: 'var(--bg-card)', borderColor: grupp.riktad ? 'var(--blue)' : 'var(--border)' }}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tidFrån}-{tidTill}</p>
+        </div>
+        <span
+          className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+          style={{
+            background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : 'var(--hover)',
+            color: grupp.riktad ? 'var(--blue)' : 'var(--text-muted)',
+          }}
+        >
+          {grupp.riktad ? 'Förfrågan' : 'Ledigt'}
+        </span>
+      </div>
+
+      <p className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+        Ersätter: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
+        {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
+      </p>
+      {ämnen.length > 0 && (
+        <p className="mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>{ämnen.join(', ')}</p>
+      )}
+
+      <button
+        onClick={onKlick}
+        className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+        style={{ background: 'var(--blue)' }}
+      >
+        {knappText}
+      </button>
+    </div>
+  );
+}
+
 export default function LedigaPass() {
   const { användare } = useAuth();
-  const [pass, setPass] = useState<Vikariepass[]>([]);
+  const [förfrågningar, setFörfrågningar] = useState<Vikariepass[]>([]);
+  const [ledigaPass, setLedigaPass] = useState<Vikariepass[]>([]);
   const [minVikarie, setMinVikarie] = useState<Vikarie | null>(null);
   const [laddar, setLaddar] = useState(true);
   const [valdGrupp, setValdGrupp] = useState<Passgrupp | null>(null);
@@ -52,21 +108,27 @@ export default function LedigaPass() {
 
   async function ladda() {
     if (!användare) return;
+
     const vRes = await vikariApi.hämtaViaProfilId(användare.id);
     const vikarie = vRes.data as Vikarie | null;
     setMinVikarie(vikarie);
 
+    if (!vikarie) {
+      setLaddar(false);
+      return;
+    }
+
     const pRes = await passApi.lista({ status: ['obokat', 'notifierat'] });
     const alla = (pRes.data ?? []) as Vikariepass[];
 
-    const synliga = vikarie
-      ? alla.filter((p) =>
-          (p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id) ||
-          (p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
-        )
-      : [];
+    setFörfrågningar(
+      alla.filter((p) => p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
+    );
 
-    setPass(synliga);
+    setLedigaPass(
+      alla.filter((p) => p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id)
+    );
+
     setLaddar(false);
   }
 
@@ -92,7 +154,7 @@ export default function LedigaPass() {
       return;
     }
 
-    setPass(prev => prev.filter(p => !(p.personal_id === grupp.personal_id && p.datum === grupp.datum)));
+    await ladda();
     setValdGrupp(null);
     setBekräftelse(`Du tackade ja: ${grupp.personalNamn} ${grupp.datum}`);
     setTimeout(() => setBekräftelse(''), 5000);
@@ -110,7 +172,7 @@ export default function LedigaPass() {
     }
 
     setSparar(false);
-    setPass(prev => prev.filter(p => !(p.personal_id === grupp.personal_id && p.datum === grupp.datum)));
+    await ladda();
     setValdGrupp(null);
     setBekräftelse(`Du tackade nej: ${grupp.personalNamn} ${grupp.datum}`);
     setTimeout(() => setBekräftelse(''), 5000);
@@ -122,13 +184,14 @@ export default function LedigaPass() {
     </div>
   );
 
-  const grupper = grupperaPasser(pass, minVikarie?.id);
+  const förfrågningsGrupper = grupperaPasser(förfrågningar, minVikarie?.id);
+  const ledigaGrupper = grupperaPasser(ledigaPass, minVikarie?.id);
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Förfrågningar till dig och öppna pass.</p>
+      <div className="mb-5">
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Pass</h1>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Svara på förfrågningar och boka publicerade pass.</p>
       </div>
 
       {bekräftelse && (
@@ -148,58 +211,57 @@ export default function LedigaPass() {
         </div>
       )}
 
-      {grupper.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-16" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga pass eller förfrågningar just nu.</p>
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Förfrågningar</h2>
+          <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+            {förfrågningsGrupper.length}
+          </span>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {grupper.map(grupp => {
-            const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
-            const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
-            const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
 
-            return (
-              <div key={`${grupp.personal_id}_${grupp.datum}_${grupp.riktad ? 'riktad' : 'ledig'}`}
-                className="rounded-xl border p-4 shadow-sm"
-                style={{ background: 'var(--bg-card)', borderColor: grupp.riktad ? 'var(--blue)' : 'var(--border)' }}>
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                      {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </p>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tidFrån}-{tidTill}</p>
-                  </div>
-                  <span className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
-                    style={{
-                      background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : 'var(--hover)',
-                      color: grupp.riktad ? 'var(--blue)' : 'var(--text-muted)',
-                    }}>
-                    {grupp.riktad ? 'Förfrågan till dig' : 'Ledigt'}
-                  </span>
-                </div>
+        {förfrågningsGrupper.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed py-10 text-center" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga riktade förfrågningar just nu.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {förfrågningsGrupper.map(grupp => (
+              <PassKort
+                key={`${grupp.personal_id}_${grupp.datum}_förfrågan`}
+                grupp={grupp}
+                knappText="Svara"
+                onKlick={() => { setFel(''); setValdGrupp(grupp); }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
-                <p className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Ersätter: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
-                  {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
-                </p>
-                {ämnen.length > 0 && (
-                  <p className="mb-3 text-xs" style={{ color: 'var(--text-muted)' }}>{ämnen.join(', ')}</p>
-                )}
-
-                <button
-                  disabled={!minVikarie}
-                  onClick={() => { setFel(''); setValdGrupp(grupp); }}
-                  className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                  style={{ background: 'var(--blue)' }}
-                >
-                  {grupp.riktad ? 'Svara på förfrågan' : 'Boka passet'}
-                </button>
-              </div>
-            );
-          })}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</h2>
+          <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+            {ledigaGrupper.length}
+          </span>
         </div>
-      )}
+
+        {ledigaGrupper.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed py-10 text-center" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga publicerade lediga pass just nu.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {ledigaGrupper.map(grupp => (
+              <PassKort
+                key={`${grupp.personal_id}_${grupp.datum}_ledig`}
+                grupp={grupp}
+                knappText="Boka passet"
+                onKlick={() => { setFel(''); setValdGrupp(grupp); }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {valdGrupp && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
