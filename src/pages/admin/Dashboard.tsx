@@ -244,7 +244,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
+    <div className="px-3 py-5 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
@@ -266,21 +266,21 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
         {statistik.map(({ label, värde, status }) => {
           const ton = statusTon[status];
           return (
             <button
               key={label}
               onClick={() => navigate(`/admin/vikariepass?status=${status}`)}
-              className="rounded-lg border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm"
+              className="rounded-lg border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm sm:p-4"
               style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
                 <span className="h-2 w-2 rounded-full" style={{ background: ton.text }} />
               </div>
-              <span className="text-3xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+              <span className="text-2xl font-semibold tracking-tight sm:text-3xl" style={{ color: 'var(--text)' }}>
                 {värde}
               </span>
             </button>

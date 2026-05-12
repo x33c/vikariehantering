@@ -136,12 +136,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex max-h-[88vh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Passdetaljer</h2>
         <button onClick={onStäng} style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
 
         <div className="space-y-1.5 text-sm">
@@ -555,10 +555,10 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full">
-      <div className={`flex flex-col flex-1 p-4 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-4 flex items-center justify-between">
+      <div className={`flex flex-col flex-1 p-3 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             {grupper.length > 0 && (
               <Button variant="secondary" size="sm" onClick={växlaAllaSynliga}>
                 {allaSynligaMarkerade ? 'Avmarkera alla' : 'Markera alla'}
@@ -573,7 +573,7 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="mb-4 grid gap-2 sm:flex sm:flex-wrap">
           <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
             <option value="">Alla statusar</option>
             {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
@@ -598,12 +598,12 @@ export default function Bemanning() {
 
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}
-                  className="rounded-xl border p-4 shadow-sm"
+                  className="rounded-xl border p-3 shadow-sm sm:p-4"
                   style={{
                     background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
                     borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
                   }}>
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <button
                       type="button"
                       aria-pressed={alleMarkerade}
@@ -628,8 +628,8 @@ export default function Bemanning() {
                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
                       )}
                     </button>
-                    <div className="flex-1 min-w-0" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
-                      <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0 flex-1" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
+                      <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                             {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}

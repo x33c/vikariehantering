@@ -54,7 +54,7 @@ export default function MinaPass() {
   );
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-3 sm:p-6">
       <div className="mb-6">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Mina pass</h1>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -67,12 +67,12 @@ export default function MinaPass() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Du har inga bokade pass.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           {pass.map(p => (
             <button
               key={p.id}
               onClick={() => öppnaPass(p)}
-              className="w-full rounded-xl border p-4 text-left shadow-sm transition hover:opacity-90"
+              className="w-full rounded-xl border p-3 text-left shadow-sm transition hover:opacity-90 sm:p-4"
               style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
             >
               <div className="flex items-start justify-between gap-3">
@@ -102,7 +102,7 @@ export default function MinaPass() {
       {valtPass && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setValtPass(null)} />
-          <div className="relative max-h-[90vh] w-full overflow-y-auto rounded-t-2xl p-5 shadow-xl sm:max-w-lg sm:rounded-xl" style={{ background: 'var(--bg-card)' }}>
+          <div className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl p-4 shadow-xl sm:max-w-lg sm:rounded-xl sm:p-5" style={{ background: 'var(--bg-card)' }}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Meddelanden</h2>
               <button onClick={() => setValtPass(null)} style={{ color: 'var(--text-muted)' }}>Stäng</button>
