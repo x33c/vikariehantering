@@ -159,6 +159,18 @@ export const passApi = {
       .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
       .select().single();
   },
+  async tackaJa(passId: string, vikarieId: string) {
+    return supabase.from('vikariepass')
+      .update({ vikarie_id: vikarieId, status: 'bokat', riktad_till_vikarie_id: null })
+      .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
+      .select('*, personal(*, arbetslag(*)), vikarie:vikarier(*)').single();
+  },
+  async tackaNej(passId: string, vikarieId: string) {
+    return supabase.from('vikariepass')
+      .update({ status: 'obokat', riktad_till_vikarie_id: null })
+      .eq('id', passId).eq('riktad_till_vikarie_id', vikarieId).eq('status', 'notifierat')
+      .select('*, personal(*, arbetslag(*))').single();
+  },
   async hämtaVikarie(vikarieId: string) {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
   },
@@ -214,6 +226,20 @@ export const notisApi = {
   async skickaNotiser(passId: string, vikariIds: string[]) {
     return supabase.functions.invoke('skicka-epost', {
       body: { pass_id: passId, vikarie_ids: vikariIds },
+    });
+  },
+  async skapaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej') {
+    return supabase.from('notiser').insert({
+      pass_id: passId,
+      vikarie_id: vikarieId,
+      kanal: 'push',
+      status: 'skickat',
+      mottagare: 'admin',
+      ämne: svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej',
+      innehåll: svar === 'ja'
+        ? 'Vikarien har tackat ja till förfrågan.'
+        : 'Vikarien har tackat nej till förfrågan.',
+      skickat_kl: new Date().toISOString(),
     });
   },
 };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { frånvaroApi, personalApi, passApi, historikApi, vikariApi } from '../../lib/api';
+import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie } from '../../types';
 import {
   Button, Input, Select, Textarea, Modal, Confirm, TomtTillstånd, LaddaSida, Alert
@@ -302,7 +302,7 @@ function FrånvaroModal({
           frånvaro_id: skapadFrånvaro.id,
           schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
           personal_id: personalId,
-          vikarie_id: valdVikarieId || null,
+          vikarie_id: null,
           datum,
           tid_från: första.tid_från!,
           tid_till: sista.tid_till!,
@@ -311,14 +311,17 @@ function FrånvaroModal({
           grupp: grupper.length <= 3 ? grupper.join(', ') || null : `${grupper.length} grupper`,
           sal: salar.length === 1 ? salar[0] : null,
           anteckning: `Sammanhållet pass från ${sorterade.length} lektioner:\n${lektionslista}`,
-          riktad_till_vikarie_id: null,
-          status: valdVikarieId ? 'bokat' : 'obokat',
+          riktad_till_vikarie_id: valdVikarieId || null,
+          status: valdVikarieId ? 'notifierat' : 'obokat',
           skapad_av: null,
         });
 
         if (res.data) {
           await historikApi.skapa(res.data.id, 'pass_skapat');
-          if (valdVikarieId) await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
+          if (valdVikarieId) {
+            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+            await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+          }
         }
       }
     } else {
@@ -326,7 +329,7 @@ function FrånvaroModal({
         frånvaro_id: skapadFrånvaro.id,
         schemarad_id: null,
         personal_id: personalId,
-        vikarie_id: valdVikarieId || null,
+        vikarie_id: null,
         datum: datumFrån,
         tid_från: helDag ? '08:00' : tidFrån,
         tid_till: helDag ? '17:00' : tidTill,
@@ -335,13 +338,16 @@ function FrånvaroModal({
         grupp: null,
         sal: null,
         anteckning: null,
-        riktad_till_vikarie_id: null,
-        status: valdVikarieId ? 'bokat' : 'obokat',
+        riktad_till_vikarie_id: valdVikarieId || null,
+        status: valdVikarieId ? 'notifierat' : 'obokat',
         skapad_av: null,
       });
       if (res.data) {
         await historikApi.skapa(res.data.id, 'pass_skapat');
-        if (valdVikarieId) await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
+        if (valdVikarieId) {
+            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+            await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+          }
       }
     }
 
@@ -398,7 +404,7 @@ function FrånvaroModal({
               ))}
             </Select>
             <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Om du väljer vikarie nu blir passet bokat direkt. Annars hamnar det under Bemanning.
+              Om du väljer vikarie nu skickas en förfrågan. Passet markeras som tillfrågat tills vikarien svarar.
             </p>
           </div>
 
@@ -418,7 +424,7 @@ function FrånvaroModal({
           >
             <Button variant="secondary" onClick={() => { onRegistrerad(); onStäng(); }}>Spara utan vikarie</Button>
             <Button loading={skaparPass} onClick={skapaVikariepass}>
-              {valdVikarieId ? 'Boka vikarie' : 'Skapa pass för bemanning'}
+              {valdVikarieId ? 'Skicka förfrågan' : 'Skapa pass för bemanning'}
             </Button>
           </div>
         </div>
