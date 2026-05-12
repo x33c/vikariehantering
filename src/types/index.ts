@@ -148,6 +148,7 @@ export interface Vikariepass {
   sal: string | null;
 anteckning: string | null;
   riktad_till_vikarie_id: string | null;
+  publicerad: boolean;
   status: PassStatus;
   skapad_av: string | null;
   created_at: string;

@@ -140,7 +140,10 @@ export const passApi = {
       .eq('id', id).single();
   },
   async skapa(data: NyttVikariepass) {
-    return supabase.from('vikariepass').insert(data).select('*, personal(*)').single();
+    return supabase.from('vikariepass')
+      .insert({ publicerad: false, ...data })
+      .select('*, personal(*)')
+      .single();
   },
   async uppdatera(id: string, data: UppdateraVikariepass) {
     return supabase.from('vikariepass').update(data).eq('id', id).select('*, personal(*)').single();

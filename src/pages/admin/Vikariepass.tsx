@@ -155,6 +155,22 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         </div>
 
         <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Publicering</p>
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+            <input
+              type="checkbox"
+              checked={!!pass.publicerad}
+              onChange={async e => {
+                const res = await passApi.uppdatera(pass.id, { publicerad: e.target.checked } as any);
+                if (res.data) onUppdaterad({ ...pass, publicerad: e.target.checked });
+              }}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Synligt som ledigt pass för vikarier
+          </label>
+        </div>
+
+        <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tilldela vikarie</p>
           <div className="flex gap-2">
             <select value={tilldela} onChange={e => setTilldela(e.target.value)}
@@ -249,7 +265,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
-    tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '',
+    tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '', publicerad: false,
   });
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
@@ -261,7 +277,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
       personal_id: form.personal_id, frånvaro_id: null, schemarad_id: null, vikarie_id: null,
       datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till, typ: 'del_av_dag',
       ämne: form.ämne || null, grupp: form.grupp || null, sal: form.sal || null,
-      anteckning: null, status: 'obokat', skapad_av: null,
+      anteckning: null, riktad_till_vikarie_id: null, publicerad: form.publicerad, status: 'obokat', skapad_av: null,
     });
     setLaddar(false);
     if (res.error) { setFel(res.error.message); return; }
@@ -288,6 +304,15 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
           <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
           <Input label="Sal" value={form.sal} onChange={e => setForm({ ...form, sal: e.target.value })} />
         </div>
+        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+          <input
+            type="checkbox"
+            checked={form.publicerad}
+            onChange={e => setForm({ ...form, publicerad: e.target.checked })}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Publicera direkt för vikarier
+        </label>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={spara}>Skapa pass</Button>
@@ -419,15 +444,16 @@ export default function Bemanning() {
                         </p>
                       )}
 
-                      {vikariNamn ? (
-                        <p className="text-xs mt-1 font-medium text-green-600">
-                          ✓ {vikariNamn}
-                        </p>
-                      ) : (
-                        <p className="text-xs mt-1" style={{ color: 'var(--text-subtle)' }}>
-                          Ingen vikarie tillsatt
-                        </p>
-                      )}
+                      <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                        {vikariNamn ? (
+                          <span className="font-medium text-green-600">✓ {vikariNamn}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-subtle)' }}>Ingen vikarie tillsatt</span>
+                        )}
+                        <span style={{ color: grupp.pass.some(p => p.publicerad) ? 'var(--blue)' : 'var(--text-subtle)' }}>
+                          {grupp.pass.some(p => p.publicerad) ? 'Publicerad' : 'Ej publicerad'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -438,7 +464,7 @@ export default function Bemanning() {
       </div>
 
       {valtPass && (
-        <div className="flex flex-col flex-1 lg:flex-none lg:w-80 lg:shrink-0 border-l bg-white dark:bg-slate-900" style={{ borderColor: 'var(--border)' }}>
+        <Modal öppen={!!valtPass} onStäng={() => setValtPass(null)} bredd="xl">
           <PassDetaljer
             pass={valtPass}
             vikarier={vikarier}
@@ -448,7 +474,7 @@ export default function Bemanning() {
               setValtPass(uppdaterad);
             }}
           />
-        </div>
+        </Modal>
       )}
 
       <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} />

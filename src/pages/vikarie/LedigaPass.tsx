@@ -61,7 +61,7 @@ export default function LedigaPass() {
 
     const synliga = vikarie
       ? alla.filter((p) =>
-          (p.status === 'obokat' && !p.riktad_till_vikarie_id) ||
+          (p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id) ||
           (p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
         )
       : [];
