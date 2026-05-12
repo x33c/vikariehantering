@@ -22,6 +22,16 @@ export const auth = {
   },
 };
 
+
+export const profilApi = {
+  async lista() {
+    return supabase.from('profiler').select('*').order('created_at', { ascending: false });
+  },
+  async uppdatera(id: string, data: { roll?: 'admin' | 'vikarie'; namn?: string | null; epost?: string | null; telefon?: string | null; aktiv?: boolean }) {
+    return supabase.from('profiler').update(data).eq('id', id).select().single();
+  },
+};
+
 export const arbetslagApi = {
   async lista() {
     return supabase.from('arbetslag').select('*').eq('aktiv', true).order('namn');
@@ -75,7 +85,7 @@ export const vikariApi = {
     return supabase.from('vikarier').select('*').eq('id', id).single();
   },
   async hämtaViaProfilId(profilId: string) {
-    return supabase.from('vikarier').select('*').eq('profil_id', profilId).single();
+    return supabase.from('vikarier').select('*').eq('profil_id', profilId).eq('aktiv', true).maybeSingle();
   },
   async skapa(data: NyVikarie) {
     return supabase.from('vikarier').insert(data).select().single();
@@ -95,6 +105,9 @@ export const vikariApi = {
   },
   async raderaTillgänglighet(id: string) {
     return supabase.from('vikarie_tillgänglighet').delete().eq('id', id);
+  },
+  async kopplaProfil(vikarieId: string, profilId: string | null) {
+    return supabase.from('vikarier').update({ profil_id: profilId }).eq('id', vikarieId).select().single();
   },
 };
 
