@@ -139,10 +139,16 @@ export default function LedigaPass() {
 
     let lyckades = 0;
     for (const p of grupp.pass) {
-      const { data, error } = await passApi.tackaJa(p.id, minVikarie.id);
+      const { data, error } = grupp.riktad
+        ? await passApi.tackaJa(p.id, minVikarie.id)
+        : await passApi.bokaPass(p.id, minVikarie.id);
+
       if (!error && data) {
-        await historikApi.skapa(p.id, 'vikarie_bokat', { vikarie_id: minVikarie.id, svar: 'ja' });
-        await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'ja');
+        await historikApi.skapa(p.id, 'vikarie_bokat', {
+          vikarie_id: minVikarie.id,
+          svar: grupp.riktad ? 'ja' : 'bokad',
+        });
+        if (grupp.riktad) await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'ja');
         lyckades++;
       }
     }
