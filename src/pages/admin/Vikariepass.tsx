@@ -46,14 +46,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   onUppdaterad: (p: Bemanning) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
-  const [valdaVikarier, setValdaVikarier] = useState<Set<string>>(new Set());
-  const [tilldela, setTilldela] = useState(pass.vikarie_id ?? '');
+  const [valdVikarieId, setValdVikarieId] = useState(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
   const [tidFrån, setTidFrån] = useState(pass.tid_från.slice(0, 5));
   const [tidTill, setTidTill] = useState(pass.tid_till.slice(0, 5));
-  const [skickarNotis, setSkickarNotis] = useState(false);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
-  const [tillgänglighet, setTillgänglighet] = useState<Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'>>({});
+  const [sparar, setSparar] = useState(false);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
@@ -61,7 +59,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
     setTidTill(pass.tid_till.slice(0, 5));
-  }, [pass.id, pass.tid_från, pass.tid_till]);
+    setValdVikarieId(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
+  }, [pass.id, pass.tid_från, pass.tid_till, pass.vikarie_id, pass.riktad_till_vikarie_id]);
 
   useEffect(() => {
     async function laddaPassdata() {
@@ -76,63 +75,117 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     laddaPassdata();
   }, [pass.id]);
 
-  useEffect(() => {
-    async function laddaTillgänglighet() {
-      const passVeckodag = new Date(pass.datum).getDay();
-      const resultat: Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'> = {};
-      await Promise.all(vikarier.map(async (v) => {
-        const res = await vikariApi.hämtaTillgänglighet(v.id);
-        const poster = (res.data ?? []) as VikarieTillgänglighet[];
-        const specifik = poster.find(t => t.datum === pass.datum);
-        if (specifik) { resultat[v.id] = specifik.tillgänglig ? 'tillgänglig' : 'otillgänglig'; return; }
-        const återkommande = poster.find(t => t.återkommande && t.veckodag === passVeckodag);
-        if (återkommande) { resultat[v.id] = återkommande.tillgänglig ? 'tillgänglig' : 'otillgänglig'; return; }
-        resultat[v.id] = 'okänd';
-      }));
-      setTillgänglighet(resultat);
-    }
-    if (vikarier.length > 0) laddaTillgänglighet();
-  }, [pass.datum, vikarier]);
-
-  async function sparaTider() {
+  async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
+    setSparar(true);
     setFel('');
 
+    const res = await passApi.uppdatera(pass.id, data as any);
+    setSparar(false);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return false;
+    }
+
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', historik);
+    onUppdaterad({ ...pass, ...data });
+    return true;
+  }
+
+  async function sparaTider() {
     if (!tidFrån || !tidTill || tidFrån >= tidTill) {
       setFel('Ange en giltig start- och sluttid.');
       return;
     }
 
+    await uppdateraPass(
+      { tid_från: tidFrån, tid_till: tidTill } as Partial<Bemanning>,
+      { åtgärd: 'ändrade_tider', tid_från: tidFrån, tid_till: tidTill }
+    );
+  }
+
+  async function publiceraLedigt() {
+    await uppdateraPass(
+      {
+        status: 'obokat',
+        publicerad: true,
+        vikarie_id: null,
+        riktad_till_vikarie_id: null,
+      } as Partial<Bemanning>,
+      { åtgärd: 'publicerade_ledigt' }
+    );
+  }
+
+  async function avpublicera() {
+    await uppdateraPass(
+      { publicerad: false } as Partial<Bemanning>,
+      { åtgärd: 'avpublicerade_ledigt' }
+    );
+  }
+
+  async function skickaFörfrågan() {
+    if (!valdVikarieId) {
+      setFel('Välj en vikarie först.');
+      return;
+    }
+
+    setSparar(true);
+    setFel('');
+
     const res = await passApi.uppdatera(pass.id, {
-      tid_från: tidFrån,
-      tid_till: tidTill,
+      status: 'notifierat',
+      publicerad: false,
+      vikarie_id: null,
+      riktad_till_vikarie_id: valdVikarieId,
     } as any);
 
     if (res.error) {
+      setSparar(false);
       setFel(res.error.message);
       return;
     }
 
-    await historikApi.skapa(pass.id, 'pass_uppdaterat', {
-      tid_från: tidFrån,
-      tid_till: tidTill,
+    await notisApi.skickaNotiser(pass.id, [valdVikarieId]);
+    await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+
+    setSparar(false);
+    onUppdaterad({
+      ...pass,
+      status: 'notifierat',
+      publicerad: false,
+      vikarie_id: null,
+      riktad_till_vikarie_id: valdVikarieId,
     });
-
-    onUppdaterad({ ...pass, tid_från: tidFrån, tid_till: tidTill });
   }
 
-  async function uppdateraStatus(status: PassStatus) {
-    const res = await passApi.uppdateraStatus(pass.id, status);
-    if (res.error) return;
-    await historikApi.skapa(pass.id, 'pass_uppdaterat', { ny_status: status });
-    onUppdaterad({ ...pass, status });
+  async function bokaDirekt() {
+    if (!valdVikarieId) {
+      setFel('Välj en vikarie först.');
+      return;
+    }
+
+    const ok = await uppdateraPass(
+      {
+        status: 'bokat',
+        publicerad: false,
+        vikarie_id: valdVikarieId,
+        riktad_till_vikarie_id: null,
+      } as Partial<Bemanning>,
+      { åtgärd: 'bokade_direkt', vikarie_id: valdVikarieId }
+    );
+
+    if (ok) await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
   }
 
-  async function tilldelaVikarie() {
-    if (!tilldela) return;
-    const res = await passApi.tilldelVikarie(pass.id, tilldela);
-    if (res.error) { setFel(res.error.message); return; }
-    await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: tilldela });
-    onUppdaterad(res.data as Bemanning);
+  async function avbokaPass() {
+    await uppdateraPass(
+      {
+        status: 'avbokat',
+        publicerad: false,
+        riktad_till_vikarie_id: null,
+      } as Partial<Bemanning>,
+      { åtgärd: 'avbokade_pass' }
+    );
   }
 
   async function skickaMeddelande() {
@@ -145,7 +198,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     if (res.error) {
       setFel(res.error.message);
     } else {
-      await historikApi.skapa(pass.id, 'pass_uppdaterat', { typ: 'admin_meddelande' }, nyttMeddelande.trim());
+      await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'admin_meddelande' }, nyttMeddelande.trim());
       const ny = await passmeddelandeApi.lista(pass.id);
       setMeddelanden((ny.data ?? []) as Passmeddelande[]);
       setNyttMeddelande('');
@@ -154,219 +207,107 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setSkickarMeddelande(false);
   }
 
-  async function skickaNotiser() {
-    if (valdaVikarier.size === 0) return;
-    setSkickarNotis(true);
-    setFel('');
-    const { error } = await notisApi.skickaNotiser(pass.id, [...valdaVikarier]);
-    if (error) { setFel('Notifiering misslyckades: ' + error.message); }
-    else {
-      await passApi.uppdateraStatus(pass.id, 'notifierat');
-      await historikApi.skapa(pass.id, 'vikarie_notifierat', { antal: valdaVikarier.size });
-      onUppdaterad({ ...pass, status: 'notifierat' });
-    }
-    setSkickarNotis(false);
-  }
+  const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
+  const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
+  const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Passdetaljer</h2>
+        <div>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Pass</h2>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {pass.datum} · {pass.tid_från.slice(0, 5)}-{pass.tid_till.slice(0, 5)}
+          </p>
+        </div>
         <button onClick={onStäng} style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
+
       <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
 
-        <div className="space-y-1.5 text-sm">
-          {[
-            { label: 'Datum', värde: pass.datum },
-
-            { label: 'Personal', värde: pass.personal?.namn ?? '–' },
-            pass.ämne ? { label: 'Ämne', värde: pass.ämne } : null,
-            pass.grupp ? { label: 'Grupp', värde: pass.grupp } : null,
-            pass.sal ? { label: 'Sal', värde: pass.sal } : null,
-          ].filter(Boolean).map((r: any) => (
-            <div key={r.label} className="flex justify-between">
-              <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
-              <span className="font-medium" style={{ color: 'var(--text)' }}>{r.värde}</span>
+        <section className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Okänd personal'}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {pass.grupp ? `Grupp: ${pass.grupp}` : 'Ingen grupp angiven'}
+              </p>
             </div>
-          ))}
-          <div>
-            <div className="mb-1 flex justify-between">
-              <span style={{ color: 'var(--text-muted)' }}>Tid</span>
-              <span className="font-medium" style={{ color: 'var(--text)' }}>{pass.tid_från.slice(0,5)}-{pass.tid_till.slice(0,5)}</span>
-            </div>
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-              <input
-                type="time"
-                value={tidFrån}
-                onChange={e => setTidFrån(e.target.value)}
-                className="rounded-md border px-2 py-1.5 text-sm"
-                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-              />
-              <input
-                type="time"
-                value={tidTill}
-                onChange={e => setTidTill(e.target.value)}
-                className="rounded-md border px-2 py-1.5 text-sm"
-                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-              />
-              <button
-                type="button"
-                onClick={sparaTider}
-                disabled={tidFrån === pass.tid_från.slice(0, 5) && tidTill === pass.tid_till.slice(0, 5)}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                style={{ background: 'var(--blue)' }}
-              >
-                Spara
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-between">
-            <span style={{ color: 'var(--text-muted)' }}>Status</span>
             <StatusBadge status={pass.status} />
           </div>
-          {pass.vikarie_id && (
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-muted)' }}>Tillsatt vikarie</span>
-              <span className="font-medium text-green-600">{vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? '–'}</span>
-            </div>
-          )}
-        </div>
 
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Ändra status</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ALLA_STATUSAR.map(s => (
-              <button key={s} onClick={() => uppdateraStatus(s)} disabled={pass.status === s}
-                className="rounded-md px-2.5 py-1 text-xs font-medium border transition-colors"
-                style={{
-                  background: pass.status === s ? 'var(--bg)' : 'transparent',
-                  color: pass.status === s ? 'var(--text-subtle)' : 'var(--text-muted)',
-                  borderColor: pass.status === s ? 'transparent' : 'var(--border)',
-                }}>
-                {PASS_STATUS_LABELS[s]}
-              </button>
-            ))}
+          <div className="grid gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p>Synligt för vikarier: <span style={{ color: 'var(--text)' }}>{pass.publicerad ? 'Ja, som ledigt pass' : 'Nej'}</span></p>
+            {riktadVikarie && <p>Förfrågan skickad till: <span style={{ color: 'var(--text)' }}>{riktadVikarie.namn}</span></p>}
+            {tillsattVikarie && <p>Bokad vikarie: <span style={{ color: 'var(--text)' }}>{tillsattVikarie.namn}</span></p>}
           </div>
-        </div>
+        </section>
 
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Publicering</p>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+        <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tid</p>
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
             <input
-              type="checkbox"
-              checked={!!pass.publicerad}
-              onChange={async e => {
-                const publicerad = e.target.checked;
-                setFel('');
-                const res = await passApi.uppdatera(pass.id, { publicerad } as any);
-                if (res.error) {
-                  setFel('Kunde inte ändra publicering. Kontrollera att databasmigrationen för publicerad är körd.');
-                  return;
-                }
-                onUppdaterad({ ...pass, publicerad });
-              }}
-              className="h-4 w-4 rounded border-gray-300"
+              type="time"
+              value={tidFrån}
+              onChange={e => setTidFrån(e.target.value)}
+              className="rounded-md border px-2 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
             />
-            Synligt som ledigt pass för vikarier
-          </label>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tilldela vikarie</p>
-          <div className="flex gap-2">
-            <select value={tilldela} onChange={e => setTilldela(e.target.value)}
-              className="flex-1 rounded-md border px-3 py-2 text-sm"
-              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
-              <option value="">– Välj vikarie –</option>
-              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
-            </select>
-            <button onClick={tilldelaVikarie} disabled={!tilldela}
-              className="rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-              style={{ background: 'var(--blue)' }}>
-              Tilldela
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Rikta som förfrågan</p>
-          <select
-            value={pass.riktad_till_vikarie_id ?? ''}
-            onChange={async e => {
-              const val = e.target.value || null;
-              setFel('');
-
-              const uppdatering = val
-                ? { riktad_till_vikarie_id: val, status: 'notifierat' as PassStatus, publicerad: false }
-                : { riktad_till_vikarie_id: null, status: 'obokat' as PassStatus };
-
-              const res = await passApi.uppdatera(pass.id, uppdatering as any);
-              if (res.error) {
-                setFel('Kunde inte rikta passet.');
-                return;
-              }
-
-              if (val) {
-                await notisApi.skickaNotiser(pass.id, [val]);
-                await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: val });
-              } else {
-                await historikApi.skapa(pass.id, 'pass_uppdaterat', { riktad_till_vikarie_id: null });
-              }
-
-              onUppdaterad({ ...pass, ...uppdatering });
-            }}
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
-            <option value="">– Publikt –</option>
-            {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
-          </select>
-          {pass.riktad_till_vikarie_id && (
-            <p className="mt-1 text-xs text-yellow-600">
-              Riktat till: {vikarier.find(v => v.id === pass.riktad_till_vikarie_id)?.namn ?? '–'}
-            </p>
-          )}
-        </div>
-
-        {pass.status === 'obokat' && (
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Notifiera vikarier</p>
-            <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-1" style={{ borderColor: 'var(--border)' }}>
-              {[...vikarier].sort((a, b) => {
-                const o = { tillgänglig: 0, okänd: 1, otillgänglig: 2 };
-                return o[tillgänglighet[a.id] ?? 'okänd'] - o[tillgänglighet[b.id] ?? 'okänd'];
-              }).map(v => {
-                const status = tillgänglighet[v.id] ?? 'okänd';
-                const otillgänglig = status === 'otillgänglig';
-                return (
-                  <label key={v.id}
-                    className={`flex items-center gap-2 cursor-pointer rounded px-2 py-1 ${otillgänglig ? 'opacity-40' : ''}`}
-                    onMouseEnter={e => { if (!otillgänglig) e.currentTarget.style.background = 'var(--hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                    <input type="checkbox" checked={valdaVikarier.has(v.id)} disabled={otillgänglig}
-                      onChange={e => {
-                        const ny = new Set(valdaVikarier);
-                        e.target.checked ? ny.add(v.id) : ny.delete(v.id);
-                        setValdaVikarier(ny);
-                      }}
-                      className="h-3.5 w-3.5 rounded border-gray-300" />
-                    <span className="text-sm" style={{ color: 'var(--text)' }}>{v.namn}</span>
-                    {status === 'tillgänglig' && <span className="ml-auto text-xs font-medium text-green-600">Tillgänglig</span>}
-                    {status === 'otillgänglig' && <span className="ml-auto text-xs font-medium text-red-500">Otillgänglig</span>}
-                  </label>
-                );
-              })}
-            </div>
-            <Button size="sm" className="mt-2" loading={skickarNotis}
-              disabled={valdaVikarier.size === 0} onClick={skickaNotiser}>
-              Skicka fråga ({valdaVikarier.size})
+            <input
+              type="time"
+              value={tidTill}
+              onChange={e => setTidTill(e.target.value)}
+              className="rounded-md border px-2 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <Button size="sm" onClick={sparaTider} loading={sparar} disabled={tidFrån === pass.tid_från.slice(0, 5) && tidTill === pass.tid_till.slice(0, 5)}>
+              Spara
             </Button>
           </div>
-        )}
+        </section>
 
-        <div>
+        <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
+          <select
+            value={valdVikarieId}
+            onChange={e => setValdVikarieId(e.target.value)}
+            className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          >
+            <option value="">Välj vikarie</option>
+            {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+          </select>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId}>
+              Skicka förfrågan
+            </Button>
+            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId}>
+              Boka direkt
+            </Button>
+          </div>
+
+          {valdVikarie && (
+            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Vald vikarie: <span style={{ color: 'var(--text)' }}>{valdVikarie.namn}</span>
+            </p>
+          )}
+        </section>
+
+        <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Publicering</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button size="sm" variant="secondary" onClick={publiceraLedigt} loading={sparar}>
+              Publicera som ledigt
+            </Button>
+            <Button size="sm" variant="secondary" onClick={avpublicera} loading={sparar} disabled={!pass.publicerad}>
+              Avpublicera
+            </Button>
+          </div>
+        </section>
+
+        <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Meddelanden</p>
           <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
             <div className="mb-3 max-h-48 space-y-2 overflow-y-auto">
@@ -386,7 +327,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               value={nyttMeddelande}
               onChange={e => setNyttMeddelande(e.target.value)}
               rows={3}
-              placeholder={pass.vikarie_id ? 'Skriv meddelande till vikarien...' : 'Meddelande kan skrivas när passet är bokat.'}
+              placeholder={pass.vikarie_id ? 'Skriv meddelande till vikarien...' : 'Meddelanden kan skickas när passet är bokat.'}
               disabled={!pass.vikarie_id}
               className="mb-2 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
@@ -395,24 +336,30 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               Skicka meddelande
             </Button>
           </div>
-        </div>
+        </section>
 
-        <div>
+        <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Övrigt</p>
+          <Button size="sm" variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
+            Avboka pass
+          </Button>
+        </section>
+
+        <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Historik</p>
-          {laddar ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Laddar…</p>
+          {laddar ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Laddar...</p>
             : historik.length === 0 ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Ingen historik.</p>
             : historik.map(h => (
-              <div key={h.id} className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+              <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
                 {' '}{h.händelse.replace(/_/g, ' ')}
               </div>
             ))}
-        </div>
+        </section>
       </div>
     </div>
   );
 }
-
 function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void;
 }) {
