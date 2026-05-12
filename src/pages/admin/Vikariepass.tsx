@@ -1,39 +1,57 @@
+cat > src/pages/admin/Vikariepass.tsx << 'ENDOFFILE'
 import { useEffect, useState, useCallback } from 'react';
 import { passApi, historikApi, vikariApi, notisApi, personalApi } from '../../lib/api';
-import type { Bemanning, PassStatus, Vikarie, Passhistorik, Notis, Personal } from '../../types';
+import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
-import {
-  Button, Input, Select, Modal, TomtTillstånd, LaddaSida,
-  StatusBadge, Alert, Confirm
-} from '../../components/ui';
+import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 
-function PassDetaljer({
-  pass, vikarier, onStäng, onUppdaterad, onRadera,
-}: {
+interface Passgrupp {
+  personal_id: string;
+  personalNamn: string;
+  arbetslagNamn?: string;
+  datum: string;
+  pass: Bemanning[];
+}
+
+function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
+  const grupper = new Map<string, Passgrupp>();
+  for (const p of pass) {
+    const nyckel = `${p.personal_id ?? 'okänd'}_${p.datum}`;
+    if (!grupper.has(nyckel)) {
+      grupper.set(nyckel, {
+        personal_id: p.personal_id ?? 'okänd',
+        personalNamn: p.personal?.namn ?? 'Okänd personal',
+        arbetslagNamn: p.personal?.arbetslag?.namn,
+        datum: p.datum,
+        pass: [],
+      });
+    }
+    grupper.get(nyckel)!.pass.push(p);
+  }
+  return [...grupper.values()].sort((a, b) =>
+    a.datum !== b.datum ? a.datum.localeCompare(b.datum) : a.personalNamn.localeCompare(b.personalNamn)
+  );
+}
+
+function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   pass: Bemanning;
   vikarier: Vikarie[];
   onStäng: () => void;
   onUppdaterad: (p: Bemanning) => void;
-  onRadera: (p: Bemanning) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
-  const [notiser, setNotiser] = useState<Notis[]>([]);
   const [valdaVikarier, setValdaVikarier] = useState<Set<string>>(new Set());
-  const [tilldela, setSpara] = useState(pass.vikarie_id ?? '');
+  const [tilldela, setTilldela] = useState(pass.vikarie_id ?? '');
   const [skickarNotis, setSkickarNotis] = useState(false);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
   const [tillgänglighet, setTillgänglighet] = useState<Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'>>({});
 
   useEffect(() => {
-    Promise.all([
-      historikApi.listaFörPass(pass.id),
-      notisApi.listaFörPass(pass.id),
-    ]).then(([hRes, nRes]) => {
-      setHistorik((hRes.data ?? []) as Passhistorik[]);
-setNotiser((nRes.data ?? []) as Notis[]);
+    historikApi.listaFörPass(pass.id).then(res => {
+      setHistorik((res.data ?? []) as Passhistorik[]);
       setLaddar(false);
     });
   }, [pass.id]);
@@ -44,7 +62,7 @@ setNotiser((nRes.data ?? []) as Notis[]);
       const resultat: Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'> = {};
       await Promise.all(vikarier.map(async (v) => {
         const res = await vikariApi.hämtaTillgänglighet(v.id);
-        const poster = (res.data ?? []) as import('../../types').VikarieTillgänglighet[];
+        const poster = (res.data ?? []) as VikarieTillgänglighet[];
         const specifik = poster.find(t => t.datum === pass.datum);
         if (specifik) { resultat[v.id] = specifik.tillgänglig ? 'tillgänglig' : 'otillgänglig'; return; }
         const återkommande = poster.find(t => t.återkommande && t.veckodag === passVeckodag);
@@ -87,48 +105,50 @@ setNotiser((nRes.data ?? []) as Notis[]);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-5 py-4">
-        <h2 className="text-sm font-semibold text-gray-900">Bemanning</h2>
-        <button onClick={onStäng} className="text-gray-400 hover:text-gray-600">✕</button>
+      <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Passdetaljer</h2>
+        <button onClick={onStäng} style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {fel && <Alert typ="error">{fel}</Alert>}
+
         <div className="space-y-1.5 text-sm">
           {[
             { label: 'Datum', värde: pass.datum },
             { label: 'Tid', värde: `${pass.tid_från.slice(0,5)}–${pass.tid_till.slice(0,5)}` },
             { label: 'Personal', värde: pass.personal?.namn ?? '–' },
             pass.ämne ? { label: 'Ämne', värde: pass.ämne } : null,
-            pass.grupp ? { label: 'Grupp/klass', värde: pass.grupp } : null,
+            pass.grupp ? { label: 'Grupp', värde: pass.grupp } : null,
             pass.sal ? { label: 'Sal', värde: pass.sal } : null,
           ].filter(Boolean).map((r: any) => (
             <div key={r.label} className="flex justify-between">
-              <span className="text-gray-500">{r.label}</span>
-              <span className="font-medium">{r.värde}</span>
+              <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+              <span className="font-medium" style={{ color: 'var(--text)' }}>{r.värde}</span>
             </div>
           ))}
           <div className="flex justify-between">
-            <span className="text-gray-500">Status</span>
+            <span style={{ color: 'var(--text-muted)' }}>Status</span>
             <StatusBadge status={pass.status} />
           </div>
           {pass.vikarie_id && (
             <div className="flex justify-between">
-              <span className="text-gray-500">Vikarie</span>
-              <span className="font-medium">{vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? '–'}</span>
+              <span style={{ color: 'var(--text-muted)' }}>Tillsatt vikarie</span>
+              <span className="font-medium text-green-600">{vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? '–'}</span>
             </div>
           )}
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Ändra status</p>
           <div className="flex flex-wrap gap-1.5">
-            {ALLA_STATUSAR.map((s) => (
+            {ALLA_STATUSAR.map(s => (
               <button key={s} onClick={() => uppdateraStatus(s)} disabled={pass.status === s}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors border ${
-                  pass.status === s
-                    ? 'border-transparent bg-gray-100 text-gray-400 cursor-default'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-                }`}>
+                className="rounded-md px-2.5 py-1 text-xs font-medium border transition-colors"
+                style={{
+                  background: pass.status === s ? 'var(--bg)' : 'transparent',
+                  color: pass.status === s ? 'var(--text-subtle)' : 'var(--text-muted)',
+                  borderColor: pass.status === s ? 'transparent' : 'var(--border)',
+                }}>
                 {PASS_STATUS_LABELS[s]}
               </button>
             ))}
@@ -136,37 +156,38 @@ setNotiser((nRes.data ?? []) as Notis[]);
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Välj vikarie</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tilldela vikarie</p>
           <div className="flex gap-2">
-            <select value={tilldela} onChange={(e) => setSpara(e.target.value)}
-              className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Välj vikarie</option>
-              {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+            <select value={tilldela} onChange={e => setTilldela(e.target.value)}
+              className="flex-1 rounded-md border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
+              <option value="">– Välj vikarie –</option>
+              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
             </select>
             <button onClick={tilldelaVikarie} disabled={!tilldela}
-              className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-              Spara
+              className="rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+              style={{ background: 'var(--blue)' }}>
+              Tilldela
             </button>
           </div>
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Rikta pass till specifik vikarie</p>
-          <p className="mb-2 text-xs text-gray-400">Passet syns bara för den valda vikarien.</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Rikta pass</p>
           <select
             value={pass.riktad_till_vikarie_id ?? ''}
-            onChange={async (e) => {
+            onChange={async e => {
               const val = e.target.value || null;
               const res = await passApi.uppdatera(pass.id, { riktad_till_vikarie_id: val } as any);
               if (res.data) onUppdaterad({ ...pass, riktad_till_vikarie_id: val });
             }}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">– Publikt (alla vikarier) –</option>
-            {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
+            <option value="">– Publikt –</option>
+            {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
           </select>
           {pass.riktad_till_vikarie_id && (
-            <p className="mt-1.5 text-xs text-yellow-600">
+            <p className="mt-1 text-xs text-yellow-600">
               Riktat till: {vikarier.find(v => v.id === pass.riktad_till_vikarie_id)?.namn ?? '–'}
             </p>
           )}
@@ -174,38 +195,29 @@ setNotiser((nRes.data ?? []) as Notis[]);
 
         {pass.status === 'obokat' && (
           <div>
-            <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Fråga vikarier</p>
-            <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-1">
-          {[...vikarier].sort((a, b) => {
-                const ordning = { tillgänglig: 0, okänd: 1, otillgänglig: 2 };
-                return (ordning[tillgänglighet[a.id] ?? 'okänd']) - (ordning[tillgänglighet[b.id] ?? 'okänd']);
-              }).map((v) => {
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Notifiera vikarier</p>
+            <div className="max-h-40 overflow-y-auto rounded-lg border p-2 space-y-1" style={{ borderColor: 'var(--border)' }}>
+              {[...vikarier].sort((a, b) => {
+                const o = { tillgänglig: 0, okänd: 1, otillgänglig: 2 };
+                return o[tillgänglighet[a.id] ?? 'okänd'] - o[tillgänglighet[b.id] ?? 'okänd'];
+              }).map(v => {
                 const status = tillgänglighet[v.id] ?? 'okänd';
                 const otillgänglig = status === 'otillgänglig';
                 return (
                   <label key={v.id}
                     className={`flex items-center gap-2 cursor-pointer rounded px-2 py-1 ${otillgänglig ? 'opacity-40' : ''}`}
-                    style={{ background: 'transparent' }}
                     onMouseEnter={e => { if (!otillgänglig) e.currentTarget.style.background = 'var(--hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <input type="checkbox"
-                      checked={valdaVikarier.has(v.id)}
-                      disabled={otillgänglig}
-                      onChange={(e) => {
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                    <input type="checkbox" checked={valdaVikarier.has(v.id)} disabled={otillgänglig}
+                      onChange={e => {
                         const ny = new Set(valdaVikarier);
                         e.target.checked ? ny.add(v.id) : ny.delete(v.id);
                         setValdaVikarier(ny);
                       }}
-                      className="h-3.5 w-3.5 rounded border-gray-300"
-                    />
+                      className="h-3.5 w-3.5 rounded border-gray-300" />
                     <span className="text-sm" style={{ color: 'var(--text)' }}>{v.namn}</span>
-                    {status === 'tillgänglig' && (
-                      <span className="ml-auto text-xs font-medium text-green-600">Tillgänglig</span>
-                    )}
-                    {status === 'otillgänglig' && (
-                      <span className="ml-auto text-xs font-medium text-red-500">Otillgänglig</span>
-                    )}
+                    {status === 'tillgänglig' && <span className="ml-auto text-xs font-medium text-green-600">Tillgänglig</span>}
+                    {status === 'otillgänglig' && <span className="ml-auto text-xs font-medium text-red-500">Otillgänglig</span>}
                   </label>
                 );
               })}
@@ -217,29 +229,16 @@ setNotiser((nRes.data ?? []) as Notis[]);
           </div>
         )}
 
-        <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Farlig åtgärd</p>
-          <Button variant="danger" size="sm" onClick={() => onRadera(pass)}>
-            Ta bort pass
-          </Button>
-        </div>
-
         <div>
-          <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Historik</p>
-          {laddar ? (
-            <p className="text-xs text-gray-400">Laddar…</p>
-          ) : historik.length === 0 ? (
-            <p className="text-xs text-gray-400">Ingen historik.</p>
-          ) : (
-            <div className="space-y-1.5">
-              {historik.map((h) => (
-                <div key={h.id} className="text-xs text-gray-600">
-                  <span className="text-gray-400">{new Date(h.created_at).toLocaleString('sv-SE')}</span>
-                  {' '}{h.händelse.replace(/_/g, ' ')}
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Historik</p>
+          {laddar ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Laddar…</p>
+            : historik.length === 0 ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Ingen historik.</p>
+            : historik.map(h => (
+              <div key={h.id} className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
+                {' '}{h.händelse.replace(/_/g, ' ')}
+              </div>
+            ))}
         </div>
       </div>
     </div>
@@ -273,22 +272,22 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   }
 
   return (
-    <Modal öppen={öppen} onStäng={onStäng} titel="Lägg till pass" bredd="lg">
+    <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
-        <Select label="Personal *" value={form.personal_id} onChange={(e) => setForm({ ...form, personal_id: e.target.value })}>
+        <Select label="Personal *" value={form.personal_id} onChange={e => setForm({ ...form, personal_id: e.target.value })}>
           <option value="">– Välj personal –</option>
-          {personal.map((p) => <option key={p.id} value={p.id}>{p.namn}</option>)}
+          {personal.map(p => <option key={p.id} value={p.id}>{p.namn}</option>)}
         </Select>
-        <Input label="Datum *" type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} />
+        <Input label="Datum *" type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Från kl *" type="time" value={form.tid_från} onChange={(e) => setForm({ ...form, tid_från: e.target.value })} />
-          <Input label="Till kl *" type="time" value={form.tid_till} onChange={(e) => setForm({ ...form, tid_till: e.target.value })} />
+          <Input label="Från kl *" type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
+          <Input label="Till kl *" type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Ämne" value={form.ämne} onChange={(e) => setForm({ ...form, ämne: e.target.value })} />
-          <Input label="Grupp/klass" value={form.grupp} onChange={(e) => setForm({ ...form, grupp: e.target.value })} />
-          <Input label="Sal" value={form.sal} onChange={(e) => setForm({ ...form, sal: e.target.value })} />
+          <Input label="Ämne" value={form.ämne} onChange={e => setForm({ ...form, ämne: e.target.value })} />
+          <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
+          <Input label="Sal" value={form.sal} onChange={e => setForm({ ...form, sal: e.target.value })} />
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
@@ -306,10 +305,12 @@ export default function Bemanning() {
   const [laddar, setLaddar] = useState(true);
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
-  const [raderaPass, setRaderaPass] = useState<Bemanning | null>(null);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
+  const [valda, setValda] = useState<Set<string>>(new Set());
+  const [raderaValda, setRaderaValda] = useState(false);
+  const [raderar, setRaderar] = useState(false);
 
   const ladda = useCallback(async () => {
     const [pRes, vRes, perRes] = await Promise.all([
@@ -329,98 +330,124 @@ export default function Bemanning() {
 
   useEffect(() => { ladda(); }, [ladda]);
 
+  async function raderaMånga() {
+    setRaderar(true);
+    for (const id of valda) {
+      await passApi.radera(id);
+    }
+    setValda(new Set());
+    setRaderaValda(false);
+    setRaderar(false);
+    ladda();
+  }
+
   if (laddar) return <LaddaSida />;
+
+  const grupper = grupperaPasser(pass);
 
   return (
     <div className="flex h-full">
       <div className={`flex flex-col flex-1 p-4 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Bemanning</h1>
-          <Button onClick={() => setSkapaModal(true)}>+ Lägg till</Button>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
+          <div className="flex gap-2">
+            {valda.size > 0 && (
+              <Button variant="danger" size="sm" onClick={() => setRaderaValda(true)}>
+                Ta bort ({valda.size})
+              </Button>
+            )}
+            <Button onClick={() => setSkapaModal(true)}>+ Skapa pass</Button>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">
-          <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as PassStatus | '')}>
-            <option value="">Alla</option>
-            {ALLA_STATUSAR.map((s) => (
-              <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>
-            ))}
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
+            <option value="">Alla statusar</option>
+            {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
           </Select>
-          <Input type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
-          <Input type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
+          <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
+          <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
         </div>
 
-        {pass.length === 0 ? (
-          <TomtTillstånd text="Inga pass här." />
+        {grupper.length === 0 ? (
+          <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : (
-          <>
-            {/* Tabell på desktop */}
-            <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50 text-xs text-gray-500">
-                    <th className="px-4 py-2.5 text-left font-medium">Datum</th>
-                    <th className="px-4 py-2.5 text-left font-medium">Tid</th>
-                    <th className="px-4 py-2.5 text-left font-medium">Personal</th>
-                    <th className="px-4 py-2.5 text-left font-medium">Ämne</th>
-                    <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {pass.map((p) => (
-                    <tr key={p.id}
-                      className={`cursor-pointer hover:bg-gray-50 ${valtPass?.id === p.id ? 'bg-blue-50' : ''}`}
-                      onClick={() => setValtPass(p)}>
-                      <td className="px-4 py-3 text-gray-700">{p.datum}</td>
-                      <td className="px-4 py-3 text-gray-700">{p.tid_från.slice(0,5)}–{p.tid_till.slice(0,5)}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{p.personal?.namn ?? '–'}</p>
-                        {p.personal?.arbetslag && <p className="text-xs text-gray-500">{p.personal.arbetslag.namn}</p>}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{p.ämne ?? '–'}</td>
-                      <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="space-y-3">
+            {grupper.map(grupp => {
+              const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
+              const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
+              const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
+              const vikarie = grupp.pass.find(p => p.vikarie_id);
+              const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
+              const statusar = [...new Set(grupp.pass.map(p => p.status))];
+              const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
+              const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
 
-            {/* Kort på mobil */}
-            <div className="md:hidden space-y-2">
-              {pass.map((p) => (
-                <div key={p.id} onClick={() => setValtPass(p)}
-                  className={`rounded-xl border bg-white p-4 shadow-sm cursor-pointer ${valtPass?.id === p.id ? 'border-blue-400' : 'border-gray-200'}`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {new Date(p.datum).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
+              return (
+                <div key={`${grupp.personal_id}_${grupp.datum}`}
+                  className="rounded-xl border p-4 shadow-sm"
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={alleMarkerade}
+                      onChange={e => {
+                        const ny = new Set(valda);
+                        grupp.pass.forEach(p => e.target.checked ? ny.add(p.id) : ny.delete(p.id));
+                        setValda(ny);
+                      }}
+                      className="mt-1 h-4 w-4 rounded border-gray-300"
+                    />
+                    <div className="flex-1 min-w-0" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                            {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                          </p>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                            {tidFrån}–{tidTill} · {grupp.pass.length} pass
+                          </p>
+                        </div>
+                        <StatusBadge status={dominerandStatus as PassStatus} />
+                      </div>
+
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
+                        {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
                       </p>
-                      <p className="text-xs text-gray-500">{p.tid_från.slice(0,5)}–{p.tid_till.slice(0,5)}</p>
+
+                      {ämnen.length > 0 && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {ämnen.join(', ')}
+                        </p>
+                      )}
+
+                      {vikariNamn ? (
+                        <p className="text-xs mt-1 font-medium text-green-600">
+                          ✓ {vikariNamn}
+                        </p>
+                      ) : (
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-subtle)' }}>
+                          Ingen vikarie tillsatt
+                        </p>
+                      )}
                     </div>
-                    <StatusBadge status={p.status} />
                   </div>
-                  <p className="text-sm text-gray-700">{p.personal?.namn ?? '–'}</p>
-                  {p.personal?.arbetslag && <p className="text-xs text-gray-400">{p.personal.arbetslag.namn}</p>}
-                  {p.ämne && <p className="text-xs text-gray-500 mt-1">Ämne: {p.ämne}</p>}
                 </div>
-              ))}
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Side panel – på mobil: fullskärm */}
       {valtPass && (
-        <div className="flex flex-col flex-1 lg:flex-none lg:w-80 lg:shrink-0 border-l border-gray-200 bg-white">
+        <div className="flex flex-col flex-1 lg:flex-none lg:w-80 lg:shrink-0 border-l bg-white dark:bg-slate-900" style={{ borderColor: 'var(--border)' }}>
           <PassDetaljer
             pass={valtPass}
             vikarier={vikarier}
             onStäng={() => setValtPass(null)}
-            onUppdaterad={(uppdaterad) => {
-              setPass((prev) => prev.map((p) => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
+            onUppdaterad={uppdaterad => {
+              setPass(prev => prev.map(p => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
               setValtPass(uppdaterad);
             }}
-            onRadera={setRaderaPass}
           />
         </div>
       )}
@@ -428,22 +455,15 @@ export default function Bemanning() {
       <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} />
 
       <Confirm
-        öppen={!!raderaPass}
+        öppen={raderaValda}
         titel="Ta bort pass"
-        text={`Ta bort passet ${raderaPass?.datum} ${raderaPass?.tid_från.slice(0, 5)}-${raderaPass?.tid_till.slice(0, 5)}? Historik och notiser för passet tas också bort.`}
-        bekräftaText="Ta bort pass"
+        text={`Ta bort ${valda.size} markerade pass? Åtgärden kan inte ångras.`}
+        bekräftaText={raderar ? 'Tar bort…' : `Ta bort ${valda.size} pass`}
         farlig
-        onBekräfta={async () => {
-          if (!raderaPass) return;
-          const res = await passApi.radera(raderaPass.id);
-          if (!res.error) {
-            setPass((prev) => prev.filter((p) => p.id !== raderaPass.id));
-            setValtPass((prev) => prev?.id === raderaPass.id ? null : prev);
-            setRaderaPass(null);
-          }
-        }}
-        onAvbryt={() => setRaderaPass(null)}
+        onBekräfta={raderaMånga}
+        onAvbryt={() => setRaderaValda(false)}
       />
     </div>
   );
 }
+ENDOFFILE
