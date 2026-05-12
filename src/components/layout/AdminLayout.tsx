@@ -12,7 +12,7 @@ const navItems = [
   { to: '/admin/vikarier', label: 'Vikarier' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
-  { to: '/admin/konton', label: 'Konton' },
+  { to: '/admin/konton', label: 'Admin-konton' },
 ];
 
 function useDarkMode() {

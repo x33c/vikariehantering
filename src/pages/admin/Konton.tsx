@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { profilApi, vikariApi } from '../../lib/api';
+import { useEffect, useState } from 'react';
+import { profilApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import type { Profil, Vikarie, UserRoll } from '../../types';
+import type { Profil, UserRoll } from '../../types';
 import { Alert, Button, LaddaSida, Select } from '../../components/ui';
 
 export default function Konton() {
   const [profiler, setProfiler] = useState<Profil[]>([]);
-  const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
   const [spararId, setSpararId] = useState('');
   const [meddelande, setMeddelande] = useState('');
@@ -17,19 +16,10 @@ export default function Konton() {
   useEffect(() => { ladda(); }, []);
 
   async function ladda() {
-    const [pRes, vRes] = await Promise.all([profilApi.lista(), vikariApi.lista()]);
-    setProfiler((pRes.data ?? []) as Profil[]);
-    setVikarier((vRes.data ?? []) as Vikarie[]);
+    const pRes = await profilApi.lista();
+    setProfiler(((pRes.data ?? []) as Profil[]).filter(p => p.roll === 'admin'));
     setLaddar(false);
   }
-
-  const vikariePerProfil = useMemo(() => {
-    const map = new Map<string, Vikarie>();
-    for (const v of vikarier) {
-      if (v.profil_id) map.set(v.profil_id, v);
-    }
-    return map;
-  }, [vikarier]);
 
   async function uppdateraRoll(profil: Profil, roll: UserRoll, admin_losenord?: string) {
     if (roll === 'admin' && !admin_losenord) {
@@ -58,34 +48,12 @@ export default function Konton() {
     if (res.error || (res.data as any)?.error) {
       setFel((res.data as any)?.error ?? res.error?.message ?? 'Kunde inte ändra roll.');
     } else {
-      setProfiler(prev => prev.map(p => p.id === profil.id ? { ...p, roll } : p));
+      setProfiler(prev => prev.map(p => p.id === profil.id ? { ...p, roll } : p).filter(p => p.roll === 'admin'));
       setMeddelande(`Rollen ändrades för ${profil.epost ?? profil.namn ?? 'kontot'}.`);
       setAdminRollVal(null);
       setAdminLosenord('');
     }
 
-    setSpararId('');
-  }
-
-  async function kopplaVikarie(profil: Profil, vikarieId: string) {
-    setSpararId(profil.id);
-    setFel('');
-
-    const tidigare = vikarier.find(v => v.profil_id === profil.id);
-    if (tidigare && tidigare.id !== vikarieId) {
-      await vikariApi.kopplaProfil(tidigare.id, null);
-    }
-
-    if (vikarieId) {
-      const res = await vikariApi.kopplaProfil(vikarieId, profil.id);
-      if (res.error) {
-        setFel(res.error.message);
-        setSpararId('');
-        return;
-      }
-    }
-
-    await ladda();
     setSpararId('');
   }
 
@@ -112,9 +80,9 @@ export default function Konton() {
     <div className="px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
         <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Admin</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Konton</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Admin-konton</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Hantera roller, koppla vikarieprofil och skicka lösenordsåterställning.
+          Hantera administratörskonton. Vikariekonton hanteras under Vikarier.
         </p>
       </div>
 
@@ -127,56 +95,33 @@ export default function Konton() {
             <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
               <th className="px-4 py-3 text-left font-medium">Konto</th>
               <th className="px-4 py-3 text-left font-medium">Roll</th>
-              <th className="px-4 py-3 text-left font-medium">Vikarieprofil</th>
               <th className="px-4 py-3 text-right font-medium">Åtgärder</th>
             </tr>
           </thead>
           <tbody>
-            {profiler.map(profil => {
-              const kopplad = vikariePerProfil.get(profil.id);
-
-              return (
-                <tr key={profil.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium" style={{ color: 'var(--text)' }}>{profil.namn ?? 'Namnlöst konto'}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{profil.epost ?? '-'}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Select
-                      value={profil.roll}
-                      onChange={e => uppdateraRoll(profil, e.target.value as UserRoll)}
-                      disabled={spararId === profil.id}
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="vikarie">Vikarie</option>
-                    </Select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Select
-                      value={kopplad?.id ?? ''}
-                      onChange={e => kopplaVikarie(profil, e.target.value)}
-                      disabled={spararId === profil.id || profil.roll !== 'vikarie'}
-                    >
-                      <option value="">Ingen koppling</option>
-                      {vikarier.map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.namn}{v.epost ? ` (${v.epost})` : ''}
-                        </option>
-                      ))}
-                    </Select>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => skickaLosenordsreset(profil.epost)}
-                    >
-                      Återställ lösenord
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
+            {profiler.map(profil => (
+              <tr key={profil.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
+                <td className="px-4 py-3">
+                  <p className="font-medium" style={{ color: 'var(--text)' }}>{profil.namn ?? 'Namnlöst konto'}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{profil.epost ?? '-'}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <Select
+                    value={profil.roll}
+                    onChange={e => uppdateraRoll(profil, e.target.value as UserRoll)}
+                    disabled={spararId === profil.id}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="vikarie">Vikarie</option>
+                  </Select>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Button size="sm" variant="secondary" onClick={() => skickaLosenordsreset(profil.epost)}>
+                    Återställ lösenord
+                  </Button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

@@ -75,25 +75,23 @@ function KontoModal({ öppen, onStäng, vikarie }: {
   öppen: boolean; onStäng: () => void; vikarie: Vikarie;
 }) {
   const [epost, setEpost] = useState(vikarie.epost ?? '');
-  const [lösenord, setLösenord] = useState('');
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
   const [ok, setOk] = useState('');
 
   useEffect(() => {
-    if (öppen) { setEpost(vikarie.epost ?? ''); setLösenord(''); setFel(''); setOk(''); }
+    if (öppen) { setEpost(vikarie.epost ?? ''); setFel(''); setOk(''); }
   }, [öppen, vikarie]);
 
   async function skapaKonto() {
-    if (!epost || !lösenord) { setFel('E-post och lösenord krävs.'); return; }
-    if (lösenord.length < 6) { setFel('Lösenordet måste vara minst 6 tecken.'); return; }
+    if (!epost) { setFel('E-post krävs.'); return; }
     setLaddar(true); setFel('');
     const { data, error } = await anropaHanteraAnvandare({
-      åtgärd: 'skapa', epost, lösenord, namn: vikarie.namn, vikarie_id: vikarie.id,
+      åtgärd: 'skapa', epost, namn: vikarie.namn, vikarie_id: vikarie.id,
     });
     setLaddar(false);
     if (error || data?.error) { setFel(error?.message ?? data?.error ?? 'Kunde inte skapa konto.'); return; }
-    setOk('Konto skapat. Vikarien kan nu logga in.');
+    setOk('Konto skapat. Skicka lösenordslänken till vikarien om inget mejl går ut automatiskt.');
   }
 
   async function återställLösenord() {
@@ -122,23 +120,17 @@ function KontoModal({ öppen, onStäng, vikarie }: {
 
           {!vikarie.profil_id ? (
             <>
-              <p className="text-sm text-gray-600">Vikarien har inget inloggningskonto ännu. Skapa ett nedan.</p>
+              <p className="text-sm text-gray-600">Vikarien har inget inloggningskonto ännu. Skapa kontot med e-post, så sätter vikarien lösenordet själv via återställningslänk.</p>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">E-post</label>
                 <input type="email" value={epost} onChange={e => setEpost(e.target.value)}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Lösenord</label>
-                <input type="password" value={lösenord} onChange={e => setLösenord(e.target.value)}
-                  placeholder="Minst 6 tecken"
                   className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={onStäng} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Avbryt</button>
                 <button onClick={skapaKonto} disabled={laddar}
                   className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                  {laddar ? 'Skapar…' : 'Skapa konto'}
+                  {laddar ? 'Skapar…' : 'Skapa konto och lösenordslänk'}
                 </button>
               </div>
             </>

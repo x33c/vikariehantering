@@ -26,11 +26,17 @@ serve(async (req) => {
 
   try {
     if (åtgärd === 'skapa') {
-      const { epost, lösenord, namn, vikarie_id } = data;
+      const { epost, namn, vikarie_id } = data;
+
+      if (!epost || typeof epost !== 'string') {
+        return json({ error: 'E-post krävs.' }, 400);
+      }
+
+      const tempPassword = crypto.randomUUID() + crypto.randomUUID();
 
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: epost,
-        password: lösenord,
+        password: tempPassword,
         email_confirm: true,
         user_metadata: { roll: 'vikarie', namn },
       });
@@ -49,12 +55,22 @@ serve(async (req) => {
       if (vikarie_id) {
         const { error: vikarieError } = await supabaseAdmin
           .from('vikarier')
-          .update({ profil_id: userId })
+          .update({ profil_id: userId, epost })
           .eq('id', vikarie_id);
         if (vikarieError) throw vikarieError;
       }
 
-      return json({ ok: true, user_id: userId });
+      const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: epost,
+      });
+      if (recoveryError) throw recoveryError;
+
+      return json({
+        ok: true,
+        user_id: userId,
+        action_link: recoveryData.properties?.action_link ?? null,
+      });
     }
 
     if (åtgärd === 'återställ_lösenord') {
