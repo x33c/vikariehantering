@@ -131,7 +131,7 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   }
 
   return (
-    <Modal öppen={öppen} onStäng={onStäng} titel={`Kontoinställningar – ${vikarie.namn}`} bredd="md">
+    <Modal öppen={öppen} onStäng={onStäng} titel={`Kontoinställningar`} bredd="md">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
 
@@ -158,7 +158,7 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={sparaKonto}>
-            {vikarie.profil_id ? 'Sätt nytt lösenord' : 'Skapa konto'}
+            Spara konto
           </Button>
         </div>
       </div>
