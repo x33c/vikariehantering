@@ -1,10 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
-import { passApi, historikApi, vikariApi, notisApi, personalApi } from '../../lib/api';
-import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet } from '../../types';
+import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi } from '../../lib/api';
+import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
+
+function minuter(tid?: string | null) {
+  const [h, m] = (tid?.slice(0, 5) ?? '00:00').split(':').map(Number);
+  return h * 60 + m;
+}
 
 interface Passgrupp {
   personal_id: string;
@@ -292,7 +297,47 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     tid_från: '08:00', tid_till: '17:00', ämne: '', grupp: '', sal: '', publicerad: false,
   });
   const [laddar, setLaddar] = useState(false);
+  const [hämtarSchema, setHämtarSchema] = useState(false);
+  const [schemaInfo, setSchemaInfo] = useState('');
   const [fel, setFel] = useState('');
+
+  async function hämtaSchemaTid(personalId: string, datum: string) {
+    if (!personalId || !datum) {
+      setSchemaInfo('');
+      return;
+    }
+
+    setHämtarSchema(true);
+    setSchemaInfo('');
+
+    const res = await frånvaroApi.hämtaSchemaraderFörFrånvaro(personalId, datum, datum);
+    const rader = ((res.data ?? []) as Schemarad[])
+      .filter(r => r.datum === datum && r.tid_från && r.tid_till)
+      .sort((a, b) => minuter(a.tid_från) - minuter(b.tid_från));
+
+    setHämtarSchema(false);
+
+    if (rader.length === 0) {
+      setSchemaInfo('Inget schema hittades för vald person och dag. Tiderna kan anges manuellt.');
+      return;
+    }
+
+    const första = rader[0];
+    const sista = rader.reduce((senast, rad) =>
+      minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
+    , rader[0]);
+
+    setForm(prev => ({
+      ...prev,
+      tid_från: första.tid_från!.slice(0, 5),
+      tid_till: sista.tid_till!.slice(0, 5),
+      ämne: rader.length === 1 ? första.ämne ?? prev.ämne : `${rader.length} lektioner`,
+      grupp: [...new Set(rader.map(r => r.grupp).filter(Boolean))].slice(0, 3).join(', ') || prev.grupp,
+      sal: [...new Set(rader.map(r => r.sal).filter(Boolean))].length === 1 ? rader[0].sal ?? prev.sal : prev.sal,
+    }));
+
+    setSchemaInfo(`Tider hämtade från schema: ${första.tid_från!.slice(0, 5)}-${sista.tid_till!.slice(0, 5)} (${rader.length} lektioner).`);
+  }
 
   async function spara() {
     if (!form.personal_id) { setFel('Välj personal.'); return; }
@@ -314,11 +359,34 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
-        <Select label="Personal *" value={form.personal_id} onChange={e => setForm({ ...form, personal_id: e.target.value })}>
+        <Select
+          label="Personal *"
+          value={form.personal_id}
+          onChange={e => {
+            const personal_id = e.target.value;
+            setForm({ ...form, personal_id });
+            hämtaSchemaTid(personal_id, form.datum);
+          }}
+        >
           <option value="">– Välj personal –</option>
           {personal.map(p => <option key={p.id} value={p.id}>{p.namn}</option>)}
         </Select>
-        <Input label="Datum *" type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })} />
+        <Input
+          label="Datum *"
+          type="date"
+          value={form.datum}
+          onChange={e => {
+            const datum = e.target.value;
+            setForm({ ...form, datum });
+            hämtaSchemaTid(form.personal_id, datum);
+          }}
+        />
+        {(hämtarSchema || schemaInfo) && (
+          <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+            {hämtarSchema ? 'Hämtar tider från schema...' : schemaInfo}
+          </p>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <Input label="Från kl *" type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
           <Input label="Till kl *" type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
