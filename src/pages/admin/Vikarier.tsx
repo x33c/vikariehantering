@@ -71,95 +71,85 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
   );
 }
 
-function KontoModal({ öppen, onStäng, vikarie }: {
-  öppen: boolean; onStäng: () => void; vikarie: Vikarie;
+const STANDARD_LOSENORD = 'Vikarie2026!';
+
+function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
+  vikarie: Vikarie | null;
+  öppen: boolean;
+  onStäng: () => void;
+  onUppdaterad: () => void;
 }) {
-  const [epost, setEpost] = useState(vikarie.epost ?? '');
+  const [epost, setEpost] = useState('');
+  const [lösenord, setLösenord] = useState(STANDARD_LOSENORD);
   const [laddar, setLaddar] = useState(false);
   const [fel, setFel] = useState('');
   const [ok, setOk] = useState('');
-  const [kontoLank, setKontoLank] = useState('');
 
   useEffect(() => {
-    if (öppen) { setEpost(vikarie.epost ?? ''); setFel(''); setOk(''); setKontoLank(''); }
-  }, [öppen, vikarie]);
+    setEpost(vikarie?.epost ?? '');
+    setLösenord(STANDARD_LOSENORD);
+    setFel('');
+    setOk('');
+  }, [vikarie, öppen]);
 
-  async function skapaKonto() {
-    if (!epost) { setFel('E-post krävs.'); return; }
-    setLaddar(true); setFel('');
-    const { data, error } = await anropaHanteraAnvandare({
-      åtgärd: 'skapa', epost, namn: vikarie.namn, vikarie_id: vikarie.id,
+  if (!vikarie) return null;
+
+  async function sparaKonto() {
+    setFel('');
+    setOk('');
+
+    if (!epost.trim()) {
+      setFel('Ange e-post.');
+      return;
+    }
+    if (lösenord.length < 8) {
+      setFel('Lösenordet måste vara minst 8 tecken.');
+      return;
+    }
+
+    setLaddar(true);
+    const { error } = await anropaHanteraAnvandare({
+      åtgärd: 'skapa',
+      epost: epost.trim(),
+      namn: vikarie.namn,
+      vikarie_id: vikarie.id,
+      tillfalligt_losenord: lösenord,
     });
     setLaddar(false);
-    if (error || data?.error) { setFel(error?.message ?? data?.error ?? 'Kunde inte skapa konto.'); return; }
-    setKontoLank(data?.action_link ?? '');
-    setOk(data?.email_sent ? 'Konto skapat och mejl skickat till vikarien.' : 'Konto skapat, men mejlet kunde inte skickas automatiskt. Använd länken nedan.');
+
+    if (error) {
+      setFel(error.message);
+      return;
+    }
+
+    setOk('Klart. Vikarien loggar in med det tillfälliga lösenordet och måste sedan byta lösenord.');
+    onUppdaterad();
   }
 
-  async function återställLösenord() {
-    if (!vikarie.epost) { setFel('Vikarie saknar e-post.'); return; }
-    setLaddar(true); setFel('');
-    const { data, error } = await anropaHanteraAnvandare({
-      åtgärd: 'återställ_lösenord', epost: vikarie.epost, namn: vikarie.namn,
-    });
-    setLaddar(false);
-    if (error || data?.error) { setFel(error?.message ?? data?.error ?? 'Misslyckades.'); return; }
-    setKontoLank(data?.action_link ?? '');
-    setOk(data?.email_sent ? 'Återställningslänk skickad till ' + vikarie.epost : 'Mejlet kunde inte skickas automatiskt. Använd länken nedan.');
-  }
-
-  if (!öppen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onStäng} />
-      <div className="relative w-full max-w-md rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-base font-semibold">Kontoinställningar – {vikarie.namn}</h2>
-          <button onClick={onStäng} className="text-gray-400 hover:text-gray-600">✕</button>
-        </div>
-        <div className="space-y-4 px-6 py-4">
-          {fel && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{fel}</p>}
-          {ok && <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</p>}
-          {kontoLank && (
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
-              <p className="mb-1 font-medium">Lösenordslänk</p>
-              <input readOnly value={kontoLank} className="w-full rounded border border-yellow-300 px-2 py-1 text-xs" />
-            </div>
-          )}
+    <Modal öppen={öppen} onStäng={onStäng} titel={`Kontoinställningar – ${vikarie.namn}`} bredd="md">
+      <div className="space-y-4">
+        {fel && <Alert typ="error">{fel}</Alert>}
+        {ok && <Alert typ="success">{ok}</Alert>}
 
-          {!vikarie.profil_id ? (
-            <>
-              <p className="text-sm text-gray-600">Vikarien har inget inloggningskonto ännu. Skapa kontot med e-post, så sätter vikarien lösenordet själv via återställningslänk.</p>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">E-post</label>
-                <input type="email" value={epost} onChange={e => setEpost(e.target.value)}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={onStäng} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Avbryt</button>
-                <button onClick={skapaKonto} disabled={laddar}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                  {laddar ? 'Skapar…' : 'Skapa konto och lösenordslänk'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-gray-600">Kontot är aktivt. Du kan skicka en återställningslänk till vikariets e-post.</p>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={onStäng} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Stäng</button>
-                <button onClick={återställLösenord} disabled={laddar}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                  {laddar ? 'Skickar…' : 'Skicka återställningslänk'}
-                </button>
-              </div>
-            </>
-          )}
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          Skapa eller återställ vikariens konto med ett tillfälligt lösenord. Vid första inloggning måste vikarien välja ett nytt lösenord.
+        </p>
+
+        <Input label="E-post" type="email" value={epost} onChange={e => setEpost(e.target.value)} />
+        <Input label="Tillfälligt lösenord" type="text" value={lösenord} onChange={e => setLösenord(e.target.value)} />
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
+          <Button loading={laddar} onClick={sparaKonto}>
+            {vikarie.profil_id ? 'Sätt nytt lösenord' : 'Skapa konto'}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
+
 
 export default function Vikarier() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);

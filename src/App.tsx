@@ -7,6 +7,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import VikarieLayout from './components/layout/VikarieLayout';
 
 // Auth
+import BytLosenord from './pages/auth/BytLosenord';
 import Login from './pages/auth/Login';
 import NyttLosenord from './pages/auth/NyttLosenord';
 
@@ -32,6 +33,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   const { profil, laddar } = useAuth();
   if (laddar) return <LaddaSida />;
   if (!profil) return <Navigate to="/login" replace />;
+  if (profil.maste_byta_losenord) return <Navigate to="/byt-losenord" replace />;
   if (profil.roll !== 'admin') return <Navigate to="/vikarie" replace />;
   return <>{children}</>;
 }
@@ -40,6 +42,7 @@ function VikarieGuard({ children }: { children: React.ReactNode }) {
   const { profil, laddar } = useAuth();
   if (laddar) return <LaddaSida />;
   if (!profil) return <Navigate to="/login" replace />;
+  if (profil.maste_byta_losenord) return <Navigate to="/byt-losenord" replace />;
   if (profil.roll !== 'vikarie') return <Navigate to="/admin" replace />;
   return <>{children}</>;
 }
@@ -48,6 +51,7 @@ function RootRedirect() {
   const { profil, laddar } = useAuth();
   if (laddar) return <LaddaSida />;
   if (!profil) return <Navigate to="/login" replace />;
+  if (profil.maste_byta_losenord) return <Navigate to="/byt-losenord" replace />;
   return <Navigate to={profil.roll === 'admin' ? '/admin' : '/vikarie'} replace />;
 }
 
@@ -58,6 +62,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
+        <Route path="/byt-losenord" element={<BytLosenord />} />
           <Route path="/nytt-losenord" element={<NyttLosenord />} />
 
           {/* Admin routes */}

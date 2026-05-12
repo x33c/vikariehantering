@@ -58,91 +58,60 @@ serve(async (req) => {
 
   try {
     if (åtgärd === 'skapa') {
-      const { epost, namn, vikarie_id } = data;
-
-      if (!epost || typeof epost !== 'string') {
-        return json({ error: 'E-post krävs.' }, 400);
+      const epost = normaliseraEpost(data.epost);
+      if (!epost || !data.namn || !data.vikarie_id) {
+        return json({ error: 'E-post, namn och vikarie saknas.' }, 400);
       }
 
-      const normaliseradEpost = epost.trim().toLowerCase();
-      const tempPassword = crypto.randomUUID() + crypto.randomUUID();
+      const defaultPassword = Deno.env.get('DEFAULT_VIKARIE_PASSWORD') ?? 'Vikarie2026!';
+      const tillfalligtLosenord =
+        typeof data.tillfalligt_losenord === 'string' && data.tillfalligt_losenord.length >= 8
+          ? data.tillfalligt_losenord
+          : defaultPassword;
 
       let userId: string | null = null;
-
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: normaliseradEpost,
-        password: tempPassword,
+      const created = await admin.auth.admin.createUser({
+        email: epost,
+        password: tillfalligtLosenord,
         email_confirm: true,
-        user_metadata: { roll: 'vikarie', namn },
+        user_metadata: { namn: data.namn },
       });
 
-      if (authData?.user?.id) {
-        userId = authData.user.id;
-      } else if (authError) {
-        const meddelande = authError.message.toLowerCase();
-
-        if (meddelande.includes('already') || meddelande.includes('registered') || meddelande.includes('exists')) {
-          const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
-            page: 1,
-            perPage: 1000,
-          });
-          if (usersError) throw usersError;
-
-          const befintlig = usersData.users.find((user) =>
-            user.email?.toLowerCase() === normaliseradEpost
-          );
-
-          if (!befintlig) throw authError;
-          userId = befintlig.id;
-        } else {
-          throw authError;
-        }
+      if (created.error) {
+        const users = await admin.auth.admin.listUsers();
+        const existing = users.data.users.find((u) => u.email?.toLowerCase() === epost.toLowerCase());
+        if (!existing) return json({ error: created.error.message }, 400);
+        userId = existing.id;
+        const updated = await admin.auth.admin.updateUserById(userId, {
+          email: epost,
+          password: tillfalligtLosenord,
+          email_confirm: true,
+          user_metadata: { namn: data.namn },
+        });
+        if (updated.error) return json({ error: updated.error.message }, 400);
+      } else {
+        userId = created.data.user.id;
       }
 
-      if (!userId) return json({ error: 'Kunde inte skapa eller hitta kontot.' }, 500);
-
-      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { roll: 'vikarie', namn },
-      });
-      if (passwordError) throw passwordError;
-
-      const { error: profilError } = await supabaseAdmin.from('profiler').upsert({
+      const { error: profilError } = await admin.from('profiler').upsert({
         id: userId,
+        epost,
+        namn: data.namn,
         roll: 'vikarie',
-        epost: normaliseradEpost,
-        namn,
         aktiv: true,
-      }, { onConflict: 'id' });
-      if (profilError) throw profilError;
-
-      if (vikarie_id) {
-        const { error: vikarieError } = await supabaseAdmin
-          .from('vikarier')
-          .update({ profil_id: userId, epost: normaliseradEpost, aktiv: true })
-          .eq('id', vikarie_id);
-        if (vikarieError) throw vikarieError;
-      }
-
-      const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: normaliseradEpost,
-        options: { redirectTo: `${APP_URL}/nytt-losenord` },
+        maste_byta_losenord: true,
       });
-      if (recoveryError) throw recoveryError;
 
-      const actionLink = recoveryData.properties?.action_link ?? null;
-      const mejlSkickat = actionLink
-        ? await skickaKontoMejl(normaliseradEpost, typeof namn === 'string' ? namn : null, actionLink)
-        : false;
+      if (profilError) return json({ error: profilError.message }, 400);
 
-      return json({
-        ok: true,
-        user_id: userId,
-        email_sent: mejlSkickat,
-        action_link: actionLink,
-      });
+      const { error: vikarieError } = await admin
+        .from('vikarier')
+        .update({ profil_id: userId, epost })
+        .eq('id', data.vikarie_id);
+
+      if (vikarieError) return json({ error: vikarieError.message }, 400);
+
+      return json({ ok: true, user_id: userId });
     }
 
     if (åtgärd === 'återställ_lösenord') {
