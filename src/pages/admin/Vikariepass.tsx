@@ -25,6 +25,7 @@ function PassDetaljer({
   const [skickarNotis, setSkickarNotis] = useState(false);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
+  const [tillgänglighet, setTillgänglighet] = useState<Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'>>({});
 
   useEffect(() => {
     Promise.all([
@@ -32,10 +33,28 @@ function PassDetaljer({
       notisApi.listaFörPass(pass.id),
     ]).then(([hRes, nRes]) => {
       setHistorik((hRes.data ?? []) as Passhistorik[]);
-      setNotiser((nRes.data ?? []) as Notis[]);
+setNotiser((nRes.data ?? []) as Notis[]);
       setLaddar(false);
     });
   }, [pass.id]);
+
+  useEffect(() => {
+    async function laddaTillgänglighet() {
+      const passVeckodag = new Date(pass.datum).getDay();
+      const resultat: Record<string, 'tillgänglig' | 'otillgänglig' | 'okänd'> = {};
+      await Promise.all(vikarier.map(async (v) => {
+        const res = await vikariApi.hämtaTillgänglighet(v.id);
+        const poster = (res.data ?? []) as import('../../types').VikarieTillgänglighet[];
+        const specifik = poster.find(t => t.datum === pass.datum);
+        if (specifik) { resultat[v.id] = specifik.tillgänglig ? 'tillgänglig' : 'otillgänglig'; return; }
+        const återkommande = poster.find(t => t.återkommande && t.veckodag === passVeckodag);
+        if (återkommande) { resultat[v.id] = återkommande.tillgänglig ? 'tillgänglig' : 'otillgänglig'; return; }
+        resultat[v.id] = 'okänd';
+      }));
+      setTillgänglighet(resultat);
+    }
+    if (vikarier.length > 0) laddaTillgänglighet();
+  }, [pass.datum, vikarier]);
 
   async function uppdateraStatus(status: PassStatus) {
     const res = await passApi.uppdateraStatus(pass.id, status);
@@ -157,20 +176,39 @@ function PassDetaljer({
           <div>
             <p className="mb-2 text-xs font-medium text-gray-500 uppercase tracking-wide">Fråga vikarier</p>
             <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 p-2 space-y-1">
-              {vikarier.map((v) => (
-                <label key={v.id} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1 hover:bg-gray-50">
-                  <input type="checkbox" checked={valdaVikarier.has(v.id)}
-                    onChange={(e) => {
-                      const ny = new Set(valdaVikarier);
-                      e.target.checked ? ny.add(v.id) : ny.delete(v.id);
-                      setValdaVikarier(ny);
-                    }}
-                    className="h-3.5 w-3.5 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">{v.namn}</span>
-                  {v.epost && <span className="text-xs text-gray-400 truncate">{v.epost}</span>}
-                </label>
-              ))}
+          {[...vikarier].sort((a, b) => {
+                const ordning = { tillgänglig: 0, okänd: 1, otillgänglig: 2 };
+                return (ordning[tillgänglighet[a.id] ?? 'okänd']) - (ordning[tillgänglighet[b.id] ?? 'okänd']);
+              }).map((v) => {
+                const status = tillgänglighet[v.id] ?? 'okänd';
+                const otillgänglig = status === 'otillgänglig';
+                return (
+                  <label key={v.id}
+                    className={`flex items-center gap-2 cursor-pointer rounded px-2 py-1 ${otillgänglig ? 'opacity-40' : ''}`}
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={e => { if (!otillgänglig) e.currentTarget.style.background = 'var(--hover)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <input type="checkbox"
+                      checked={valdaVikarier.has(v.id)}
+                      disabled={otillgänglig}
+                      onChange={(e) => {
+                        const ny = new Set(valdaVikarier);
+                        e.target.checked ? ny.add(v.id) : ny.delete(v.id);
+                        setValdaVikarier(ny);
+                      }}
+                      className="h-3.5 w-3.5 rounded border-gray-300"
+                    />
+                    <span className="text-sm" style={{ color: 'var(--text)' }}>{v.namn}</span>
+                    {status === 'tillgänglig' && (
+                      <span className="ml-auto text-xs font-medium text-green-600">Tillgänglig</span>
+                    )}
+                    {status === 'otillgänglig' && (
+                      <span className="ml-auto text-xs font-medium text-red-500">Otillgänglig</span>
+                    )}
+                  </label>
+                );
+              })}
             </div>
             <Button size="sm" className="mt-2" loading={skickarNotis}
               disabled={valdaVikarier.size === 0} onClick={skickaNotiser}>
