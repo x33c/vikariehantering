@@ -1,20 +1,45 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import webpush from 'https://esm.sh/web-push@3.6.7?target=deno';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
+const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
+const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: string | null, title: string, body: string, url: string) {
+  if (!profilId || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
+
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+  const { data: subs } = await supabase
+    .from('push_prenumerationer')
+    .select('*')
+    .eq('profil_id', profilId)
+    .eq('aktiv', true);
+
+  for (const sub of subs ?? []) {
+    try {
+      await webpush.sendNotification({
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
+      }, JSON.stringify({ title, body, url }));
+    } catch (_) {
+      await supabase.from('push_prenumerationer').update({ aktiv: false }).eq('id', sub.id);
+    }
   }
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { pass_id, vikarie_ids } = await req.json();
@@ -39,7 +64,7 @@ serve(async (req) => {
 
   const { data: vikarier } = await supabase
     .from('vikarier')
-    .select('id, namn, epost')
+    .select('id, profil_id, namn, epost')
     .in('id', vikarie_ids)
     .eq('aktiv', true);
 
@@ -47,40 +72,33 @@ serve(async (req) => {
   let någotSkickades = false;
 
   for (const vikarie of (vikarier ?? [])) {
-    if (!vikarie.epost) {
-      resultat.push({ vikarie_id: vikarie.id, status: 'skippat – ingen epost' });
-      continue;
-    }
-
-    const ämne = `Vikariepass ${pass.datum} – ${pass.tid_från.slice(0, 5)}–${pass.tid_till.slice(0, 5)}`;
+    const ämne = `Vikariepass ${pass.datum} - ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
     const rader = [
       `Hej ${vikarie.namn},`,
       '',
       'Ett vikariepass är tillgängligt:',
       '',
       `Datum: ${pass.datum}`,
-      `Tid: ${pass.tid_från.slice(0, 5)}–${pass.tid_till.slice(0, 5)}`,
+      `Tid: ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`,
       pass.personal ? `Ersätter: ${pass.personal.namn}` : null,
       pass.personal?.arbetslag ? `Arbetslag: ${pass.personal.arbetslag.namn}` : null,
-      pass.ämne ? `Ämne: ${pass.ämne}` : null,
       pass.grupp ? `Grupp/klass: ${pass.grupp}` : null,
-      pass.sal ? `Sal: ${pass.sal}` : null,
-      pass.anteckning ? `Anteckning: ${pass.anteckning}` : null,
+      pass.anteckning ? `Kommentar: ${pass.anteckning}` : null,
       '',
-      'Logga in i systemet för att boka passet.',
+      'Logga in i systemet för att svara.',
     ].filter(r => r !== null).join('\n');
+
+    await skickaPush(supabase, vikarie.profil_id, ämne, `${pass.datum} ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`, '/vikarie');
 
     const { data: notis } = await supabase.from('notiser').insert({
       pass_id, vikarie_id: vikarie.id, kanal: 'epost',
-      status: 'väntande', mottagare: vikarie.epost, ämne, innehåll: rader,
+      status: 'väntande', mottagare: vikarie.epost ?? 'push', ämne, innehåll: rader,
     }).select().single();
 
-    let skickadStatus: 'skickat' | 'misslyckat' = 'misslyckat';
+    let skickadStatus: 'skickat' | 'misslyckat' = 'skickat';
     let felmeddelande: string | null = null;
 
-    if (!RESEND_API_KEY) {
-      felmeddelande = 'RESEND_API_KEY saknas.';
-    } else {
+    if (vikarie.epost && RESEND_API_KEY) {
       try {
         const resp = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -91,14 +109,13 @@ serve(async (req) => {
           body: JSON.stringify({ from: FROM_EMAIL, to: [vikarie.epost], subject: ämne, text: rader }),
         });
 
-        if (resp.ok) {
-          skickadStatus = 'skickat';
-          någotSkickades = true;
-        } else {
+        if (!resp.ok) {
+          skickadStatus = 'misslyckat';
           const err = await resp.json();
           felmeddelande = err?.message ?? JSON.stringify(err);
         }
       } catch (e) {
+        skickadStatus = 'misslyckat';
         felmeddelande = String(e);
       }
     }
@@ -109,6 +126,7 @@ serve(async (req) => {
       }).eq('id', notis.id);
     }
 
+    någotSkickades = true;
     resultat.push({ vikarie_id: vikarie.id, status: skickadStatus, fel: felmeddelande ?? undefined });
   }
 

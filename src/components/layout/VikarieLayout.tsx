@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import PushButton from '../PushButton';
 
 const navItems = [
   { to: '/vikarie', label: 'Pass', end: true },
@@ -91,6 +92,9 @@ export default function VikarieLayout() {
           <div className="mb-3">
             <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vikarie</p>
+          </div>
+          <div className="mb-3">
+            <PushButton />
           </div>
           <div className="mb-2 hidden items-center justify-between lg:flex">
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
