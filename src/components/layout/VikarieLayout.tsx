@@ -17,13 +17,8 @@ function useDarkMode() {
   function toggla() {
     const nytt = !mörkt;
     setMörkt(nytt);
-    if (nytt) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('tema', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('tema', 'light');
-    }
+    document.documentElement.classList.toggle('dark', nytt);
+    localStorage.setItem('tema', nytt ? 'dark' : 'light');
   }
 
   return { mörkt, toggla };
@@ -37,45 +32,67 @@ export default function VikarieLayout() {
   return (
     <div className="flex h-screen" style={{ background: 'var(--bg)' }}>
       {menyÖppen && (
-        <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={() => setMenyÖppen(false)} />
+        <div
+          className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden"
+          onClick={() => setMenyÖppen(false)}
+        />
       )}
 
-      <aside className={`
-        fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r
-        transform transition-transform duration-200 ease-in-out
-        lg:static lg:translate-x-0
-        ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
-      `} style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}>
-        <div className="flex h-14 items-center justify-between border-b px-5" style={{ borderColor: 'var(--border)' }}>
-          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariesystem</span>
-          <button onClick={() => setMenyÖppen(false)} className="rounded p-1 lg:hidden" style={{ color: 'var(--text-muted)' }}>✕</button>
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r
+          transform transition-transform duration-200 ease-in-out
+          lg:static lg:translate-x-0
+          ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+        style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
+      >
+        {/* Logotyp */}
+        <div className="px-5 pb-6 pt-6">
+          <div className="flex items-center gap-4">
+            <img
+              src={mörkt ? '/sundbyberg-silver.png' : '/sundbyberg-halm.png'}
+              alt=""
+              className="h-16 w-16 shrink-0 object-contain"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+                Lediga pass
+              </p>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 space-y-0.5 p-3">
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-2">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               onClick={() => setMenyÖppen(false)}
-              className={({ isActive }) =>
-                `block rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''
-                }`
-              }
-              style={({ isActive }) => isActive ? {} : { color: 'var(--text-muted)' }}
+              className="group flex items-center rounded-2xl border px-4 py-3 text-sm font-medium transition-all"
+              style={({ isActive }) => ({
+                background: isActive ? 'var(--nav-active)' : 'transparent',
+                color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                boxShadow: isActive
+                  ? '0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)'
+                  : 'none',
+              })}
             >
               {item.label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
-          <div className="mb-2 px-3 py-1">
-            <p className="text-xs font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
+        {/* Botten */}
+        <div className="border-t px-4 py-4" style={{ borderColor: 'var(--border)' }}>
+          <div className="mb-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>{profil?.namn ?? profil?.epost}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Vikarie</p>
           </div>
-          <div className="flex items-center justify-between px-3 mb-1">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
               onClick={toggla}
@@ -87,24 +104,34 @@ export default function VikarieLayout() {
           </div>
           <button
             onClick={loggaUt}
-            className="w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-gray-100 dark:hover:bg-slate-700"
-            style={{ color: 'var(--text-muted)' }}
+            className="w-full rounded-2xl border px-4 py-2.5 text-left text-sm font-medium transition-all"
+            style={{ color: 'var(--text-muted)', borderColor: 'transparent' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             Logga ut
           </button>
         </div>
       </aside>
 
+      {/* Main */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center border-b px-4 lg:hidden" style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}>
+        {/* Topbar mobil */}
+        <header
+          className="flex h-14 items-center border-b px-4 lg:hidden"
+          style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
+        >
           <button onClick={() => setMenyÖppen(true)} className="rounded-md p-2" style={{ color: 'var(--text-muted)' }}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariesystem</span>
-          <button onClick={toggla} className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
-            style={{ background: mörkt ? 'var(--blue)' : 'var(--border)' }}>
+          <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
+          <button
+            onClick={toggla}
+            className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+            style={{ background: mörkt ? 'var(--blue)' : 'var(--border)' }}
+          >
             <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-4' : 'translate-x-1'}`} />
           </button>
         </header>
