@@ -32,37 +32,63 @@ serve(async (req) => {
         return json({ error: 'E-post krävs.' }, 400);
       }
 
+      const normaliseradEpost = epost.trim().toLowerCase();
       const tempPassword = crypto.randomUUID() + crypto.randomUUID();
 
+      let userId: string | null = null;
+
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: epost,
+        email: normaliseradEpost,
         password: tempPassword,
         email_confirm: true,
         user_metadata: { roll: 'vikarie', namn },
       });
-      if (authError) throw authError;
 
-      const userId = authData.user.id;
+      if (authData?.user?.id) {
+        userId = authData.user.id;
+      } else if (authError) {
+        const meddelande = authError.message.toLowerCase();
 
-      const { error: profilError } = await supabaseAdmin.from('profiler').insert({
+        if (meddelande.includes('already') || meddelande.includes('registered') || meddelande.includes('exists')) {
+          const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          });
+          if (usersError) throw usersError;
+
+          const befintlig = usersData.users.find((user) =>
+            user.email?.toLowerCase() === normaliseradEpost
+          );
+
+          if (!befintlig) throw authError;
+          userId = befintlig.id;
+        } else {
+          throw authError;
+        }
+      }
+
+      if (!userId) return json({ error: 'Kunde inte skapa eller hitta kontot.' }, 500);
+
+      const { error: profilError } = await supabaseAdmin.from('profiler').upsert({
         id: userId,
         roll: 'vikarie',
-        epost,
+        epost: normaliseradEpost,
         namn,
-      });
+        aktiv: true,
+      }, { onConflict: 'id' });
       if (profilError) throw profilError;
 
       if (vikarie_id) {
         const { error: vikarieError } = await supabaseAdmin
           .from('vikarier')
-          .update({ profil_id: userId, epost })
+          .update({ profil_id: userId, epost: normaliseradEpost, aktiv: true })
           .eq('id', vikarie_id);
         if (vikarieError) throw vikarieError;
       }
 
       const { data: recoveryData, error: recoveryError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
-        email: epost,
+        email: normaliseradEpost,
       });
       if (recoveryError) throw recoveryError;
 
