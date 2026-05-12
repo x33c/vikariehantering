@@ -100,6 +100,13 @@ serve(async (req) => {
 
       if (!userId) return json({ error: 'Kunde inte skapa eller hitta kontot.' }, 500);
 
+      const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { roll: 'vikarie', namn },
+      });
+      if (passwordError) throw passwordError;
+
       const { error: profilError } = await supabaseAdmin.from('profiler').upsert({
         id: userId,
         roll: 'vikarie',
