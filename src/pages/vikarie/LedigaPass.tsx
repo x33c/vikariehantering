@@ -352,8 +352,13 @@ export default function LedigaPass() {
                 </button>
               )}
               <button
-                onClick={() => tackaJa(valdGrupp)}
-                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setFel('Försöker boka passet...');
+                  tackaJa(valdGrupp);
+                }}
+                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto"
                 style={{ background: 'var(--blue)' }}
               >
                 {sparar ? 'Sparar...' : valdGrupp.riktad ? 'Tacka ja' : 'Bekräfta bokning'}
