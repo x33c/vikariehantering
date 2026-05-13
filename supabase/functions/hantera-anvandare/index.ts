@@ -2,20 +2,13 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
+const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
-const APP_URL = Deno.env.get('APP_URL') ?? 'https://vikariehantering.vercel.app';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-function normaliseraEpost(value: unknown) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : '';
-}
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -24,46 +17,24 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
-async function skickaKontoMejl(epost: string, namn: string | null | undefined, link: string) {
-  if (!RESEND_API_KEY) return false;
-
-  const resp = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: FROM_EMAIL,
-      to: [epost],
-      subject: 'Skapa lösenord till Vikariehantering',
-      text: [
-        `Hej ${namn ?? ''}`.trim() + ',',
-        '',
-        'Ett konto har skapats åt dig i Vikariehantering.',
-        'Klicka på länken nedan för att sätta ditt lösenord:',
-        '',
-        link,
-        '',
-        'Om du inte väntade dig detta kan du ignorera mejlet.',
-      ].join('\n'),
-    }),
-  });
-
-  return resp.ok;
+function normaliseraEpost(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const { åtgärd, ...data } = await req.json();
-
   try {
+    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { åtgärd, ...data } = await req.json();
+
     if (åtgärd === 'skapa') {
       const epost = normaliseraEpost(data.epost);
-      if (!epost || !data.namn || !data.vikarie_id) {
+      const namn = typeof data.namn === 'string' ? data.namn : '';
+      const vikarieId = typeof data.vikarie_id === 'string' ? data.vikarie_id : '';
+
+      if (!epost || !namn || !vikarieId) {
         return json({ error: 'E-post, namn och vikarie saknas.' }, 400);
       }
 
@@ -74,25 +45,34 @@ serve(async (req) => {
           : defaultPassword;
 
       let userId: string | null = null;
+
       const created = await supabaseAdmin.auth.admin.createUser({
         email: epost,
         password: tillfalligtLosenord,
         email_confirm: true,
-        user_metadata: { namn: data.namn },
+        user_metadata: { namn },
       });
 
       if (created.error) {
         const users = await supabaseAdmin.auth.admin.listUsers();
-        const existing = users.data.users.find((u) => u.email?.toLowerCase() === epost.toLowerCase());
-        if (!existing) return json({ error: created.error.message }, 400);
+        const existing = users.data.users.find((u) => u.email?.toLowerCase() === epost);
+
+        if (!existing) {
+          return json({ error: created.error.message }, 400);
+        }
+
         userId = existing.id;
+
         const updated = await supabaseAdmin.auth.admin.updateUserById(userId, {
           email: epost,
           password: tillfalligtLosenord,
           email_confirm: true,
-          user_metadata: { namn: data.namn },
+          user_metadata: { namn },
         });
-        if (updated.error) return json({ error: updated.error.message }, 400);
+
+        if (updated.error) {
+          return json({ error: updated.error.message }, 400);
+        }
       } else {
         userId = created.data.user.id;
       }
@@ -100,7 +80,7 @@ serve(async (req) => {
       const { error: profilError } = await supabaseAdmin.from('profiler').upsert({
         id: userId,
         epost,
-        namn: data.namn,
+        namn,
         roll: 'vikarie',
         aktiv: true,
         maste_byta_losenord: true,
@@ -108,34 +88,14 @@ serve(async (req) => {
 
       if (profilError) return json({ error: profilError.message }, 400);
 
-      const { error: vikarieError } = await admin
+      const { error: vikarieError } = await supabaseAdmin
         .from('vikarier')
         .update({ profil_id: userId, epost })
-        .eq('id', data.vikarie_id);
+        .eq('id', vikarieId);
 
       if (vikarieError) return json({ error: vikarieError.message }, 400);
 
       return json({ ok: true, user_id: userId });
-    }
-
-    if (åtgärd === 'återställ_lösenord') {
-      const { epost, namn } = data;
-      if (!epost || typeof epost !== 'string') return json({ error: 'E-post krävs.' }, 400);
-
-      const normaliseradEpost = epost.trim().toLowerCase();
-      const { data: recoveryData, error } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: normaliseradEpost,
-        options: { redirectTo: `${APP_URL}/nytt-losenord` },
-      });
-      if (error) throw error;
-
-      const actionLink = recoveryData.properties?.action_link ?? null;
-      const mejlSkickat = actionLink
-        ? await skickaKontoMejl(normaliseradEpost, typeof namn === 'string' ? namn : null, actionLink)
-        : false;
-
-      return json({ ok: true, email_sent: mejlSkickat, action_link: actionLink });
     }
 
     if (åtgärd === 'uppdatera_roll') {
@@ -178,7 +138,8 @@ serve(async (req) => {
         .update({ roll, namn, aktiv })
         .eq('id', profil_id);
 
-      if (error) throw error;
+      if (error) return json({ error: error.message }, 400);
+
       return json({ ok: true });
     }
 
