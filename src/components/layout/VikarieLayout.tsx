@@ -126,6 +126,23 @@ export default function VikarieLayout() {
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
+          <button
+            onClick={toggla}
+            className="ml-auto rounded-xl border p-2"
+            style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+            aria-label="Växla tema"
+            title="Växla tema"
+          >
+            {mörkt ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+              </svg>
+            )}
+          </button>
         </header>
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <Outlet />
@@ -146,7 +163,7 @@ export default function VikarieLayout() {
                 boxShadow: isActive ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
               })}
             >
-              {item.label === 'Tillgänglighet' ? 'Tid' : item.label === 'Mina pass' ? 'Mina' : item.label}
+              {item.label === 'Tillgänglighet' ? 'Tid' : item.label}
             </NavLink>
           ))}
         </nav>
