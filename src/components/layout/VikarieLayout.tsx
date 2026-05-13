@@ -32,7 +32,7 @@ export default function VikarieLayout() {
 
   return (
     <div className="flex h-screen" style={{ background: 'var(--bg)' }}>
-      {menyÖppen && (
+      {false && menyÖppen && (
         <div
           className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden"
           onClick={() => setMenyÖppen(false)}
@@ -41,7 +41,7 @@ export default function VikarieLayout() {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r
+          hidden lg:static lg:flex lg:w-72 lg:flex-col lg:border-r
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
@@ -125,12 +125,7 @@ export default function VikarieLayout() {
           className="flex h-14 items-center border-b px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          <button onClick={() => setMenyÖppen(true)} className="rounded-md p-2" style={{ color: 'var(--text-muted)' }}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
         </header>
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <Outlet />
