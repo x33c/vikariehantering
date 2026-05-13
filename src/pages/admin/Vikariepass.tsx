@@ -83,7 +83,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setSparar(false);
 
     if (res.error) {
-      setFel(res.error.message);
+      setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
       return false;
     }
 
@@ -141,7 +141,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
     if (res.error) {
       setSparar(false);
-      setFel(res.error.message);
+      setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
       return;
     }
 
@@ -196,7 +196,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     const res = await passmeddelandeApi.skapa(pass.id, nyttMeddelande.trim(), 'admin');
 
     if (res.error) {
-      setFel(res.error.message);
+      setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
     } else {
       await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'admin_meddelande' }, nyttMeddelande.trim());
       const ny = await passmeddelandeApi.lista(pass.id);
@@ -419,7 +419,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     }
 );
     setLaddar(false);
-    if (res.error) { setFel(res.error.message); return; }
+    if (res.error) { setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message); return; }
     if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
     onSkapad();
     onStäng();

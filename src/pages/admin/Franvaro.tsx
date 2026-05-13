@@ -249,7 +249,7 @@ function FrånvaroModal({
 
     setLaddar(false);
 
-    if (res.error) { setFel(res.error.message); return; }
+    if (res.error) { setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message); return; }
     setSkapadFrånvaro(res.data as Frånvaro);
 
     const sRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(personalId, datumFrån, datumTill);
