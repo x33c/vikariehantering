@@ -57,51 +57,73 @@ function PassKort({
   grupp,
   knappText,
   onKlick,
+  secondaryText,
+  onSecondary,
+  disabled,
 }: {
   grupp: Passgrupp;
   knappText: string;
   onKlick: () => void;
+  secondaryText?: string;
+  onSecondary?: () => void;
+  disabled?: boolean;
 }) {
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
   const arskurs = visaArskurs(grupp.pass.map(p => p.grupp));
+  const antalText = grupp.pass.length === 1 ? '1 lektion' : `${grupp.pass.length} lektioner`;
 
   return (
-    <div
-      className="rounded-xl border p-3 shadow-sm sm:p-4"
-      style={{ background: 'var(--bg-card)', borderColor: grupp.riktad ? 'var(--blue)' : 'var(--border)' }}
+    <article
+      className="rounded-2xl border p-4 shadow-sm"
+      style={{
+        background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 7%, var(--bg-card))' : 'var(--bg-card)',
+        borderColor: grupp.riktad ? 'var(--blue)' : 'var(--border)',
+      }}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>
+            {new Date(`${grupp.datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tidFrån}-{tidTill}</p>
+          <p className="mt-1 text-2xl font-semibold" style={{ color: 'var(--text)' }}>{tidFrån}-{tidTill}</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{antalText}</p>
         </div>
-        <span
-          className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
           style={{
             background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : 'var(--hover)',
             color: grupp.riktad ? 'var(--blue)' : 'var(--text-muted)',
-          }}
-        >
+          }}>
           {grupp.riktad ? 'Förfrågan' : 'Ledigt'}
         </span>
       </div>
 
-      <div className="mb-3 grid gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <p>Vikarierar för: <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span></p>
-        <p>Årskurs: <span className="font-medium" style={{ color: 'var(--text)' }}>{arskurs}</span></p>
-        <p>Tid: <span className="font-medium" style={{ color: 'var(--text)' }}>{tidFrån}-{tidTill}</span></p>
+      <div className="mb-4 grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
+        <div className="flex justify-between gap-3">
+          <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
+          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
+          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{arskurs}</span>
+        </div>
       </div>
-      <button
-        onClick={onKlick}
-        className="mt-3 w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
-        style={{ background: 'var(--blue)' }}
-      >
-        {knappText}
-      </button>
-    </div>
+
+      <div className={secondaryText ? 'grid gap-2 sm:grid-cols-2' : ''}>
+        <button type="button" onClick={onKlick} disabled={disabled}
+          className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          style={{ background: 'var(--blue)' }}>
+          {knappText}
+        </button>
+        {secondaryText && onSecondary && (
+          <button type="button" onClick={onSecondary} disabled={disabled}
+            className="w-full rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+            {secondaryText}
+          </button>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -222,7 +244,6 @@ export default function LedigaPass() {
 
     setSparar(false);
     await ladda();
-    setValdGrupp(null);
     setBekräftelse(`Du tackade nej: ${grupp.personalNamn} ${grupp.datum}`);
     setTimeout(() => setBekräftelse(''), 5000);
   }
@@ -235,12 +256,23 @@ export default function LedigaPass() {
 
   const förfrågningsGrupper = grupperaPasser(förfrågningar, minVikarie?.id);
   const ledigaGrupper = grupperaPasser(ledigaPass, minVikarie?.id);
+  const förstaNamn = minVikarie?.namn?.split(' ')[0];
 
   return (
     <div className="p-3 sm:p-6">
-      <div className="mb-4 sm:mb-5">
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Pass</h1>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Svara på förfrågningar och boka publicerade pass.</p>
+      <div className="mb-5 rounded-2xl border p-4 sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{förstaNamn ? `Hej ${förstaNamn}` : 'Vikarie'}</p>
+        <h1 className="mt-1 text-2xl font-semibold" style={{ color: 'var(--text)' }}>Pass</h1>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl px-3 py-2" style={{ background: 'var(--bg)' }}>
+            <p className="text-2xl font-semibold" style={{ color: 'var(--text)' }}>{förfrågningsGrupper.length}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Förfrågningar</p>
+          </div>
+          <div className="rounded-xl px-3 py-2" style={{ background: 'var(--bg)' }}>
+            <p className="text-2xl font-semibold" style={{ color: 'var(--text)' }}>{ledigaGrupper.length}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Lediga pass</p>
+          </div>
+        </div>
       </div>
 
       {bekräftelse && (
@@ -278,8 +310,11 @@ export default function LedigaPass() {
               <PassKort
                 key={`${grupp.personal_id}_${grupp.datum}_förfrågan`}
                 grupp={grupp}
-                knappText="Svara"
+                knappText="Tacka ja"
+                secondaryText="Tacka nej"
+                disabled={sparar}
                 onKlick={() => { setFel(''); tackaJa(grupp); }}
+                onSecondary={() => { setFel(''); tackaNej(grupp); }}
               />
             ))}
           </div>
@@ -305,6 +340,7 @@ export default function LedigaPass() {
                 key={`${grupp.personal_id}_${grupp.datum}_ledig`}
                 grupp={grupp}
                 knappText="Boka passet"
+                disabled={sparar}
                 onKlick={() => { setFel(''); tackaJa(grupp); }}
               />
             ))}
