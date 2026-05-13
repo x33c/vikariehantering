@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode, useEffect } from 'react';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS, type PassStatus } from '../../types';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -265,6 +265,20 @@ interface ConfirmProps {
 }
 
 export function Confirm({ öppen, onBekräfta, onAvbryt, titel = 'Bekräfta', text, bekräftaText = 'Bekräfta', farlig = false }: ConfirmProps) {
+  useEffect(() => {
+    if (!öppen) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        onBekräfta();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [öppen, onBekräfta]);
+
   return (
     <Modal öppen={öppen} onStäng={onAvbryt} titel={titel} bredd="sm">
       {text && <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>{text}</p>}
