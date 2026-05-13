@@ -145,38 +145,51 @@ export default function LedigaPass() {
   }
 
   async function tackaJa(grupp: Passgrupp) {
-    if (!minVikarie) return;
+    if (!minVikarie || sparar) return;
+
     setSparar(true);
     setFel('');
 
     let lyckades = 0;
-    for (const p of grupp.pass) {
-      const { data, error } = grupp.riktad
-        ? await passApi.tackaJa(p.id, minVikarie.id)
-        : await passApi.bokaPass(p.id, minVikarie.id);
+    let senasteFel: unknown = null;
 
-      if (!error && data) {
-        await historikApi.skapa(p.id, 'vikarie_bokat', {
-          vikarie_id: minVikarie.id,
-          svar: grupp.riktad ? 'ja' : 'bokad',
-        });
-        if (grupp.riktad) await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'ja');
-        lyckades++;
+    try {
+      for (const p of grupp.pass) {
+        const { data, error } = grupp.riktad
+          ? await passApi.tackaJa(p.id, minVikarie.id)
+          : await passApi.bokaPass(p.id, minVikarie.id);
+
+        if (error) {
+          senasteFel = error;
+          continue;
+        }
+
+        if (data) {
+          await historikApi.skapa(p.id, 'vikarie_bokat', {
+            vikarie_id: minVikarie.id,
+            svar: grupp.riktad ? 'ja' : 'bokad',
+          });
+          if (grupp.riktad) await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'ja');
+          lyckades++;
+        }
       }
-    }
 
-    setSparar(false);
+      if (lyckades === 0) {
+        setFel(bokningsFelText(senasteFel));
+        return;
+      }
 
-    if (lyckades === 0) {
+      await ladda();
+      setValdGrupp(null);
+      setBekräftelse(`Du tackade ja: ${grupp.personalNamn} ${grupp.datum}`);
+      setTimeout(() => setBekräftelse(''), 5000);
+    } catch (error) {
       setFel(bokningsFelText(error));
-      return;
+    } finally {
+      setSparar(false);
     }
-
-    await ladda();
-    setValdGrupp(null);
-    setBekräftelse(`Du tackade ja: ${grupp.personalNamn} ${grupp.datum}`);
-    setTimeout(() => setBekräftelse(''), 5000);
   }
+
 
   async function tackaNej(grupp: Passgrupp) {
     if (!minVikarie) return;
