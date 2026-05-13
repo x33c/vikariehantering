@@ -204,3 +204,4 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
 
 export default PassDetaljer;
+  
