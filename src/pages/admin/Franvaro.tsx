@@ -492,38 +492,85 @@ export default function Franvaro() {
           <Button size="sm" onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
         } />
       ) : (
-        <div className="overflow-hidden rounded-lg border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                <th className="px-4 py-3 text-left font-medium">Personal</th>
-                <th className="hidden px-4 py-3 text-left font-medium md:table-cell">Arbetslag</th>
-                <th className="px-4 py-3 text-left font-medium">Datum</th>
-                <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">Typ</th>
-                <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak, valfritt</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtrerade.map((f) => (
-                <tr key={f.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{f.personal?.namn ?? '-'}</td>
-                  <td className="hidden px-4 py-3 md:table-cell" style={{ color: 'var(--text-muted)' }}>{f.personal?.arbetslag?.namn ?? '-'}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{f.datum_från} - {f.datum_till}</td>
-                  <td className="hidden px-4 py-3 sm:table-cell" style={{ color: 'var(--text-muted)' }}>
+        <>
+          <div className="space-y-3 md:hidden">
+            {filtrerade.map((f) => (
+              <article
+                key={f.id}
+                className="rounded-xl border p-4"
+                style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+              >
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                      {f.personal?.namn ?? '-'}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {f.personal?.arbetslag?.namn ?? 'Inget arbetslag'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRaderaId(f.id)}
+                    className="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium"
+                    style={{ color: 'var(--danger)' }}
+                  >
+                    Ta bort
+                  </button>
+                </div>
+
+                <div className="grid gap-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  <p>
+                    <span className="font-medium" style={{ color: 'var(--text)' }}>Datum:</span>{' '}
+                    {f.datum_från === f.datum_till ? f.datum_från : `${f.datum_från} - ${f.datum_till}`}
+                  </p>
+                  <p>
+                    <span className="font-medium" style={{ color: 'var(--text)' }}>Tid:</span>{' '}
                     {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
-                  </td>
-                  <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setRaderaId(f.id)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--danger)' }}>
-                      Ta bort
-                    </button>
-                  </td>
+                  </p>
+                  {f.orsak && (
+                    <p>
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>Orsak:</span>{' '}
+                      {f.orsak}
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-lg border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                  <th className="px-4 py-3 text-left font-medium">Personal</th>
+                  <th className="px-4 py-3 text-left font-medium">Arbetslag</th>
+                  <th className="px-4 py-3 text-left font-medium">Datum</th>
+                  <th className="px-4 py-3 text-left font-medium">Typ</th>
+                  <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak</th>
+                  <th className="px-4 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtrerade.map((f) => (
+                  <tr key={f.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
+                    <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{f.personal?.namn ?? '-'}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{f.personal?.arbetslag?.namn ?? '-'}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{f.datum_från} - {f.datum_till}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
+                      {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
+                    </td>
+                    <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setRaderaId(f.id)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--danger)' }}>
+                        Ta bort
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <FrånvaroModal
