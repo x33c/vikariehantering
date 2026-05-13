@@ -168,7 +168,7 @@ export default function LedigaPass() {
     setSparar(false);
 
     if (lyckades === 0) {
-      setFel(bokningsFelText(res.error));
+      setFel(bokningsFelText(error));
       return;
     }
 
