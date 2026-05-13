@@ -13,6 +13,20 @@ interface Passgrupp {
   pass: Vikariepass[];
 }
 
+
+function bokningsFelText(message?: string) {
+  const text = message ?? '';
+  if (
+    text.includes('överlappar') ||
+    text.includes('redan bokad') ||
+    text.includes('dubbelbokad')
+  ) {
+    return 'Du är redan bokad på ett pass som överlappar denna tid.';
+  }
+
+  return 'Passet kunde inte bokas. Det kan redan ha ändrats.';
+}
+
 function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[] {
   const grupper = new Map<string, Passgrupp>();
 
