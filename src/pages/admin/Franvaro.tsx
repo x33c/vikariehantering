@@ -356,6 +356,25 @@ function FrånvaroModal({
     onStäng();
   }
 
+  useEffect(() => {
+    if (!öppen || laddar || skaparPass) return;
+
+    function ctrlEnterFranvaro(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+
+        if (skapadFrånvaro) {
+          skapaVikariepass();
+        } else {
+          registreraFrånvaro();
+        }
+      }
+    }
+
+    window.addEventListener('keydown', ctrlEnterFranvaro);
+    return () => window.removeEventListener('keydown', ctrlEnterFranvaro);
+  }, [öppen, laddar, skaparPass, skapadFrånvaro, form, valdaSchemarader, valdVikarieId, publiceraPass]);
+
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Ny frånvaro" bredd="xl">
       {steg === 'formulär' ? (

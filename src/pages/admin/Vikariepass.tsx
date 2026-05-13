@@ -416,13 +416,43 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
       datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till, typ: 'del_av_dag',
       ämne: null, grupp: form.grupp || null, sal: null,
       anteckning: form.anteckning || null, riktad_till_vikarie_id: null, publicerad: form.publicerad, status: 'obokat', skapad_av: null,
-    });
+    }
+);
     setLaddar(false);
     if (res.error) { setFel(res.error.message); return; }
     if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
     onSkapad();
     onStäng();
   }
+
+
+  useEffect(() => {
+    if (!öppen || laddar) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        spara();
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [öppen, laddar, form]);
+
+  useEffect(() => {
+    if (!öppen || laddar) return;
+
+    function ctrlEnterSkapaPass(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        spara();
+      }
+    }
+
+    window.addEventListener('keydown', ctrlEnterSkapaPass);
+    return () => window.removeEventListener('keydown', ctrlEnterSkapaPass);
+  }, [öppen, laddar, form]);
 
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
