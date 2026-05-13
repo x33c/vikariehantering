@@ -4,8 +4,28 @@ import { supabase } from '../../lib/supabase';
 import type { Vikarie, NyVikarie } from '../../types';
 
 async function anropaHanteraAnvandare(payload: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('hantera-anvandare', { body: payload });
-  return { data, error };
+  const { data, error } = await supabase.functions.invoke('hantera-anvandare', {
+    body: payload,
+  });
+
+  if (error) {
+    const context = (error as any).context;
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = await context.json();
+        return {
+          data: null,
+          error: new Error(body?.error || error.message),
+        };
+      } catch {
+        // Fall through to generic error below.
+      }
+    }
+
+    return { data: null, error };
+  }
+
+  return { data, error: null };
 }
 
 function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
