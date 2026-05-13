@@ -13,6 +13,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function normaliseraEpost(value: unknown) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -70,7 +74,7 @@ serve(async (req) => {
           : defaultPassword;
 
       let userId: string | null = null;
-      const created = await admin.auth.admin.createUser({
+      const created = await supabaseAdmin.auth.admin.createUser({
         email: epost,
         password: tillfalligtLosenord,
         email_confirm: true,
@@ -78,11 +82,11 @@ serve(async (req) => {
       });
 
       if (created.error) {
-        const users = await admin.auth.admin.listUsers();
+        const users = await supabaseAdmin.auth.admin.listUsers();
         const existing = users.data.users.find((u) => u.email?.toLowerCase() === epost.toLowerCase());
         if (!existing) return json({ error: created.error.message }, 400);
         userId = existing.id;
-        const updated = await admin.auth.admin.updateUserById(userId, {
+        const updated = await supabaseAdmin.auth.admin.updateUserById(userId, {
           email: epost,
           password: tillfalligtLosenord,
           email_confirm: true,
@@ -93,7 +97,7 @@ serve(async (req) => {
         userId = created.data.user.id;
       }
 
-      const { error: profilError } = await admin.from('profiler').upsert({
+      const { error: profilError } = await supabaseAdmin.from('profiler').upsert({
         id: userId,
         epost,
         namn: data.namn,
