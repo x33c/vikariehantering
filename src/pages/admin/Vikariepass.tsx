@@ -276,6 +276,35 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
   const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
+  const rekommenderadeVikarier = [...vikarier]
+    .map(v => {
+      const tillg = tillgMap[v.id];
+      const bokad = bokadeVikarier[v.id];
+      let status = "okänd";
+      let detalj = "Okänd tillgänglighet";
+
+      if (bokad) {
+        status = "bokad";
+        detalj = `Bokad ${bokad.tid_från.slice(0, 5)}-${bokad.tid_till.slice(0, 5)}`;
+      } else if (tillg?.tillgänglig) {
+        status = "ledig";
+        detalj = tillg.tid_från && tillg.tid_till
+          ? `Tillgänglig ${tillg.tid_från.slice(0, 5)}-${tillg.tid_till.slice(0, 5)}`
+          : "Tillgänglig heldag";
+      } else if (tillg) {
+        status = "otillgänglig";
+        detalj = tillg.tid_från && tillg.tid_till
+          ? `Inte tillgänglig ${tillg.tid_från.slice(0, 5)}-${tillg.tid_till.slice(0, 5)}`
+          : "Inte tillgänglig";
+      }
+
+      return { vikarie: v, status, detalj };
+    })
+    .sort((a, b) => {
+      const prioritet: Record<string, number> = { ledig: 0, okänd: 1, otillgänglig: 2, bokad: 3 };
+      return (prioritet[a.status] ?? 9) - (prioritet[b.status] ?? 9) || a.vikarie.namn.localeCompare(b.vikarie.namn);
+    });
+  const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 5);
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
@@ -333,30 +362,68 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
           </div>
         </section>
 
-        <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                {valdVikarie ? valdVikarie.namn : 'Välj vikarie'}
+              </p>
+            </div>
+          </div>
+
+          {rekommenderadeSynliga.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Rekommenderade vikarier</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {rekommenderadeSynliga.map(({ vikarie, status, detalj }) => {
+                  const vald = vikarie.id === valdVikarieId;
+                  const ärBokad = status === 'bokad';
+                  const färg = status === 'ledig' ? '#16a34a' : status === 'bokad' ? '#ef4444' : status === 'otillgänglig' ? '#f59e0b' : 'var(--text-muted)';
+
+                  return (
+                    <button
+                      key={vikarie.id}
+                      type="button"
+                      onClick={() => setValdVikarieId(vikarie.id)}
+                      disabled={ärBokad}
+                      className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                      style={{
+                        borderColor: vald ? 'var(--blue)' : 'var(--border)',
+                        background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
+                      }}
+                    >
+                      <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                      <span className="block text-xs" style={{ color: färg }}>{detalj}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <select
             value={valdVikarieId}
             onChange={e => setValdVikarieId(e.target.value)}
-            className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+            className="mb-3 w-full rounded-md border px-3 py-2 text-sm"
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           >
-            <option value="">Välj vikarie</option>
+            <option value="">Välj annan vikarie</option>
             {vikarier.map(v => <option key={v.id} value={v.id}>{vikarieValLabel(v)}</option>)}
           </select>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId}>
+            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
               Skicka förfrågan
             </Button>
-            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId}>
+            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
               Boka direkt
             </Button>
           </div>
 
-          {valdVikarie && (
-            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Vald vikarie: <span style={{ color: 'var(--text)' }}>{valdVikarie.namn}</span>
+          {valdVikarieId && bokadeVikarier[valdVikarieId] && (
+            <p className="mt-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: '#ef4444', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.10)' }}>
+              Den valda vikarien är redan bokad {bokadeVikarier[valdVikarieId].tid_från.slice(0, 5)}-{bokadeVikarier[valdVikarieId].tid_till.slice(0, 5)}.
             </p>
           )}
         </section>
