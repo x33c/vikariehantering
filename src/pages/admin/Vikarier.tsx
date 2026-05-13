@@ -237,6 +237,35 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
 }
 
 
+function datumIdag() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function veckodagFörDatum(datum: string) {
+  return new Date(`${datum}T12:00:00`).getDay();
+}
+
+function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: string) {
+  const specifik = poster.find(t => t.datum === datum);
+  if (specifik) return specifik;
+
+  const veckodag = veckodagFörDatum(datum);
+  return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
+}
+
+function tillgänglighetText(rad: VikarieTillgänglighet | null | undefined) {
+  if (!rad) return { label: 'Okänd', detail: 'Ingen tid angiven', color: 'var(--text-muted)', bg: 'var(--hover)' };
+
+  const tid = rad.tid_från && rad.tid_till
+    ? `${rad.tid_från.slice(0, 5)}–${rad.tid_till.slice(0, 5)}`
+    : 'Heldag';
+
+  return rad.tillgänglig
+    ? { label: 'Tillgänglig', detail: tid, color: '#22c55e', bg: 'rgba(34,197,94,0.14)' }
+    : { label: 'Inte tillgänglig', detail: tid, color: '#ef4444', bg: 'rgba(239,68,68,0.14)' };
+}
+
+
 export default function Vikarier() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
@@ -244,10 +273,35 @@ export default function Vikarier() {
   const [kontoModal, setKontoModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [sök, setSök] = useState('');
+  const [tillgDatum, setTillgDatum] = useState(datumIdag());
+  const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
+  const [laddarTillg, setLaddarTillg] = useState(false);
 
   useEffect(() => {
     vikariApi.lista().then(res => { setVikarier((res.data ?? []) as Vikarie[]); setLaddar(false); });
   }, []);
+
+  useEffect(() => {
+    if (vikarier.length === 0) return;
+
+    let aktiv = true;
+    setLaddarTillg(true);
+
+    Promise.all(
+      vikarier.map(async (v) => {
+        const res = await vikariApi.hämtaTillgänglighet(v.id);
+        const rad = hittaTillgänglighetFörDatum((res.data ?? []) as VikarieTillgänglighet[], tillgDatum);
+        return [v.id, rad] as const;
+      })
+    ).then((poster) => {
+      if (!aktiv) return;
+      setTillgMap(Object.fromEntries(poster));
+      setLaddarTillg(false);
+    });
+
+    return () => { aktiv = false; };
+  }, [vikarier, tillgDatum]);
+
 
   const filtrerade = sök
     ? vikarier.filter(v => v.namn.toLowerCase().includes(sök.toLowerCase()) || v.epost?.toLowerCase().includes(sök.toLowerCase()))

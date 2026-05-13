@@ -11,6 +11,19 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
+function veckodagFörDatum(datum: string) {
+  return new Date(`${datum}T12:00:00`).getDay();
+}
+
+function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: string) {
+  const specifik = poster.find(t => t.datum === datum);
+  if (specifik) return specifik;
+
+  const veckodag = veckodagFörDatum(datum);
+  return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
+}
+
+
 interface Passgrupp {
   personal_id: string;
   personalNamn: string;
@@ -54,6 +67,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [sparar, setSparar] = useState(false);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
   const [bokadeVikarier, setBokadeVikarier] = useState<Set<string>>(new Set());
+  const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
 
@@ -217,6 +231,40 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setSkickarMeddelande(false);
   }
 
+
+  useEffect(() => {
+    let aktiv = true;
+
+    Promise.all(
+      vikarier.map(async (v) => {
+        const res = await vikariApi.hämtaTillgänglighet(v.id);
+        const rad = hittaTillgänglighetFörDatum((res.data ?? []) as VikarieTillgänglighet[], pass.datum);
+        return [v.id, rad] as const;
+      })
+    ).then((poster) => {
+      if (!aktiv) return;
+      setTillgMap(Object.fromEntries(poster));
+    });
+
+    return () => { aktiv = false; };
+  }, [vikarier, pass.datum]);
+
+  function vikarieValLabel(v: Vikarie) {
+    const tillg = tillgMap[v.id];
+    const bokad = bokadeVikarier.has(v.id);
+
+    if (bokad) return `⚠ ${v.namn} (bokad denna dag)`;
+    if (!tillg) return `${v.namn} (okänd tillgänglighet)`;
+
+    const tid = tillg.tid_från && tillg.tid_till
+      ? ` ${tillg.tid_från.slice(0, 5)}-${tillg.tid_till.slice(0, 5)}`
+      : ' heldag';
+
+    return tillg.tillgänglig
+      ? `✓ ${v.namn} (${tid})`
+      : `✕ ${v.namn} (inte tillgänglig)`;
+  }
+
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
   const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
@@ -286,7 +334,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           >
             <option value="">Välj vikarie</option>
-            {vikarier.map(v => <option key={v.id} value={v.id}>{bokadeVikarier.has(v.id) ? `⚠ ${v.namn} (bokad denna dag)` : v.namn}</option>)}
+            {vikarier.map(v => <option key={v.id} value={v.id}>{vikarieValLabel(v)}</option>)}
           </select>
 
           <div className="grid gap-2 sm:grid-cols-2">
