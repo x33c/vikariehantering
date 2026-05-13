@@ -111,7 +111,6 @@ export default function LedigaPass() {
   const [ledigaPass, setLedigaPass] = useState<Vikariepass[]>([]);
   const [minVikarie, setMinVikarie] = useState<Vikarie | null>(null);
   const [laddar, setLaddar] = useState(true);
-  const [valdGrupp, setValdGrupp] = useState<Passgrupp | null>(null);
   const [sparar, setSparar] = useState(false);
   const [fel, setFel] = useState('');
   const [bekräftelse, setBekräftelse] = useState('');
@@ -314,55 +313,7 @@ export default function LedigaPass() {
         )}
       </section>
 
-      {valdGrupp && (
-        <div className="hidden">
-          <div className="hidden" onClick={() => setValdGrupp(null)} />
-          <div className="relative w-full rounded-t-2xl p-6 shadow-xl sm:max-w-sm sm:rounded-xl" style={{ background: 'var(--bg-card)' }}>
-            <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text)' }}>
-              {valdGrupp.riktad ? 'Svara på förfrågan' : 'Bekräfta bokning'}
-            </h2>
 
-            <div className="mb-4 space-y-1 rounded-lg p-3 text-sm" style={{ background: 'var(--bg)', color: 'var(--text-muted)' }}>
-              <p>Datum: <strong style={{ color: 'var(--text)' }}>{valdGrupp.datum}</strong></p>
-              <p>Vikarierar för: <strong style={{ color: 'var(--text)' }}>{valdGrupp.personalNamn}</strong></p>
-              <p>Årskurs: <strong style={{ color: 'var(--text)' }}>{visaArskurs(valdGrupp.pass.map(p => p.grupp))}</strong></p>
-              <p>Tid: <strong style={{ color: 'var(--text)' }}>{valdGrupp.pass[0].tid_från.slice(0, 5)}-{valdGrupp.pass[valdGrupp.pass.length - 1].tid_till.slice(0, 5)}</strong></p>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                onClick={() => setValdGrupp(null)}
-                className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium sm:w-auto"
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              >
-                Avbryt
-              </button>
-              {valdGrupp.riktad && (
-                <button
-                  onClick={() => tackaNej(valdGrupp)}
-                  disabled={sparar}
-                  className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium sm:w-auto"
-                  style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                >
-                  Tacka nej
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setFel('Försöker boka passet...');
-                  tackaJa(valdGrupp);
-                }}
-                disabled={sparar}
-                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
-                style={{ background: 'var(--blue)' }}
-              >
-                {sparar ? 'Sparar...' : valdGrupp.riktad ? 'Tacka ja' : 'Bekräfta bokning'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
