@@ -152,8 +152,6 @@ export default function LedigaPass() {
       return;
     }
 
-    if (sparar) return;
-
     setSparar(true);
     setFel('');
 
@@ -287,7 +285,7 @@ export default function LedigaPass() {
                 key={`${grupp.personal_id}_${grupp.datum}_förfrågan`}
                 grupp={grupp}
                 knappText="Svara"
-                onKlick={() => { setFel(''); setValdGrupp(grupp); }}
+                onKlick={() => { setFel(''); setSparar(false); setValdGrupp(grupp); }}
               />
             ))}
           </div>
@@ -313,7 +311,7 @@ export default function LedigaPass() {
                 key={`${grupp.personal_id}_${grupp.datum}_ledig`}
                 grupp={grupp}
                 knappText="Boka passet"
-                onKlick={() => { setFel(''); setValdGrupp(grupp); }}
+                onKlick={() => { setFel(''); setSparar(false); setValdGrupp(grupp); }}
               />
             ))}
           </div>
@@ -355,7 +353,6 @@ export default function LedigaPass() {
               )}
               <button
                 onClick={() => tackaJa(valdGrupp)}
-                disabled={sparar}
                 className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
                 style={{ background: 'var(--blue)' }}
               >
