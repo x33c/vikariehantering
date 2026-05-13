@@ -281,7 +281,7 @@ export default function LedigaPass() {
                 key={`${grupp.personal_id}_${grupp.datum}_förfrågan`}
                 grupp={grupp}
                 knappText="Svara"
-                onKlick={() => { setFel(''); setSparar(false); setValdGrupp(grupp); }}
+                onKlick={() => { setFel(''); tackaJa(grupp); }}
               />
             ))}
           </div>
@@ -307,7 +307,7 @@ export default function LedigaPass() {
                 key={`${grupp.personal_id}_${grupp.datum}_ledig`}
                 grupp={grupp}
                 knappText="Boka passet"
-                onKlick={() => { setFel(''); setSparar(false); setValdGrupp(grupp); }}
+                onKlick={() => { setFel(''); tackaJa(grupp); }}
               />
             ))}
           </div>
@@ -315,8 +315,8 @@ export default function LedigaPass() {
       </section>
 
       {valdGrupp && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setValdGrupp(null)} />
+        <div className="hidden">
+          <div className="hidden" onClick={() => setValdGrupp(null)} />
           <div className="relative w-full rounded-t-2xl p-6 shadow-xl sm:max-w-sm sm:rounded-xl" style={{ background: 'var(--bg-card)' }}>
             <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text)' }}>
               {valdGrupp.riktad ? 'Svara på förfrågan' : 'Bekräfta bokning'}
