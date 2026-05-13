@@ -145,7 +145,12 @@ export default function LedigaPass() {
   }
 
   async function tackaJa(grupp: Passgrupp) {
-    if (!minVikarie || sparar) return;
+    if (!minVikarie) {
+      setFel('Din vikarieprofil är inte kopplad till kontot.');
+      return;
+    }
+
+    if (sparar) return;
 
     setSparar(true);
     setFel('');
@@ -154,28 +159,41 @@ export default function LedigaPass() {
     let senasteFel: unknown = null;
 
     try {
-      for (const p of grupp.pass) {
+      for (const passrad of grupp.pass) {
         const { data, error } = grupp.riktad
-          ? await passApi.tackaJa(p.id, minVikarie.id)
-          : await passApi.bokaPass(p.id, minVikarie.id);
+          ? await passApi.tackaJa(passrad.id, minVikarie.id)
+          : await passApi.bokaPass(passrad.id, minVikarie.id);
 
         if (error) {
           senasteFel = error;
-          continue;
+          break;
         }
 
-        if (data) {
-          await historikApi.skapa(p.id, 'vikarie_bokat', {
-            vikarie_id: minVikarie.id,
-            svar: grupp.riktad ? 'ja' : 'bokad',
-          });
-          if (grupp.riktad) await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'ja');
-          lyckades++;
+        if (!data) {
+          senasteFel = 'Passet kunde inte bokas.';
+          break;
         }
+
+        await historikApi.skapa(passrad.id, 'vikarie_bokat', {
+          vikarie_id: minVikarie.id,
+          svar: grupp.riktad ? 'ja' : 'bokad',
+        });
+
+        if (grupp.riktad) {
+          await notisApi.skapaAdminSvar(passrad.id, minVikarie.id, 'ja');
+        }
+
+        lyckades++;
       }
 
       if (lyckades === 0) {
         setFel(bokningsFelText(senasteFel));
+        return;
+      }
+
+      if (lyckades < grupp.pass.length) {
+        setFel('En del av passet kunde inte bokas. Kontrollera Mina pass eller kontakta administratör.');
+        await ladda();
         return;
       }
 
