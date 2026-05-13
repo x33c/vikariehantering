@@ -214,6 +214,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       {
         status: 'avbokat',
         publicerad: false,
+        vikarie_id: null,
         riktad_till_vikarie_id: null,
       } as Partial<Bemanning>,
       { åtgärd: 'avbokade_pass' }
@@ -751,7 +752,7 @@ export default function Bemanning() {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
               const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
-              const vikarie = grupp.pass.find(p => p.vikarie_id);
+              const vikarie = grupp.pass.find(p => p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
               const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
@@ -814,7 +815,9 @@ export default function Bemanning() {
                       )}
 
                       <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                        {vikariNamn ? (
+                        {dominerandStatus === 'avbokat' ? (
+                          <span className="font-medium text-red-500">Avbokat</span>
+                        ) : vikariNamn ? (
                           <span className="font-medium text-green-600">✓ {vikariNamn}</span>
                         ) : (
                           <span style={{ color: 'var(--text-subtle)' }}>Ingen vikarie tillsatt</span>
