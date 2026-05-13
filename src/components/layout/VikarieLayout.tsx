@@ -132,9 +132,29 @@ export default function VikarieLayout() {
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <Outlet />
         </main>
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-20 grid grid-cols-4 border-t px-2 py-2 lg:hidden"
+          style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
+        >
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className="flex min-h-12 items-center justify-center rounded-xl px-2 text-center text-xs font-semibold"
+              style={({ isActive }) => ({
+                background: isActive ? 'var(--nav-active)' : 'transparent',
+                color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                boxShadow: isActive ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
+              })}
+            >
+              {item.label === 'Tillgänglighet' ? 'Tid' : item.label === 'Mina pass' ? 'Mina' : item.label}
+            </NavLink>
+          ))}
+        </nav>
       </div>
     </div>
   );

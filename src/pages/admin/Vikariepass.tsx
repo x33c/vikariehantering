@@ -450,20 +450,6 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [öppen, laddar, form]);
 
-  useEffect(() => {
-    if (!öppen || laddar) return;
-
-    function ctrlEnterSkapaPass(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        spara();
-      }
-    }
-
-    window.addEventListener('keydown', ctrlEnterSkapaPass);
-    return () => window.removeEventListener('keydown', ctrlEnterSkapaPass);
-  }, [öppen, laddar, form]);
-
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
       <div className="space-y-4">

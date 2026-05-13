@@ -198,7 +198,6 @@ export default function LedigaPass() {
       }
 
       await ladda();
-      setValdGrupp(null);
       setBekräftelse(`Du tackade ja: ${grupp.personalNamn} ${grupp.datum}`);
       setTimeout(() => setBekräftelse(''), 5000);
     } catch (error) {
