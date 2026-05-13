@@ -53,6 +53,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
+  const [bokadeVikarier, setBokadeVikarier] = useState<Set<string>>(new Set());
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
 
@@ -74,6 +75,15 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     }
     laddaPassdata();
   }, [pass.id]);
+  useEffect(() => {
+    async function laddaBokade() {
+      const res = await passApi.lista({ datumFrån: pass.datum, datumTill: pass.datum, status: ["bokat", "bekräftat"] });
+      const bokade = new Set<string>();
+      ((res.data ?? []) as Bemanning[]).forEach(p => { if (p.vikarie_id && p.id !== pass.id) bokade.add(p.vikarie_id); });
+      setBokadeVikarier(bokade);
+    }
+    laddaBokade();
+  }, [pass.datum, pass.id]);
 
   async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
     setSparar(true);
@@ -276,7 +286,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           >
             <option value="">Välj vikarie</option>
-            {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+            {vikarier.map(v => <option key={v.id} value={v.id}>{bokadeVikarier.has(v.id) ? `⚠ ${v.namn} (bokad denna dag)` : v.namn}</option>)}
           </select>
 
           <div className="grid gap-2 sm:grid-cols-2">
