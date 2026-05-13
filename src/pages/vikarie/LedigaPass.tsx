@@ -168,7 +168,7 @@ export default function LedigaPass() {
     setSparar(false);
 
     if (lyckades === 0) {
-      setFel('Passen kunde inte bokas. De kan redan ha ändrats.');
+      setFel(bokningsFelText(res.error));
       return;
     }
 
