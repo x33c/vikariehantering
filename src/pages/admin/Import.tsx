@@ -13,8 +13,6 @@ function matchaPersonal(signatur: string, personal: Personal[]): {
   if (!signatur) return { match: null, status: 'omatchad' };
   const exakt = personal.find(p => p.signatur?.toLowerCase() === signatur.toLowerCase());
   if (exakt) return { match: exakt, status: 'matchad' };
-  const s24 = personal.find(p => p.skola24_id === signatur);
-  if (s24) return { match: s24, status: 'matchad' };
   const partiell = personal.filter(p => p.namn.toLowerCase().includes(signatur.toLowerCase()));
   if (partiell.length === 1) return { match: partiell[0], status: 'osäker' };
   return { match: null, status: 'omatchad' };

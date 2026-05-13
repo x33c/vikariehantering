@@ -19,7 +19,7 @@ function PersonalModal({
     epost: personal?.epost ?? '',
     telefon: personal?.telefon ?? '',
     signatur: personal?.signatur ?? '',
-    skola24_id: personal?.skola24_id ?? '',
+    skola24_id: personal?.signatur ?? '',
     titel: personal?.titel ?? '',
     arbetslag_id: personal?.arbetslag_id ?? null,
     aktiv: personal?.aktiv ?? true,
@@ -34,7 +34,7 @@ function PersonalModal({
       epost: personal?.epost ?? '',
       telefon: personal?.telefon ?? '',
       signatur: personal?.signatur ?? '',
-      skola24_id: personal?.skola24_id ?? '',
+      skola24_id: personal?.signatur ?? '',
       titel: personal?.titel ?? '',
       arbetslag_id: personal?.arbetslag_id ?? null,
       aktiv: personal?.aktiv ?? true,
@@ -77,7 +77,6 @@ function PersonalModal({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Signatur" value={form.signatur ?? ''} onChange={(e) => setForm({ ...form, signatur: e.target.value })} />
-          <Input label="Skola24-ID" value={form.skola24_id ?? ''} onChange={(e) => setForm({ ...form, skola24_id: e.target.value })} />
         </div>
         <Input label="Titel/roll" value={form.titel ?? ''} onChange={(e) => setForm({ ...form, titel: e.target.value })} />
         <Select
