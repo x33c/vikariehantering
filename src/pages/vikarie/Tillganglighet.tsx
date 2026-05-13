@@ -8,6 +8,7 @@ type Typ = 'specifikt' | 'återkommande';
 
 const tomForm = {
   datum: '',
+  datum_till: '',
   veckodag: '1',
   tid_från: '',
   tid_till: '',
@@ -15,10 +16,45 @@ const tomForm = {
   anteckning: '',
 };
 
+function veckaFörDatum(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNr + 3);
+
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstDayNr = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNr + 3);
+
+  return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+}
+
+function datumIntervall(start: string, slut: string) {
+  const rader: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    rader.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 1);
+  }
+
+  return rader;
+}
+
+function formatDatum(datum: string) {
+  return new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
 function formatRad(t: VikarieTillgänglighet) {
-  const dag = t.datum ?? (t.veckodag !== null ? VECKODAG_LABELS[t.veckodag] : '–');
+  const dag = t.datum ? formatDatum(t.datum) : (t.veckodag !== null ? VECKODAG_LABELS[t.veckodag] : '–');
+  const vecka = t.datum ? `Vecka ${veckaFörDatum(t.datum)}` : null;
   const tid = t.tid_från && t.tid_till ? `${t.tid_från.slice(0, 5)}–${t.tid_till.slice(0, 5)}` : 'Heldag';
-  return { dag, tid };
+  return { dag, tid, vecka };
 }
 
 export default function Tillganglighet() {
@@ -62,33 +98,53 @@ export default function Tillganglighet() {
   async function spara() {
     if (!vikarie) return;
     if (typ === 'specifikt' && !form.datum) {
-      setFel('Välj datum.');
+      setFel('Välj från-datum.');
+      return;
+    }
+
+    if (typ === 'specifikt' && form.datum_till && form.datum_till < form.datum) {
+      setFel('T.o.m. datum måste vara samma dag eller senare.');
       return;
     }
 
     setSparar(true);
     setFel('');
 
-    const data: Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'> = {
+    const basdata = {
       vikarie_id: vikarie.id,
-      datum: typ === 'specifikt' ? form.datum : null,
-      veckodag: typ === 'återkommande' ? parseInt(form.veckodag) : null,
       tillgänglig: form.tillgänglig,
       tid_från: form.tid_från || null,
       tid_till: form.tid_till || null,
-      återkommande: typ === 'återkommande',
       anteckning: form.anteckning || null,
     };
 
-    const res = await vikariApi.sättTillgänglighet(data);
-    setSparar(false);
+    const rader = typ === 'specifikt'
+      ? datumIntervall(form.datum, form.datum_till || form.datum).map(datum => ({
+          ...basdata,
+          datum,
+          veckodag: null,
+          återkommande: false,
+        }))
+      : [{
+          ...basdata,
+          datum: null,
+          veckodag: parseInt(form.veckodag),
+          återkommande: true,
+        }];
 
-    if (res.error) {
-      setFel(res.error.message);
-      return;
+    const skapade: VikarieTillgänglighet[] = [];
+    for (const data of rader) {
+      const res = await vikariApi.sättTillgänglighet(data as Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'>);
+      if (res.error) {
+        setSparar(false);
+        setFel(res.error.message);
+        return;
+      }
+      skapade.push(res.data as VikarieTillgänglighet);
     }
 
-    setTillg(prev => [res.data as VikarieTillgänglighet, ...prev]);
+    setSparar(false);
+    setTillg(prev => [...skapade, ...prev]);
     setModalÖppen(false);
     setForm(tomForm);
   }
@@ -151,13 +207,14 @@ export default function Tillganglighet() {
               {specifika.length === 0 ? (
                 <p className="rounded-xl border border-dashed p-4 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>Inga datum ännu.</p>
               ) : specifika.map(t => {
-                const { dag, tid } = formatRad(t);
+                const { dag, tid, vecka } = formatRad(t);
                 return (
                   <article key={t.id} className="rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dag}</p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tid}</p>
+                        {vecka && <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>{vecka}</p>}
                       </div>
                       <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{
                         background: t.tillgänglig ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
@@ -237,12 +294,35 @@ export default function Tillganglighet() {
 
             <div className="space-y-3">
               {typ === 'specifikt' ? (
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Datum</span>
-                  <input type="date" value={form.datum} onChange={e => setForm({ ...form, datum: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
-                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från datum</span>
+                    <input
+                      type="date"
+                      value={form.datum}
+                      onChange={e => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>T.o.m. datum</span>
+                    <input
+                      type="date"
+                      value={form.datum_till}
+                      onChange={e => setForm({ ...form, datum_till: e.target.value })}
+                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                    />
+                  </label>
+                  {form.datum && (
+                    <p className="col-span-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {form.datum_till && form.datum_till !== form.datum
+                        ? `Vecka ${veckaFörDatum(form.datum)}–${veckaFörDatum(form.datum_till)}`
+                        : `Vecka ${veckaFörDatum(form.datum)}`}
+                    </p>
+                  )}
+                </div>
               ) : (
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Veckodag</span>
