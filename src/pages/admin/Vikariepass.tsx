@@ -66,7 +66,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
-  const [bokadeVikarier, setBokadeVikarier] = useState<Set<string>>(new Set());
+  const [bokadeVikarier, setBokadeVikarier] = useState<Record<string, Bemanning>>({});
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
@@ -92,12 +92,20 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   useEffect(() => {
     async function laddaBokade() {
       const res = await passApi.lista({ datumFrån: pass.datum, datumTill: pass.datum, status: ["bokat", "bekräftat"] });
-      const bokade = new Set<string>();
-      ((res.data ?? []) as Bemanning[]).forEach(p => { if (p.vikarie_id && p.id !== pass.id) bokade.add(p.vikarie_id); });
+      const bokade: Record<string, Bemanning> = {};
+
+      ((res.data ?? []) as Bemanning[]).forEach(p => {
+        if (!p.vikarie_id || p.id === pass.id) return;
+
+        const överlappar = pass.tid_från < p.tid_till && pass.tid_till > p.tid_från;
+        if (överlappar) bokade[p.vikarie_id] = p;
+      });
+
       setBokadeVikarier(bokade);
     }
+
     laddaBokade();
-  }, [pass.datum, pass.id]);
+  }, [pass.datum, pass.id, pass.tid_från, pass.tid_till]);
 
   async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
     setSparar(true);
@@ -251,9 +259,9 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
   function vikarieValLabel(v: Vikarie) {
     const tillg = tillgMap[v.id];
-    const bokad = bokadeVikarier.has(v.id);
+    const bokad = bokadeVikarier[v.id];
 
-    if (bokad) return `⚠ ${v.namn} (bokad denna dag)`;
+    if (bokad) return `⚠ ${v.namn} (bokad ${bokad.tid_från.slice(0, 5)}-${bokad.tid_till.slice(0, 5)})`;
     if (!tillg) return `${v.namn} (okänd tillgänglighet)`;
 
     const tid = tillg.tid_från && tillg.tid_till
