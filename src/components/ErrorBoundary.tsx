@@ -1,43 +1,53 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
-type Props = {
-  children: ReactNode;
-};
+type Props = { children: ReactNode };
+type State = { error: Error | null };
 
-type State = {
-  error: Error | null;
-  info: ErrorInfo | null;
-};
+const isProd = import.meta.env.PROD;
 
 export default class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, info: null };
+  state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
-    return { error, info: null };
+    return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    this.setState({ error, info });
     console.error(error, info);
   }
 
   render() {
     if (this.state.error) {
       return (
-        <div style={{ minHeight: '100vh', padding: 24, background: '#111', color: '#fff', fontFamily: 'sans-serif' }}>
-          <h1 style={{ fontSize: 22, marginBottom: 12 }}>Sidan kraschade</h1>
-          <pre style={{ whiteSpace: 'pre-wrap', color: '#fecaca' }}>
-            {this.state.error.message}
-          </pre>
-          {this.state.info?.componentStack && (
-            <pre style={{ marginTop: 16, whiteSpace: 'pre-wrap', color: '#d1d5db', fontSize: 12 }}>
-              {this.state.info.componentStack}
+        <div style={{
+          minHeight: '100vh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: 24, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'sans-serif'
+        }}>
+          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+            Något gick fel.
+          </p>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>
+            Ladda om sidan eller kontakta support om felet kvarstår.
+          </p>
+          {!isProd && (
+            <pre style={{ whiteSpace: 'pre-wrap', color: '#fca5a5', fontSize: 12, maxWidth: 600 }}>
+              {this.state.error.message}
             </pre>
           )}
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: 24, padding: '8px 20px', borderRadius: 8,
+              background: 'var(--blue)', color: '#fff', fontSize: 14,
+              border: 'none', cursor: 'pointer'
+            }}
+          >
+            Ladda om
+          </button>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
