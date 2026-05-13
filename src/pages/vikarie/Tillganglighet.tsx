@@ -126,20 +126,13 @@ export default function Tillganglighet() {
         </div>
       )}
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
+      <div className="mb-5">
         <button
           onClick={() => öppnaModal('specifikt')}
-          className="rounded-xl px-4 py-3 text-sm font-semibold text-white"
+          className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white sm:w-auto"
           style={{ background: 'var(--blue)' }}
         >
-          Lägg till datum
-        </button>
-        <button
-          onClick={() => öppnaModal('återkommande')}
-          className="rounded-xl border px-4 py-3 text-sm font-semibold"
-          style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg-card)' }}
-        >
-          Veckodag
+          Lägg till tillgänglighet
         </button>
       </div>
 
@@ -220,7 +213,7 @@ export default function Tillganglighet() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
           <div className="relative w-full rounded-t-2xl border p-5 shadow-xl sm:max-w-sm sm:rounded-2xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Lägg till tid</h2>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Lägg till tillgänglighet</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
 
