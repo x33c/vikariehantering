@@ -6,13 +6,10 @@ const navItems = [
   { to: '/admin', label: 'Start', end: true },
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
-  { to: '/admin/notiser', label: 'Notiser' },
-  { to: '/admin/utskick', label: 'Utskick' },
   { to: '/admin/arbetslag', label: 'Personal' },
   { to: '/admin/vikarier', label: 'Vikarier' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
-  { to: '/admin/konton', label: 'Admin-konton' },
 ];
 
 function useDarkMode() {
