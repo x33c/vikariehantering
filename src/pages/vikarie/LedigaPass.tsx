@@ -146,7 +146,9 @@ export default function LedigaPass() {
 
   async function tackaJa(grupp: Passgrupp) {
     if (!minVikarie) {
-      setFel('Din vikarieprofil är inte kopplad till kontot.');
+      const text = 'Din vikarieprofil är inte kopplad till kontot.';
+      setFel(text);
+      window.alert(text);
       return;
     }
 
@@ -160,16 +162,16 @@ export default function LedigaPass() {
 
     try {
       for (const passrad of grupp.pass) {
-        const { data, error } = grupp.riktad
+        const svar = grupp.riktad
           ? await passApi.tackaJa(passrad.id, minVikarie.id)
           : await passApi.bokaPass(passrad.id, minVikarie.id);
 
-        if (error) {
-          senasteFel = error;
+        if (svar.error) {
+          senasteFel = svar.error;
           break;
         }
 
-        if (!data) {
+        if (!svar.data) {
           senasteFel = 'Passet kunde inte bokas.';
           break;
         }
@@ -187,12 +189,16 @@ export default function LedigaPass() {
       }
 
       if (lyckades === 0) {
-        setFel(bokningsFelText(senasteFel));
+        const text = bokningsFelText(senasteFel);
+        setFel(text);
+        window.alert(text);
         return;
       }
 
       if (lyckades < grupp.pass.length) {
-        setFel('En del av passet kunde inte bokas. Kontrollera Mina pass eller kontakta administratör.');
+        const text = 'En del av passet kunde inte bokas. Du kan vara dubbelbokad. Kontrollera Mina pass eller kontakta administratör.';
+        setFel(text);
+        window.alert(text);
         await ladda();
         return;
       }
@@ -202,7 +208,9 @@ export default function LedigaPass() {
       setBekräftelse(`Du tackade ja: ${grupp.personalNamn} ${grupp.datum}`);
       setTimeout(() => setBekräftelse(''), 5000);
     } catch (error) {
-      setFel(bokningsFelText(error));
+      const text = bokningsFelText(error);
+      setFel(text);
+      window.alert(text);
     } finally {
       setSparar(false);
     }
