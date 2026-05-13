@@ -148,7 +148,6 @@ export default function LedigaPass() {
     if (!minVikarie) {
       const text = 'Din vikarieprofil är inte kopplad till kontot.';
       setFel(text);
-      window.alert(text);
       return;
     }
 
@@ -189,14 +188,12 @@ export default function LedigaPass() {
       if (lyckades === 0) {
         const text = bokningsFelText(senasteFel);
         setFel(text);
-        window.alert(text);
         return;
       }
 
       if (lyckades < grupp.pass.length) {
         const text = 'En del av passet kunde inte bokas. Du kan vara dubbelbokad. Kontrollera Mina pass eller kontakta administratör.';
         setFel(text);
-        window.alert(text);
         await ladda();
         return;
       }
@@ -208,7 +205,6 @@ export default function LedigaPass() {
     } catch (error) {
       const text = bokningsFelText(error);
       setFel(text);
-      window.alert(text);
     } finally {
       setSparar(false);
     }
@@ -353,12 +349,12 @@ export default function LedigaPass() {
               )}
               <button
                 type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
+                onClick={() => {
                   setFel('Försöker boka passet...');
                   tackaJa(valdGrupp);
                 }}
-                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white sm:w-auto"
+                disabled={sparar}
+                className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
                 style={{ background: 'var(--blue)' }}
               >
                 {sparar ? 'Sparar...' : valdGrupp.riktad ? 'Tacka ja' : 'Bekräfta bokning'}
