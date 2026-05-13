@@ -50,7 +50,7 @@ serve(async (req) => {
         email: epost,
         password: tillfalligtLosenord,
         email_confirm: true,
-        user_metadata: { namn },
+        user_metadata: { namn, must_change_password: true },
       });
 
       if (created.error) {
@@ -67,7 +67,7 @@ serve(async (req) => {
           email: epost,
           password: tillfalligtLosenord,
           email_confirm: true,
-          user_metadata: { namn },
+          user_metadata: { namn, must_change_password: true },
         });
 
         if (updated.error) {

@@ -28,6 +28,7 @@ export interface Profil {
   epost: string | null;
   telefon: string | null;
   aktiv: boolean;
+  maste_byta_losenord?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +39,7 @@ export interface Arbetslag {
   beskrivning: string | null;
   färg: string;
   aktiv: boolean;
+  maste_byta_losenord?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +54,7 @@ export interface Personal {
   skola24_id: string | null;
   titel: string | null;
   aktiv: boolean;
+  maste_byta_losenord?: boolean;
   created_at: string;
   updated_at: string;
   // joined
@@ -68,6 +71,7 @@ export interface Vikarie {
   stadier: string[] | null;
   anteckning: string | null;
   aktiv: boolean;
+  maste_byta_losenord?: boolean;
   created_at: string;
   updated_at: string;
 }

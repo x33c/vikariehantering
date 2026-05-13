@@ -6,6 +6,8 @@ import type { Profil, AuthState } from '../types';
 interface AuthContext extends AuthState {
   loggaIn: (epost: string, lösenord: string) => Promise<{ error: Error | null }>;
   loggaUt: () => Promise<void>;
+  måsteBytaLösenord: boolean;
+  bytaLösenord: (nyttLösenord: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthCtx = createContext<AuthContext | null>(null);
@@ -51,8 +53,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function bytaLösenord(nyttLösenord: string) {
+    const { error } = await supabase.auth.updateUser({
+      password: nyttLösenord,
+      data: { must_change_password: false },
+    });
+    if (!error && state.användare) {
+      setState(prev => ({
+        ...prev,
+        användare: prev.användare
+          ? { ...prev.användare, user_metadata: { ...prev.användare.user_metadata, must_change_password: false } }
+          : null,
+      }));
+    }
+    return { error: error as Error | null };
+  }
+
+  const måsteBytaLösenord =
+    state.användare?.user_metadata?.must_change_password === true &&
+    state.profil?.roll === 'vikarie';
+
   return (
-    <AuthCtx.Provider value={{ ...state, loggaIn, loggaUt }}>
+    <AuthCtx.Provider value={{ ...state, loggaIn, loggaUt, måsteBytaLösenord, bytaLösenord }}>
       {children}
     </AuthCtx.Provider>
   );
