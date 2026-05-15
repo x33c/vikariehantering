@@ -591,11 +591,6 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
 
-        {harAvbokningsförfrågan && (
-          <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#f97316', background: 'rgba(249, 115, 22, 0.12)', color: '#fb923c' }}>
-            Vikarien har skickat en avbokningsförfrågan. Läs meddelandet nedan innan du ändrar passet.
-          </div>
-        )}
         <Select
           label="Personal *"
           value={form.personal_id}
