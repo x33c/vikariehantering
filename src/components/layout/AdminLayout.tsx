@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import PushButton from '../PushButton';
 
 const navItems = [
   { to: '/admin', label: 'Start', end: true },
@@ -33,7 +34,7 @@ export default function AdminLayout() {
   const { mörkt, toggla } = useDarkMode();
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--bg)' }}>
+    <div className="flex h-[100dvh] overflow-hidden" style={{ background: 'var(--bg)' }}>
       {menyÖppen && (
         <div className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden" onClick={() => setMenyÖppen(false)} />
       )}
@@ -93,6 +94,10 @@ export default function AdminLayout() {
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
 
+          <div className="mb-3">
+            <PushButton />
+          </div>
+
           <div className="mb-3 flex items-center justify-between px-1">
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
@@ -126,13 +131,15 @@ export default function AdminLayout() {
             </svg>
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <button
-            onClick={toggla}
-            className="ml-auto rounded-xl border p-2"
-            style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
-            aria-label="Växla tema"
-            title="Växla tema"
-          >
+          <div className="ml-auto flex items-center gap-2">
+            <PushButton compact />
+            <button
+              onClick={toggla}
+              className="rounded-xl border p-2"
+              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+              aria-label="Växla tema"
+              title="Växla tema"
+            >
             {mörkt ? (
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" />
@@ -142,7 +149,8 @@ export default function AdminLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
               </svg>
             )}
-          </button>
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">

@@ -9,6 +9,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
 const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY');
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY');
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'mailto:admin@example.com';
+const SKICKA_EPOST = Deno.env.get('SKICKA_EPOST') === 'true';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,7 +62,58 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { pass_id, vikarie_ids } = await req.json();
+  const body = await req.json();
+  const { pass_id, vikarie_ids, typ } = body;
+
+
+  if (typ === 'admin_avbokning') {
+    if (!pass_id) {
+      return new Response(JSON.stringify({ error: 'pass_id krävs.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: pass, error: passError } = await supabase
+      .from('vikariepass')
+      .select('*, personal(namn)')
+      .eq('id', pass_id)
+      .single();
+
+    if (passError || !pass) {
+      return new Response(JSON.stringify({ error: 'Passet hittades inte.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: admins } = await supabase
+      .from('profiler')
+      .select('id, namn, epost')
+      .eq('roll', 'admin')
+      .eq('aktiv', true);
+
+    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+    const title = 'Avbokningsförfrågan';
+    const bodyText = `En vikarie vill avboka pass ${pass.datum} ${tid}.`;
+
+    for (const admin of admins ?? []) {
+      await supabase.from('notiser').insert({
+        pass_id,
+        vikarie_id: pass.vikarie_id ?? null,
+        kanal: 'push',
+        status: 'skickat',
+        mottagare: 'admin',
+        ämne: title,
+        innehåll: bodyText,
+        skickat_kl: new Date().toISOString(),
+      });
+
+      await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
+    }
+
+    return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   if (!pass_id || !Array.isArray(vikarie_ids) || vikarie_ids.length === 0) {
     return new Response(JSON.stringify({ error: 'pass_id och vikarie_ids krävs.' }), {
@@ -119,7 +171,7 @@ serve(async (req) => {
     let skickadStatus: 'skickat' | 'misslyckat' = 'skickat';
     let felmeddelande: string | null = null;
 
-    if (vikarie.epost && RESEND_API_KEY) {
+    if (SKICKA_EPOST && vikarie.epost && RESEND_API_KEY) {
       try {
         const resp = await fetch('https://api.resend.com/emails', {
           method: 'POST',

@@ -319,6 +319,11 @@ export const notisApi = {
       skickat_kl: new Date().toISOString(),
     });
   },
+  async skickaAdminAvbokning(passId: string) {
+    return supabase.functions.invoke('skicka-epost', {
+      body: { typ: 'admin_avbokning', pass_id: passId },
+    });
+  },
 };
 
 export const importApi = {

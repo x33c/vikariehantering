@@ -170,7 +170,7 @@ export default function MinaPass() {
     setSparar(false);
 
     if (!res.error) {
-      await notisApi.skapaAdminAvbokning(valtPass.id);
+      await notisApi.skickaAdminAvbokning(valtPass.id);
       setModalInfo('Admin har fått din avbokningsförfrågan.');
       await uppdateraMeddelanden(valtPass.id);
     }
