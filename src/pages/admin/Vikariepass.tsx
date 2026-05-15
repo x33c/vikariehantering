@@ -834,7 +834,7 @@ export default function Bemanning() {
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
-  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade'>('alla');
+  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade'>('atgard');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [valda, setValda] = useState<Set<string>>(new Set());
@@ -889,22 +889,39 @@ export default function Bemanning() {
   if (laddar) return <LaddaSida />;
 
   const grupper = grupperaPasser(pass);
-  const filtreradeGrupper = grupper.filter(grupp => {
-    if (snabbFilter === 'alla') return true;
+  type SnabbFilter = typeof snabbFilter;
 
+  function gruppInfo(grupp: Passgrupp) {
     const harBokad = grupp.pass.some(p => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
     const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
     const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
     const publicerad = grupp.pass.some(p => p.publicerad);
     const avbokad = grupp.pass.every(p => p.status === 'avbokat');
+    const ejPublicerad = !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
+    const atgard = harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad;
 
-    if (snabbFilter === 'atgard') return harAvbokningsförfrågan || harRiktadFörfrågan || (!harBokad && !publicerad && !avbokad);
-    if (snabbFilter === 'lediga') return publicerad && !harBokad && !avbokad;
-    if (snabbFilter === 'bokade') return harBokad;
-    if (snabbFilter === 'ej_publicerade') return !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
+    return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, ejPublicerad, atgard };
+  }
 
+  function matcharSnabbFilter(grupp: Passgrupp, filter: SnabbFilter) {
+    const info = gruppInfo(grupp);
+    if (filter === 'alla') return true;
+    if (filter === 'atgard') return info.atgard;
+    if (filter === 'lediga') return info.publicerad && !info.harBokad && !info.avbokad;
+    if (filter === 'bokade') return info.harBokad;
+    if (filter === 'ej_publicerade') return info.ejPublicerad;
     return true;
-  });
+  }
+
+  const filterCounts: Record<SnabbFilter, number> = {
+    alla: grupper.length,
+    atgard: grupper.filter(g => matcharSnabbFilter(g, 'atgard')).length,
+    lediga: grupper.filter(g => matcharSnabbFilter(g, 'lediga')).length,
+    bokade: grupper.filter(g => matcharSnabbFilter(g, 'bokade')).length,
+    ej_publicerade: grupper.filter(g => matcharSnabbFilter(g, 'ej_publicerade')).length,
+  };
+
+  const filtreradeGrupper = grupper.filter(grupp => matcharSnabbFilter(grupp, snabbFilter));
   const allaSynligaIds = filtreradeGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
@@ -937,8 +954,13 @@ export default function Bemanning() {
   return (
     <div className="flex h-full">
       <div className={`flex flex-col flex-1 p-3 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
+            <p className="mt-1 text-sm" style={{ color: filterCounts.atgard > 0 ? '#f97316' : 'var(--text-muted)' }}>
+              {filterCounts.atgard > 0 ? `${filterCounts.atgard} pass behöver åtgärd` : 'Inga akuta pass just nu'}
+            </p>
+          </div>
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             {grupper.length > 0 && (
               <Button variant="secondary" size="sm" onClick={växlaAllaSynliga}>
@@ -954,22 +976,32 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="mb-3 grid gap-2 sm:flex sm:flex-wrap">
-          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
-            <option value="">Alla statusar</option>
-            {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
-          </Select>
-          <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
-          <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
-        </div>
+        <details className="mb-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+            Filter och datum
+            {(statusFilter || datumFrån || datumTill) && (
+              <span className="ml-2 rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--hover)', color: 'var(--blue)' }}>
+                aktiva
+              </span>
+            )}
+          </summary>
+          <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
+            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
+              <option value="">Alla statusar</option>
+              {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
+            </Select>
+            <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
+            <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
+          </div>
+        </details>
 
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {[
-            { id: 'alla', label: 'Alla' },
-            { id: 'atgard', label: 'Åtgärd krävs' },
-            { id: 'lediga', label: 'Lediga' },
-            { id: 'bokade', label: 'Bokade' },
-            { id: 'ej_publicerade', label: 'Ej publicerade' },
+            { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
+            { id: 'alla', label: 'Alla', count: filterCounts.alla },
+            { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
+            { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
+            { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
           ].map(f => {
             const aktiv = snabbFilter === f.id;
             return (
@@ -977,14 +1009,17 @@ export default function Bemanning() {
                 key={f.id}
                 type="button"
                 onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
-                className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
                 style={{
                   background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
                   borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
                   color: aktiv ? '#fff' : 'var(--text-muted)',
                 }}
               >
-                {f.label}
+                <span>{f.label}</span>
+                <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: aktiv ? 'rgba(255,255,255,0.22)' : 'var(--hover)' }}>
+                  {f.count}
+                </span>
               </button>
             );
           })}
@@ -1006,6 +1041,7 @@ export default function Bemanning() {
               const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
               const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const ärAvbokat = dominerandStatus === 'avbokat';
+              const kräverÅtgärd = harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat);
               const statusPiller = [
                 ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
                 !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
@@ -1020,7 +1056,7 @@ export default function Bemanning() {
                   className="rounded-xl border p-3 shadow-sm sm:p-4"
                   style={{
                     background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
-                    borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
+                    borderColor: alleMarkerade ? 'var(--blue)' : kräverÅtgärd ? '#f97316' : 'var(--border)',
                   }}>
                   <div className="flex items-start gap-2 sm:gap-3">
                     <button
@@ -1054,10 +1090,10 @@ export default function Bemanning() {
                             {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
                           </p>
                           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                            {tidFrån}–{tidTill} · {grupp.pass.length} pass
+                            {tidFrån}–{tidTill}
                           </p>
                         </div>
-                        <StatusBadge status={dominerandStatus as PassStatus} />
+                        <span />
                       </div>
 
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
