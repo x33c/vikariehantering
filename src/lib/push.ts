@@ -13,9 +13,17 @@ export function pushStods() {
   return Boolean('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && publicKey);
 }
 
+export function pushSaknasText() {
+  if (!publicKey) return 'Push är inte konfigurerat.';
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return 'Push stöds inte i denna webbläsare. På iPhone behöver sidan installeras på hemskärmen först.';
+  }
+  return 'Push stöds inte här.';
+}
+
 export async function aktiveraPush() {
   if (!pushStods() || !publicKey) {
-    throw new Error('Push-notiser är inte konfigurerade för den här miljön.');
+    throw new Error(pushSaknasText());
   }
 
   const permission = await Notification.requestPermission();
@@ -53,6 +61,20 @@ export async function aktiveraPush() {
   }, { onConflict: 'endpoint' });
 
   if (error) throw error;
+}
+
+export async function avaktiveraPush() {
+  const registration = await navigator.serviceWorker.getRegistration('/push-sw.js');
+  const subscription = await registration?.pushManager.getSubscription();
+
+  if (subscription) {
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+    await supabase
+      .from('push_prenumerationer')
+      .update({ aktiv: false, updated_at: new Date().toISOString() })
+      .eq('endpoint', endpoint);
+  }
 }
 
 export async function pushStatus() {

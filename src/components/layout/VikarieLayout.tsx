@@ -129,6 +129,17 @@ export default function VikarieLayout() {
           <div className="ml-auto flex items-center gap-2">
             <PushButton compact />
             <button
+              onClick={loggaUt}
+              className="rounded-xl border p-2"
+              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
+              aria-label="Logga ut"
+              title="Logga ut"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 9V5.75A1.75 1.75 0 0 0 14 4h-7A1.75 1.75 0 0 0 5.25 5.75v12.5C5.25 19.22 6.03 20 7 20h7a1.75 1.75 0 0 0 1.75-1.75V15M12 8l-4 4m0 0 4 4m-4-4h12" />
+              </svg>
+            </button>
+            <button
               onClick={toggla}
               className="rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
