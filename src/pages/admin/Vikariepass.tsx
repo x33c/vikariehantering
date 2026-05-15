@@ -23,6 +23,11 @@ function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: 
   return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
 }
 
+function ärAvbokningsförfrågan(meddelande?: string | null) {
+  const text = (meddelande ?? '').toLowerCase();
+  return text.includes('avboka') || text.includes('avbokning');
+}
+
 
 interface Passgrupp {
   personal_id: string;
@@ -306,6 +311,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return (prioritet[a.status] ?? 9) - (prioritet[b.status] ?? 9) || a.vikarie.namn.localeCompare(b.vikarie.namn);
     });
   const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 5);
+  const harAvbokningsförfrågan = meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
@@ -321,6 +327,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
+
+        {harAvbokningsförfrågan && (
+          <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#f97316', background: 'rgba(249, 115, 22, 0.12)', color: '#fb923c' }}>
+            Vikarien har skickat en avbokningsförfrågan. Läs meddelandet nedan innan du ändrar passet.
+          </div>
+        )}
 
         <section className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -578,6 +590,12 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
+
+        {harAvbokningsförfrågan && (
+          <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#f97316', background: 'rgba(249, 115, 22, 0.12)', color: '#fb923c' }}>
+            Vikarien har skickat en avbokningsförfrågan. Läs meddelandet nedan innan du ändrar passet.
+          </div>
+        )}
         <Select
           label="Personal *"
           value={form.personal_id}
@@ -650,6 +668,7 @@ export default function Bemanning() {
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [valda, setValda] = useState<Set<string>>(new Set());
+  const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
   const [raderaValda, setRaderaValda] = useState(false);
   const [raderar, setRaderar] = useState(false);
   const [senastMarkeradIndex, setSenastMarkeradIndex] = useState<number | null>(null);
@@ -664,9 +683,21 @@ export default function Bemanning() {
       vikariApi.lista(),
       personalApi.lista(),
     ]);
-    setPass((pRes.data ?? []) as Bemanning[]);
+    const passLista = (pRes.data ?? []) as Bemanning[];
+    setPass(passLista);
     setVikarier((vRes.data ?? []) as Vikarie[]);
     setPersonal((perRes.data ?? []) as Personal[]);
+
+    const avbokningsIds = new Set<string>();
+    await Promise.all(passLista.map(async (passrad) => {
+      const res = await passmeddelandeApi.lista(passrad.id);
+      const meddelanden = (res.data ?? []) as Passmeddelande[];
+      if (meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
+        avbokningsIds.add(passrad.id);
+      }
+    }));
+    setAvbokningsPassIds(avbokningsIds);
+
     setLaddar(false);
   }, [statusFilter, datumFrån, datumTill]);
 
@@ -757,6 +788,7 @@ export default function Bemanning() {
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
               const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
               const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
+              const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id));
 
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}
@@ -825,6 +857,11 @@ export default function Bemanning() {
                         <span style={{ color: grupp.pass.some(p => p.publicerad) ? 'var(--blue)' : 'var(--text-subtle)' }}>
                           {grupp.pass.some(p => p.publicerad) ? 'Publicerad' : 'Ej publicerad'}
                         </span>
+                        {harAvbokningsförfrågan && (
+                          <span className="font-semibold" style={{ color: '#fb923c' }}>
+                            Avbokningsförfrågan
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
