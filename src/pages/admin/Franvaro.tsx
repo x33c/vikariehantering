@@ -191,6 +191,7 @@ function FrånvaroModal({
   const [datumFrån, setDatumFrån] = useState(datumIdag());
   const [datumTill, setDatumTill] = useState(datumIdag());
   const [helDag, setHelDag] = useState(true);
+  const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
   const [tidFrån, setTidFrån] = useState('08:00');
   const [tidTill, setTidTill] = useState('17:00');
   const [orsak, setOrsak] = useState('');
@@ -210,6 +211,7 @@ function FrånvaroModal({
     setDatumFrån(datumIdag());
     setDatumTill(datumIdag());
     setHelDag(true);
+    setIngenVikarieBehövs(false);
     setSteg('formulär');
     setFel('');
     setSchemarader([]);
@@ -251,6 +253,12 @@ function FrånvaroModal({
 
     if (res.error) { setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message); return; }
     setSkapadFrånvaro(res.data as Frånvaro);
+
+    if (ingenVikarieBehövs) {
+      onRegistrerad();
+      onStäng();
+      return;
+    }
 
     const sRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(personalId, datumFrån, datumTill);
     const rader = sorteraOchRensaSchemarader((sRes.data ?? []) as Schemarad[]);
@@ -371,10 +379,26 @@ function FrånvaroModal({
             <Input label="Första dag *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
             <Input label="Sista dag *" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
-            <input type="checkbox" checked={helDag} onChange={(e) => setHelDag(e.target.checked)} className="h-4 w-4 rounded" />
-            Heldag
-          </label>
+          <div className="grid gap-2 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+              <input type="checkbox" checked={helDag} onChange={(e) => setHelDag(e.target.checked)} className="h-4 w-4 rounded" />
+              Heldag
+            </label>
+            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--text)' }}>
+              <input
+                type="checkbox"
+                checked={ingenVikarieBehövs}
+                onChange={(e) => setIngenVikarieBehövs(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded"
+              />
+              <span>
+                Ingen vikarie behövs
+                <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Frånvaron sparas, men inget vikariepass skapas.
+                </span>
+              </span>
+            </label>
+          </div>
           {!helDag && (
             <div className="grid gap-3 sm:grid-cols-2">
               <Input label="Från" type="time" value={tidFrån} onChange={(e) => setTidFrån(e.target.value)} />
@@ -385,7 +409,9 @@ function FrånvaroModal({
           <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={2} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
-            <Button loading={laddar} onClick={registreraFrånvaro}>Fortsätt</Button>
+            <Button loading={laddar} onClick={registreraFrånvaro}>
+              {ingenVikarieBehövs ? 'Spara frånvaro' : 'Fortsätt'}
+            </Button>
           </div>
         </div>
       ) : (
