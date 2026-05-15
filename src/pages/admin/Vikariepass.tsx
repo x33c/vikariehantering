@@ -11,6 +11,19 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
+function veckovisaDatum(start: string, slut: string) {
+  const datum: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    datum.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 7);
+  }
+
+  return datum;
+}
+
 function veckodagFörDatum(datum: string) {
   return new Date(`${datum}T12:00:00`).getDay();
 }
@@ -559,8 +572,9 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void;
 }) {
   const [form, setForm] = useState({
-    personal_id: '', datum: new Date().toISOString().slice(0, 10),
+    personal_id: '', datum: new Date().toISOString().slice(0, 10), datum_till: '',
     tid_från: '08:00', tid_till: '17:00', grupp: '', anteckning: '', publicerad: false,
+    återkommande: false,
   });
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
@@ -652,16 +666,47 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
           <option value="">– Välj personal –</option>
           {personal.map(p => <option key={p.id} value={p.id}>{p.namn}</option>)}
         </Select>
-        <Input
-          label="Datum *"
-          type="date"
-          value={form.datum}
-          onChange={e => {
-            const datum = e.target.value;
-            setForm({ ...form, datum });
-            hämtaSchemaTid(form.personal_id, datum);
-          }}
-        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Datum *"
+            type="date"
+            value={form.datum}
+            onChange={e => {
+              const datum = e.target.value;
+              setForm({ ...form, datum, datum_till: form.datum_till || datum });
+              hämtaSchemaTid(form.personal_id, datum);
+            }}
+          />
+          {form.återkommande && (
+            <Input
+              label="T.o.m. datum *"
+              type="date"
+              value={form.datum_till}
+              onChange={e => setForm({ ...form, datum_till: e.target.value })}
+            />
+          )}
+        </div>
+        <label className="flex items-start gap-2 rounded-xl border p-3 text-sm" style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <input
+            type="checkbox"
+            checked={form.återkommande}
+            onChange={e => setForm({ ...form, återkommande: e.target.checked, datum_till: form.datum_till || form.datum })}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300"
+          />
+          <span>
+            Återkommande varje vecka
+            <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+              Skapar ett pass per vecka från startdatum till t.o.m.-datum.
+            </span>
+          </span>
+        </label>
+
+        {form.återkommande && form.datum && form.datum_till && form.datum_till >= form.datum && (
+          <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+            {veckovisaDatum(form.datum, form.datum_till).length} pass kommer skapas.
+          </p>
+        )}
+
         {(hämtarSchema || schemaInfo) && (
           <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
             {hämtarSchema ? 'Hämtar tider från schema...' : schemaInfo}
@@ -694,7 +739,9 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
         </label>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
-          <Button loading={laddar} onClick={spara}>Skapa pass</Button>
+          <Button loading={laddar} onClick={spara}>
+            {form.återkommande ? 'Skapa återkommande pass' : 'Skapa pass'}
+          </Button>
         </div>
       </div>
     </Modal>
