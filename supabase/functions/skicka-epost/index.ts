@@ -165,7 +165,7 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const body = await req.json();
-  const { pass_id, vikarie_ids, typ } = body;
+  const { pass_id, vikarie_ids, typ, avsandare_roll, meddelande } = body;
 
 
 
@@ -241,6 +241,101 @@ serve(async (req) => {
     await skickaPush(supabase, userData.user.id, 'Testnotis', 'Push fungerar på denna enhet.', '/');
 
     return new Response(JSON.stringify({ ok: true, subscriptions: subs.length }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+
+  if (typ === 'pass_meddelande') {
+    if (!pass_id || (avsandare_roll !== 'admin' && avsandare_roll !== 'vikarie')) {
+      return new Response(JSON.stringify({ error: 'pass_id och avsandare_roll krävs.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const meddelandeText = typeof meddelande === 'string' && meddelande.trim()
+      ? meddelande.trim()
+      : 'Nytt meddelande i ett pass.';
+    const kortMeddelande = meddelandeText.length > 110 ? `${meddelandeText.slice(0, 107)}...` : meddelandeText;
+
+    const { data: pass, error: passError } = await supabase
+      .from('vikariepass')
+      .select('*, personal(namn)')
+      .eq('id', pass_id)
+      .single();
+
+    if (passError || !pass) {
+      return new Response(JSON.stringify({ error: 'Passet hittades inte.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+
+    if (avsandare_roll === 'admin') {
+      if (!pass.vikarie_id) {
+        return new Response(JSON.stringify({ ok: true, skickat: false, orsak: 'Passet saknar bokad vikarie.' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: vikarie } = await supabase
+        .from('vikarier')
+        .select('id, profil_id, namn, epost')
+        .eq('id', pass.vikarie_id)
+        .maybeSingle();
+
+      if (vikarie) {
+        const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
+        const title = 'Nytt meddelande från admin';
+        const passNamn = kortNamn(pass.personal?.namn) ?? 'Fristående pass';
+        const pushBody = `${passNamn} · ${pass.datum} ${tid} · ${kortMeddelande}`;
+
+        await supabase.from('notiser').insert({
+          pass_id,
+          vikarie_id: vikarie.id,
+          kanal: 'push',
+          status: 'skickat',
+          mottagare: vikarie.epost ?? 'vikarie',
+          ämne: title,
+          innehåll: pushBody,
+          skickat_kl: new Date().toISOString(),
+        });
+
+        await skickaPush(supabase, profilId, title, pushBody, '/vikarie/mina-pass');
+      }
+
+      return new Response(JSON.stringify({ ok: true, mottagare: 'vikarie' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: admins } = await supabase
+      .from('profiler')
+      .select('id, namn, epost')
+      .eq('roll', 'admin')
+      .eq('aktiv', true);
+
+    const title = 'Nytt meddelande från vikarie';
+    const passNamn = pass.personal?.namn ?? 'Fristående pass';
+    const pushBody = `${passNamn} · ${pass.datum} ${tid} · ${kortMeddelande}`;
+
+    for (const admin of admins ?? []) {
+      await supabase.from('notiser').insert({
+        pass_id,
+        vikarie_id: pass.vikarie_id ?? null,
+        kanal: 'push',
+        status: 'skickat',
+        mottagare: 'admin',
+        ämne: title,
+        innehåll: pushBody,
+        skickat_kl: new Date().toISOString(),
+      });
+
+      await skickaPush(supabase, admin.id, title, pushBody, '/admin/vikariepass');
+    }
+
+    return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

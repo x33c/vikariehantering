@@ -324,6 +324,11 @@ export const notisApi = {
       body: { typ: 'admin_avbokning', pass_id: passId },
     });
   },
+  async skickaMeddelandeNotifiering(passId: string, avsandareRoll: 'admin' | 'vikarie', meddelande: string) {
+    return supabase.functions.invoke('skicka-epost', {
+      body: { typ: 'pass_meddelande', pass_id: passId, avsandare_roll: avsandareRoll, meddelande },
+    });
+  },
 };
 
 export const importApi = {

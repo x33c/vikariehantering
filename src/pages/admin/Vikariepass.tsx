@@ -249,15 +249,17 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
   async function skickaMeddelande() {
     if (!nyttMeddelande.trim()) return;
+    const text = nyttMeddelande.trim();
     setSkickarMeddelande(true);
     setFel('');
 
-    const res = await passmeddelandeApi.skapa(pass.id, nyttMeddelande.trim(), 'admin');
+    const res = await passmeddelandeApi.skapa(pass.id, text, 'admin');
 
     if (res.error) {
       setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
     } else {
-      await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'admin_meddelande' }, nyttMeddelande.trim());
+      await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', text);
+      await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'admin_meddelande' }, text);
       const ny = await passmeddelandeApi.lista(pass.id);
       setMeddelanden((ny.data ?? []) as Passmeddelande[]);
       setNyttMeddelande('');

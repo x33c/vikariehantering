@@ -163,6 +163,8 @@ export default function MinaPass() {
     if (!res.error) {
       if (ärAvbokningsmeddelande(text)) {
         await notisApi.skickaAdminAvbokning(valtPass.id);
+      } else {
+        await notisApi.skickaMeddelandeNotifiering(valtPass.id, 'vikarie', text);
       }
 
       setNyttMeddelande('');
