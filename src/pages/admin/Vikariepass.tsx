@@ -579,7 +579,27 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
   const [schemaInfo, setSchemaInfo] = useState('');
+  const [återkommandeTider, setÅterkommandeTider] = useState<Record<string, { tid_från: string; tid_till: string }>>({});
   const [fel, setFel] = useState('');
+
+  const återkommandeDatum = form.återkommande && form.datum && form.datum_till && form.datum_till >= form.datum
+    ? veckovisaDatum(form.datum, form.datum_till)
+    : [];
+
+  function tidFörDatum(datum: string) {
+    return återkommandeTider[datum] ?? { tid_från: form.tid_från, tid_till: form.tid_till };
+  }
+
+  function uppdateraÅterkommandeTid(datum: string, fält: 'tid_från' | 'tid_till', värde: string) {
+    setÅterkommandeTider(prev => ({
+      ...prev,
+      [datum]: {
+        tid_från: prev[datum]?.tid_från ?? form.tid_från,
+        tid_till: prev[datum]?.tid_till ?? form.tid_till,
+        [fält]: värde,
+      },
+    }));
+  }
 
   async function hämtaSchemaTid(personalId: string, datum: string) {
     if (!personalId || !datum) {
@@ -701,10 +721,59 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
           </span>
         </label>
 
-        {form.återkommande && form.datum && form.datum_till && form.datum_till >= form.datum && (
-          <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            {veckovisaDatum(form.datum, form.datum_till).length} pass kommer skapas.
-          </p>
+        {form.återkommande && återkommandeDatum.length > 0 && (
+          <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                {återkommandeDatum.length} pass skapas
+              </p>
+              <button
+                type="button"
+                onClick={() => setÅterkommandeTider({})}
+                className="text-xs font-medium"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Återställ tider
+              </button>
+            </div>
+
+            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+              {återkommandeDatum.map(datum => {
+                const dagensTid = tidFörDatum(datum);
+
+                return (
+                  <div key={datum} className="grid grid-cols-[1fr_96px_96px] items-end gap-2 rounded-lg border p-2" style={{ borderColor: 'var(--border)' }}>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                        {new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{datum}</p>
+                    </div>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Från</span>
+                      <input
+                        type="time"
+                        value={dagensTid.tid_från}
+                        onChange={e => uppdateraÅterkommandeTid(datum, 'tid_från', e.target.value)}
+                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Till</span>
+                      <input
+                        type="time"
+                        value={dagensTid.tid_till}
+                        onChange={e => uppdateraÅterkommandeTid(datum, 'tid_till', e.target.value)}
+                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {(hämtarSchema || schemaInfo) && (
@@ -714,8 +783,8 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Från kl *" type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
-          <Input label="Till kl *" type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
+          <Input label={form.återkommande ? "Standard från kl *" : "Från kl *"} type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
+          <Input label={form.återkommande ? "Standard till kl *" : "Till kl *"} type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>
         <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
         <div className="flex flex-col gap-1">
