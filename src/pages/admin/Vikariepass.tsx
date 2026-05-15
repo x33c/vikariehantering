@@ -52,11 +52,11 @@ interface Passgrupp {
 function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
   const grupper = new Map<string, Passgrupp>();
   for (const p of pass) {
-    const nyckel = `${p.personal_id ?? 'okänd'}_${p.datum}`;
+    const nyckel = `${p.personal_id ?? p.id}_${p.datum}`;
     if (!grupper.has(nyckel)) {
       grupper.set(nyckel, {
-        personal_id: p.personal_id ?? 'okänd',
-        personalNamn: p.personal?.namn ?? 'Okänd personal',
+        personal_id: p.personal_id ?? p.id,
+        personalNamn: p.personal?.namn ?? 'Fristående pass',
         arbetslagNamn: p.personal?.arbetslag?.namn,
         datum: p.datum,
         pass: [],
@@ -344,7 +344,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
         <div>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Pass'}</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Fristående pass'}</h2>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {pass.datum} · {pass.tid_från.slice(0, 5)}-{pass.tid_till.slice(0, 5)}
           </p>
@@ -636,7 +636,6 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   }
 
   async function spara() {
-    if (!form.personal_id) { setFel('Välj personal.'); return; }
     setLaddar(true);
     const res = await passApi.skapa({
       personal_id: form.personal_id, frånvaro_id: null, schemarad_id: null, vikarie_id: null,
@@ -673,7 +672,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
         {fel && <Alert typ="error">{fel}</Alert>}
 
         <Select
-          label="Personal *"
+          label="Personal, valfritt"
           value={form.personal_id}
           onChange={e => {
             const personal_id = e.target.value;
@@ -681,7 +680,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
             hämtaSchemaTid(personal_id, form.datum);
           }}
         >
-          <option value="">– Välj personal –</option>
+          <option value="">Fristående pass</option>
           {personal.map(p => <option key={p.id} value={p.id}>{p.namn}</option>)}
         </Select>
         <Input

@@ -109,7 +109,7 @@ function FrånvaroRad({
           className="min-w-0 flex-1 text-left"
         >
           <p className="truncate text-sm font-medium" style={{ color: 'var(--text)' }}>
-            {frånvaro.personal?.namn ?? 'Okänd person'}
+            {frånvaro.personal?.namn ?? 'Fristående pass'}
           </p>
           <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
             {pass
