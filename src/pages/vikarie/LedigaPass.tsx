@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { passApi, vikariApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import type { Vikariepass, Vikarie } from '../../types';
 import { visaArskurs, visaKortNamn } from '../../lib/display';
 
@@ -138,6 +139,7 @@ export default function LedigaPass() {
   const [bekräftelse, setBekräftelse] = useState('');
 
   useEffect(() => { ladda(); }, [användare]);
+  useRealtimeRefresh(!!minVikarie, ladda, ['vikariepass', 'notiser']);
 
   async function ladda() {
     if (!användare) return;

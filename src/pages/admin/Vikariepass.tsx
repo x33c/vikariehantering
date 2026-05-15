@@ -3,6 +3,7 @@ import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, p
 import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 
@@ -867,6 +868,7 @@ export default function Bemanning() {
   }, [statusFilter, datumFrån, datumTill]);
 
   useEffect(() => { ladda(); }, [ladda]);
+  useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser']);
 
   async function raderaMånga() {
     setRaderar(true);

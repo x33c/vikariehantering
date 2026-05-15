@@ -307,6 +307,18 @@ export const notisApi = {
       skickat_kl: new Date().toISOString(),
     });
   },
+  async skapaAdminAvbokning(passId: string) {
+    return supabase.from('notiser').insert({
+      pass_id: passId,
+      vikarie_id: null,
+      kanal: 'push',
+      status: 'skickat',
+      mottagare: 'admin',
+      ämne: 'Avbokningsförfrågan',
+      innehåll: 'En vikarie har begärt att avboka ett pass.',
+      skickat_kl: new Date().toISOString(),
+    });
+  },
 };
 
 export const importApi = {

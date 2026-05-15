@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { passApi, vikariApi, passmeddelandeApi } from '../../lib/api';
+import { passApi, vikariApi, passmeddelandeApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie, Passmeddelande } from '../../types';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS } from '../../types';
@@ -170,6 +170,7 @@ export default function MinaPass() {
     setSparar(false);
 
     if (!res.error) {
+      await notisApi.skapaAdminAvbokning(valtPass.id);
       setModalInfo('Admin har fått din avbokningsförfrågan.');
       await uppdateraMeddelanden(valtPass.id);
     }

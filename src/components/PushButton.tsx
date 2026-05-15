@@ -31,7 +31,7 @@ export default function PushButton() {
         <div>
           <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>Push-notiser</p>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {status === 'aktiv' ? 'Aktiverat på denna enhet' : status === 'nekad' ? 'Blockerat i webbläsaren' : 'Få förfrågningar och svar direkt'}
+            {status === 'aktiv' ? 'Aktiverat på denna enhet' : status === 'nekad' ? 'Blockerat i webbläsaren' : 'Få nya pass och svar direkt'}
           </p>
         </div>
         {status !== 'aktiv' && status !== 'nekad' && (
