@@ -98,6 +98,37 @@ serve(async (req) => {
 
 
 
+
+  if (typ === 'koppla_vikarieprofil') {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Du måste vara inloggad.' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const email = userData.user.email?.trim();
+    let kopplade = [];
+
+    if (email) {
+      const { data } = await supabase
+        .from('vikarier')
+        .update({ profil_id: userData.user.id })
+        .ilike('epost', email)
+        .eq('aktiv', true)
+        .select('id, namn, epost');
+
+      kopplade = data ?? [];
+    }
+
+    return new Response(JSON.stringify({ ok: true, kopplade }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (typ === 'test_push') {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return new Response(JSON.stringify({ error: 'VAPID-nycklar saknas i Edge Function.' }), {
@@ -113,6 +144,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Du måste vara inloggad för att testa push.' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const email = userData.user.email?.trim();
+    if (email) {
+      await supabase
+        .from('vikarier')
+        .update({ profil_id: userData.user.id })
+        .ilike('epost', email)
+        .eq('aktiv', true);
     }
 
     const { data: subs } = await supabase

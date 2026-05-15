@@ -88,6 +88,12 @@ export async function aktiveraPush() {
   }, { onConflict: 'endpoint' });
 
   if (error) throw error;
+
+  // Koppla automatiskt detta konto till vikarier-raden med samma e-post.
+  // Det gör att riktade förfrågningar hittar rätt push-prenumeration.
+  await supabase.functions.invoke('skicka-epost', {
+    body: { typ: 'koppla_vikarieprofil' },
+  }).catch(() => null);
 }
 
 export async function avaktiveraPush() {
