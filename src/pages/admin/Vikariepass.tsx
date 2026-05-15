@@ -340,7 +340,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       const prioritet: Record<string, number> = { ledig: 0, okänd: 1, otillgänglig: 2, bokad: 3 };
       return (prioritet[a.status] ?? 9) - (prioritet[b.status] ?? 9) || a.vikarie.namn.localeCompare(b.vikarie.namn);
     });
-  const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 5);
+  const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 4);
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
 
