@@ -311,7 +311,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return (prioritet[a.status] ?? 9) - (prioritet[b.status] ?? 9) || a.vikarie.namn.localeCompare(b.vikarie.namn);
     });
   const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 5);
-  const harAvbokningsförfrågan = meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
+  const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
+  const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
@@ -687,7 +688,8 @@ export default function Bemanning() {
     await Promise.all(passLista.map(async (passrad) => {
       const res = await passmeddelandeApi.lista(passrad.id);
       const meddelanden = (res.data ?? []) as Passmeddelande[];
-      if (meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
+      const harAktivBokning = !!passrad.vikarie_id && (passrad.status === 'bokat' || passrad.status === 'bekräftat');
+      if (harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
         avbokningsIds.add(passrad.id);
       }
     }));
@@ -783,7 +785,7 @@ export default function Bemanning() {
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
               const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
               const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
-              const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id));
+              const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
 
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}

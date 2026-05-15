@@ -64,6 +64,7 @@ export default function Tillganglighet() {
   const [laddar, setLaddar] = useState(true);
   const [modalÖppen, setModalÖppen] = useState(false);
   const [raderaId, setRaderaId] = useState<string | null>(null);
+  const [redigerar, setRedigerar] = useState<VikarieTillgänglighet | null>(null);
   const [typ, setTyp] = useState<Typ>('specifikt');
   const [form, setForm] = useState(tomForm);
   const [sparar, setSparar] = useState(false);
@@ -85,8 +86,25 @@ export default function Tillganglighet() {
   }, [användare]);
 
   function öppnaModal(nyTyp: Typ = 'specifikt') {
+    setRedigerar(null);
     setTyp(nyTyp);
     setForm(tomForm);
+    setFel('');
+    setModalÖppen(true);
+  }
+
+  function öppnaRedigera(rad: VikarieTillgänglighet) {
+    setRedigerar(rad);
+    setTyp(rad.återkommande ? 'återkommande' : 'specifikt');
+    setForm({
+      datum: rad.datum ?? '',
+      datum_till: rad.datum ?? '',
+      veckodag: String(rad.veckodag ?? 1),
+      tid_från: rad.tid_från?.slice(0, 5) ?? '',
+      tid_till: rad.tid_till?.slice(0, 5) ?? '',
+      tillgänglig: rad.tillgänglig,
+      anteckning: rad.anteckning ?? '',
+    });
     setFel('');
     setModalÖppen(true);
   }
@@ -136,6 +154,15 @@ export default function Tillganglighet() {
           återkommande: true,
         }];
 
+    if (redigerar) {
+      const bort = await vikariApi.raderaTillgänglighet(redigerar.id);
+      if (bort.error) {
+        setSparar(false);
+        setFel(bort.error.message);
+        return;
+      }
+    }
+
     const skapade: VikarieTillgänglighet[] = [];
     for (const data of rader) {
       const res = await vikariApi.sättTillgänglighet(data as Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'>);
@@ -148,8 +175,9 @@ export default function Tillganglighet() {
     }
 
     setSparar(false);
-    setTillg(prev => [...skapade, ...prev]);
+    setTillg(prev => redigerar ? [...skapade, ...prev.filter(t => t.id !== redigerar.id)] : [...skapade, ...prev]);
     setModalÖppen(false);
+    setRedigerar(null);
     setForm(tomForm);
   }
 
@@ -228,7 +256,10 @@ export default function Tillganglighet() {
                       </span>
                     </div>
                     {t.anteckning && <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{t.anteckning}</p>}
-                    <button onClick={() => setRaderaId(t.id)} className="mt-3 text-xs font-medium" style={{ color: 'var(--danger)' }}>Ta bort</button>
+                    <div className="mt-3 flex gap-3">
+                      <button onClick={() => öppnaRedigera(t)} className="text-xs font-medium" style={{ color: 'var(--blue)' }}>Redigera</button>
+                      <button onClick={() => setRaderaId(t.id)} className="text-xs font-medium" style={{ color: 'var(--danger)' }}>Ta bort</button>
+                    </div>
                   </article>
                 );
               })}
@@ -260,7 +291,10 @@ export default function Tillganglighet() {
                       </span>
                     </div>
                     {t.anteckning && <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{t.anteckning}</p>}
-                    <button onClick={() => setRaderaId(t.id)} className="mt-3 text-xs font-medium" style={{ color: 'var(--danger)' }}>Ta bort</button>
+                    <div className="mt-3 flex gap-3">
+                      <button onClick={() => öppnaRedigera(t)} className="text-xs font-medium" style={{ color: 'var(--blue)' }}>Redigera</button>
+                      <button onClick={() => setRaderaId(t.id)} className="text-xs font-medium" style={{ color: 'var(--danger)' }}>Ta bort</button>
+                    </div>
                   </article>
                 );
               })}
@@ -274,7 +308,7 @@ export default function Tillganglighet() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
           <div className="relative w-full rounded-t-2xl border p-5 shadow-xl sm:max-w-sm sm:rounded-2xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Lägg till tillgänglighet</h2>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
 
@@ -394,7 +428,7 @@ export default function Tillganglighet() {
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setModalÖppen(false)} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
                 <button onClick={spara} disabled={sparar} className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--blue)' }}>
-                  {sparar ? 'Sparar...' : 'Spara'}
+                  {sparar ? 'Sparar...' : redigerar ? 'Spara ändringar' : 'Spara'}
                 </button>
               </div>
             </div>
