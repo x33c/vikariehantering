@@ -200,7 +200,6 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return;
     }
 
-    await notisApi.skickaNotiser(pass.id, [valdVikarieId]);
     await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
 
     setSparar(false);
@@ -210,6 +209,10 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       publicerad: false,
       vikarie_id: null,
       riktad_till_vikarie_id: valdVikarieId,
+    });
+
+    void notisApi.skickaNotiser(pass.id, [valdVikarieId]).then(({ error }) => {
+      if (error) console.error('Kunde inte skicka notifiering', error);
     });
   }
 
