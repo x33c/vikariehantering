@@ -23,6 +23,11 @@ function passNyckel(p: Vikariepass) {
   return `${p.datum}T${p.tid_från.slice(0, 5)}`;
 }
 
+function ärAvbokningsmeddelande(text: string) {
+  const normaliserad = text.toLowerCase();
+  return normaliserad.includes('avboka') || normaliserad.includes('avbokning');
+}
+
 function PassKort({
   pass,
   meddelanden,
@@ -150,13 +155,18 @@ export default function MinaPass() {
 
   async function skickaMeddelande() {
     if (!valtPass || !nyttMeddelande.trim()) return;
+    const text = nyttMeddelande.trim();
     setSparar(true);
-    const res = await passmeddelandeApi.skapa(valtPass.id, nyttMeddelande.trim(), 'vikarie');
+    const res = await passmeddelandeApi.skapa(valtPass.id, text, 'vikarie');
     setSparar(false);
 
     if (!res.error) {
+      if (ärAvbokningsmeddelande(text)) {
+        await notisApi.skickaAdminAvbokning(valtPass.id);
+      }
+
       setNyttMeddelande('');
-      setModalInfo('Meddelandet är skickat till admin.');
+      setModalInfo(ärAvbokningsmeddelande(text) ? 'Admin har fått din avbokningsförfrågan.' : 'Meddelandet är skickat till admin.');
       await uppdateraMeddelanden(valtPass.id);
     }
   }
