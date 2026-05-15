@@ -97,7 +97,7 @@ function PassKort({
       </div>
 
       <div className="mb-4 grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
-        {grupp.personalNamn !== 'Okänd personal' && (
+        {grupp.personalNamn !== 'Okänd personal' && grupp.personalNamn !== 'Fristående pass' && (
           <div className="flex justify-between gap-3">
             <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
             <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
