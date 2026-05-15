@@ -6,14 +6,35 @@ export function visaKortNamn(namn?: string | null) {
 }
 
 export function visaArskurs(grupper: Array<string | null | undefined>) {
-  const text = grupper.filter(Boolean).join(' ').toLowerCase();
+  const text = grupper
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .replace(/å/g, 'a')
+    .replace(/ä/g, 'a')
+    .replace(/ö/g, 'o');
 
   if (!text.trim()) return 'Ej angiven årskurs';
-  if (/fsk|förskoleklass|f-klass|fk/.test(text)) return 'FSK';
+  if (/\b(fsk|forskol|forskoleklass|f-klass|fk)\b/.test(text)) return 'FSK';
 
-  const siffror = [...text.matchAll(/\b[1-6]\b/g)].map(m => Number(m[0]));
-  if (siffror.some(n => n >= 1 && n <= 3)) return 'åk. 1-3';
-  if (siffror.some(n => n >= 4 && n <= 6)) return 'åk. 4-6';
+  const hittade = new Set<number>();
+
+  for (const match of text.matchAll(/(?:ak|arskurs|klass)?\s*([1-6])\s*[-–]\s*([1-6])/g)) {
+    const start = Number(match[1]);
+    const slut = Number(match[2]);
+    for (let n = Math.min(start, slut); n <= Math.max(start, slut); n++) hittade.add(n);
+  }
+
+  for (const match of text.matchAll(/(?:\bak\.?\s*|\barskurs\s*|\bklass\s*)?([1-6])\s*[a-z]?\b/g)) {
+    hittade.add(Number(match[1]));
+  }
+
+  const låg = [...hittade].some(n => n >= 1 && n <= 3);
+  const hög = [...hittade].some(n => n >= 4 && n <= 6);
+
+  if (låg && hög) return 'åk. 1-6';
+  if (låg) return 'åk. 1-3';
+  if (hög) return 'åk. 4-6';
 
   return 'Ej angiven årskurs';
 }

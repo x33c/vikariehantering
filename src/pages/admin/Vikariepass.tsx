@@ -246,6 +246,19 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setSkickarMeddelande(false);
   }
 
+  async function raderaMeddelande(id: string) {
+    if (!window.confirm('Ta bort meddelandet?')) return;
+
+    const res = await passmeddelandeApi.radera(id);
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    setMeddelanden(prev => prev.filter(m => m.id !== id));
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'raderade_meddelande', meddelande_id: id });
+  }
+
 
   useEffect(() => {
     let aktiv = true;
@@ -475,9 +488,19 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
                 <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Inga meddelanden ännu.</p>
               ) : meddelanden.map(m => (
                 <div key={m.id} className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-                  <div className="mb-1 flex justify-between gap-2" style={{ color: 'var(--text-muted)' }}>
+                  <div className="mb-1 flex items-center justify-between gap-2" style={{ color: 'var(--text-muted)' }}>
                     <span>{m.avsandare_roll === 'admin' ? 'Admin' : 'Vikarie'}</span>
-                    <span>{new Date(m.created_at).toLocaleString('sv-SE')}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{new Date(m.created_at).toLocaleString('sv-SE')}</span>
+                      <button
+                        type="button"
+                        onClick={() => raderaMeddelande(m.id)}
+                        className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
+                        style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.10)' }}
+                      >
+                        Ta bort
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm" style={{ color: 'var(--text)' }}>{m.meddelande}</p>
                 </div>

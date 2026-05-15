@@ -260,6 +260,9 @@ export const passmeddelandeApi = {
       .select()
       .single();
   },
+  async radera(id: string) {
+    return supabase.from('passmeddelanden').delete().eq('id', id);
+  },
 };
 
 export const notisApi = {
