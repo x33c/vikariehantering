@@ -785,7 +785,18 @@ export default function Bemanning() {
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
               const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
               const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
+              const publicerad = grupp.pass.some(p => p.publicerad);
+              const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
               const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
+              const ärAvbokat = dominerandStatus === 'avbokat';
+              const statusPiller = [
+                ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
+                !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
+                !ärAvbokat && vikariNamn ? { text: `Bokad: ${vikariNamn}`, color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' } : null,
+                !ärAvbokat && !vikariNamn && harRiktadFörfrågan ? { text: 'Förfrågan skickad', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' } : null,
+                !ärAvbokat && !vikariNamn && publicerad ? { text: 'Publicerad som ledig', color: 'var(--blue)', bg: 'color-mix(in srgb, var(--blue) 14%, transparent)' } : null,
+                !ärAvbokat && !vikariNamn && !publicerad && !harRiktadFörfrågan ? { text: 'Ej publicerad', color: 'var(--text-subtle)', bg: 'var(--hover)' } : null,
+              ].filter(Boolean) as { text: string; color: string; bg: string }[];
 
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}
@@ -843,22 +854,16 @@ export default function Bemanning() {
                         </p>
                       )}
 
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                        {dominerandStatus === 'avbokat' ? (
-                          <span className="font-medium text-red-500">Avbokat</span>
-                        ) : vikariNamn ? (
-                          <span className="font-medium text-green-600">✓ {vikariNamn}</span>
-                        ) : (
-                          <span style={{ color: 'var(--text-subtle)' }}>Ingen vikarie tillsatt</span>
-                        )}
-                        <span style={{ color: grupp.pass.some(p => p.publicerad) ? 'var(--blue)' : 'var(--text-subtle)' }}>
-                          {grupp.pass.some(p => p.publicerad) ? 'Publicerad' : 'Ej publicerad'}
-                        </span>
-                        {harAvbokningsförfrågan && (
-                          <span className="font-semibold" style={{ color: '#fb923c' }}>
-                            Avbokningsförfrågan
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
+                        {statusPiller.map(piller => (
+                          <span
+                            key={piller.text}
+                            className="rounded-full px-2.5 py-1 font-semibold"
+                            style={{ color: piller.color, background: piller.bg }}
+                          >
+                            {piller.text}
                           </span>
-                        )}
+                        ))}
                       </div>
                     </div>
                   </div>
