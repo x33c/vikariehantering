@@ -35,6 +35,37 @@ function arskurs(grupp: string | null | undefined) {
   return 'Ej angiven årskurs';
 }
 
+
+async function hittaProfilIdForVikarie(supabase: ReturnType<typeof createClient>, vikarie: { profil_id?: string | null; epost?: string | null; id: string }) {
+  if (vikarie.profil_id) return vikarie.profil_id;
+  if (!vikarie.epost) return null;
+
+  const { data: profil } = await supabase
+    .from('profiler')
+    .select('id')
+    .ilike('epost', vikarie.epost)
+    .eq('roll', 'vikarie')
+    .eq('aktiv', true)
+    .maybeSingle();
+
+  if (profil?.id) {
+    await supabase.from('vikarier').update({ profil_id: profil.id }).eq('id', vikarie.id);
+    return profil.id as string;
+  }
+
+  return null;
+}
+
+async function raknaPushPrenumerationer(supabase: ReturnType<typeof createClient>, profilId: string | null) {
+  if (!profilId) return 0;
+  const { count } = await supabase
+    .from('push_prenumerationer')
+    .select('id', { count: 'exact', head: true })
+    .eq('profil_id', profilId)
+    .eq('aktiv', true);
+  return count ?? 0;
+}
+
 async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: string | null, title: string, body: string, url: string) {
   if (!profilId || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
 
@@ -198,7 +229,9 @@ serve(async (req) => {
       'Logga in i systemet för att svara.',
     ].filter(r => r !== null).join('\n');
 
-    await skickaPush(supabase, vikarie.profil_id, ämne, `${namn} · ${årskurs} · ${tid}`, '/vikarie');
+    const pushProfilId = await hittaProfilIdForVikarie(supabase, vikarie);
+    const pushPrenumerationer = await raknaPushPrenumerationer(supabase, pushProfilId);
+    await skickaPush(supabase, pushProfilId, ämne, `${namn} · ${årskurs} · ${tid}`, '/vikarie');
 
     const { data: notis } = await supabase.from('notiser').insert({
       pass_id, vikarie_id: vikarie.id, kanal: 'epost',
@@ -237,7 +270,13 @@ serve(async (req) => {
     }
 
     någotSkickades = true;
-    resultat.push({ vikarie_id: vikarie.id, status: skickadStatus, fel: felmeddelande ?? undefined });
+    resultat.push({
+      vikarie_id: vikarie.id,
+      status: skickadStatus,
+      fel: felmeddelande ?? undefined,
+      push_profil_id: pushProfilId ?? undefined,
+      push_prenumerationer: pushPrenumerationer,
+    });
   }
 
   if (någotSkickades) {
