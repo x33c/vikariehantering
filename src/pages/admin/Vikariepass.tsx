@@ -11,6 +11,10 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
+function tomTillNull(value?: string | null) {
+  return value && value.trim() ? value : null;
+}
+
 function veckodagarFörVecka(start: string) {
   const bas = new Date(`${start}T12:00:00`);
   const dag = bas.getDay() || 7;
