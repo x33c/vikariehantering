@@ -2,6 +2,14 @@ import { supabase } from './supabase';
 
 const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
+function arIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function arStandaloneWebbapp() {
+  return window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 async function functionErrorText(error: unknown) {
   const context = (error as { context?: unknown })?.context;
 
@@ -31,13 +39,17 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function pushStods() {
+  if (arIos() && !arStandaloneWebbapp()) return false;
   return Boolean('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && publicKey);
 }
 
 export function pushSaknasText() {
   if (!publicKey) return 'Push är inte konfigurerat.';
+  if (arIos() && !arStandaloneWebbapp()) {
+    return 'På iPhone/iPad: öppna sidan i Safari, dela och välj Lägg till på hemskärmen. Starta sedan appen från hemskärmen och aktivera notiser där.';
+  }
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-    return 'På iPhone fungerar push normalt först när sidan är tillagd på hemskärmen som webbapp.';
+    return 'Push stöds inte i denna webbläsare.';
   }
   return 'Push stöds inte här.';
 }
@@ -92,8 +104,22 @@ export async function avaktiveraPush() {
   }
 }
 
+export async function testaLokalNotis() {
+  if (!pushStods()) throw new Error(pushSaknasText());
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') throw new Error('Push-notiser är inte tillåtna i webbläsaren.');
+
+  const registration = await navigator.serviceWorker.register('/push-sw.js');
+  await registration.showNotification('Testnotis', {
+    body: 'Lokala notiser fungerar på denna enhet.',
+    icon: '/sundbyberg-halm.png',
+    badge: '/sundbyberg-halm.png',
+    data: { url: '/' },
+  });
+}
+
 export async function testaServerPush() {
-  // Säkerställ att webbläsarens subscription också finns i databasen.
   await aktiveraPush();
 
   const { error } = await supabase.functions.invoke('skicka-epost', {

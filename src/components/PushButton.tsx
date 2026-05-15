@@ -1,32 +1,41 @@
 import { useEffect, useState } from 'react';
-import { aktiveraPush, avaktiveraPush, pushSaknasText, pushStatus, testaServerPush } from '../lib/push';
+import { aktiveraPush, avaktiveraPush, pushSaknasText, pushStatus, testaLokalNotis, testaServerPush } from '../lib/push';
 
 export default function PushButton({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<'saknas' | 'nekad' | 'aktiv' | 'redo' | 'ej_aktiv'>('saknas');
   const [fel, setFel] = useState('');
+  const [info, setInfo] = useState('');
   const [laddar, setLaddar] = useState(false);
 
   useEffect(() => {
     pushStatus().then(setStatus).catch(() => setStatus('saknas'));
   }, []);
 
+  function visaInfo(text: string) {
+    setInfo(text);
+    if (compact) window.alert(text);
+  }
+
+  function visaFel(text: string) {
+    setFel(text);
+    if (compact) window.alert(text);
+  }
+
   async function aktivera() {
     if (status === 'nekad' || status === 'saknas') {
-      const text = pushSaknasText();
-      setFel(text);
-      if (compact) window.alert(text);
+      visaFel(pushSaknasText());
       return;
     }
 
     setLaddar(true);
     setFel('');
+    setInfo('');
     try {
       await aktiveraPush();
       setStatus(await pushStatus());
+      visaInfo('Push är aktiverat på denna enhet.');
     } catch (err) {
-      const text = err instanceof Error ? err.message : 'Kunde inte aktivera push-notiser.';
-      setFel(text);
-      if (compact) window.alert(text);
+      visaFel(err instanceof Error ? err.message : 'Kunde inte aktivera push-notiser.');
     } finally {
       setLaddar(false);
     }
@@ -35,13 +44,13 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
   async function testa() {
     setLaddar(true);
     setFel('');
+    setInfo('');
     try {
+      await testaLokalNotis();
       await testaServerPush();
-      if (compact) window.alert('Testnotis skickad.');
+      visaInfo('Testnotis skickad. Om du inte ser den: kontrollera webbläsarens/operativsystemets notisinställningar.');
     } catch (err) {
-      const text = err instanceof Error ? err.message : 'Kunde inte skicka testnotis.';
-      setFel(text);
-      if (compact) window.alert(text);
+      visaFel(err instanceof Error ? err.message : 'Kunde inte skicka testnotis.');
     } finally {
       setLaddar(false);
     }
@@ -50,11 +59,13 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
   async function stangAv() {
     setLaddar(true);
     setFel('');
+    setInfo('');
     try {
       await avaktiveraPush();
       setStatus(await pushStatus());
+      visaInfo('Push är avstängt på denna enhet.');
     } catch (err) {
-      setFel(err instanceof Error ? err.message : 'Kunde inte stänga av push-notiser.');
+      visaFel(err instanceof Error ? err.message : 'Kunde inte stänga av push-notiser.');
     } finally {
       setLaddar(false);
     }
@@ -114,6 +125,7 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
           )}
         </div>
       </div>
+      {info && <p className="text-xs" style={{ color: '#22c55e' }}>{info}</p>}
       {fel && <p className="text-xs text-red-500">{fel}</p>}
     </div>
   );

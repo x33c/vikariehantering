@@ -135,7 +135,7 @@ export default function AdminLayout() {
             <PushButton compact />
             <button
               onClick={loggaUt}
-              className="ml-2 rounded-xl border p-2"
+              className="ml-4 rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
               aria-label="Logga ut"
               title="Logga ut"
