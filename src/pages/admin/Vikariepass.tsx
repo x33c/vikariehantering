@@ -990,7 +990,6 @@ export default function Bemanning() {
             {filtreradeGrupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
-              const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
               const vikarie = grupp.pass.find(p => p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
@@ -1058,12 +1057,6 @@ export default function Bemanning() {
                         <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
                         {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
                       </p>
-
-                      {ämnen.length > 0 && (
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {ämnen.join(', ')}
-                        </p>
-                      )}
 
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                         {statusPiller.map(piller => (
