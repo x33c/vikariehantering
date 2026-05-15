@@ -11,17 +11,16 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
-function veckovisaDatum(start: string, slut: string) {
-  const datum: string[] = [];
-  const aktuell = new Date(`${start}T12:00:00`);
-  const sista = new Date(`${slut}T12:00:00`);
+function veckodagarFörVecka(start: string) {
+  const bas = new Date(`${start}T12:00:00`);
+  const dag = bas.getDay() || 7;
+  bas.setDate(bas.getDate() - dag + 1);
 
-  while (aktuell <= sista) {
-    datum.push(aktuell.toISOString().slice(0, 10));
-    aktuell.setDate(aktuell.getDate() + 7);
-  }
-
-  return datum;
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(bas);
+    d.setDate(bas.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
 }
 
 function veckodagFörDatum(datum: string) {
@@ -33,7 +32,7 @@ function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: 
   if (specifik) return specifik;
 
   const veckodag = veckodagFörDatum(datum);
-  return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
+  return poster.find(t => t.veckopass && t.veckodag === veckodag) ?? null;
 }
 
 function ärAvbokningsförfrågan(meddelande?: string | null) {
@@ -572,31 +571,30 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void;
 }) {
   const [form, setForm] = useState({
-    personal_id: '', datum: new Date().toISOString().slice(0, 10), datum_till: '',
+    personal_id: '', datum: new Date().toISOString().slice(0, 10),
     tid_från: '08:00', tid_till: '17:00', grupp: '', anteckning: '', publicerad: false,
-    återkommande: false,
+    veckopass: false,
   });
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
   const [schemaInfo, setSchemaInfo] = useState('');
-  const [återkommandeTider, setÅterkommandeTider] = useState<Record<string, { tid_från: string; tid_till: string }>>({});
+  const [veckopassTider, setVeckopassTider] = useState<Record<string, { aktiv: boolean; tid_från: string; tid_till: string }>>({});
   const [fel, setFel] = useState('');
 
-  const återkommandeDatum = form.återkommande && form.datum && form.datum_till && form.datum_till >= form.datum
-    ? veckovisaDatum(form.datum, form.datum_till)
-    : [];
+  const veckopassDatum = form.veckopass && form.datum ? veckodagarFörVecka(form.datum) : [];
 
   function tidFörDatum(datum: string) {
-    return återkommandeTider[datum] ?? { tid_från: form.tid_från, tid_till: form.tid_till };
+    return veckopassTider[datum] ?? { aktiv: true, tid_från: form.tid_från, tid_till: form.tid_till };
   }
 
-  function uppdateraÅterkommandeTid(datum: string, fält: 'tid_från' | 'tid_till', värde: string) {
-    setÅterkommandeTider(prev => ({
+  function uppdateraVeckopassTid(datum: string, data: Partial<{ aktiv: boolean; tid_från: string; tid_till: string }>) {
+    setVeckopassTider(prev => ({
       ...prev,
       [datum]: {
+        aktiv: prev[datum]?.aktiv ?? true,
         tid_från: prev[datum]?.tid_från ?? form.tid_från,
         tid_till: prev[datum]?.tid_till ?? form.tid_till,
-        [fält]: värde,
+        ...data,
       },
     }));
   }
@@ -686,86 +684,88 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
           <option value="">– Välj personal –</option>
           {personal.map(p => <option key={p.id} value={p.id}>{p.namn}</option>)}
         </Select>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            label="Datum *"
-            type="date"
-            value={form.datum}
-            onChange={e => {
-              const datum = e.target.value;
-              setForm({ ...form, datum, datum_till: form.datum_till || datum });
-              hämtaSchemaTid(form.personal_id, datum);
-            }}
-          />
-          {form.återkommande && (
-            <Input
-              label="T.o.m. datum *"
-              type="date"
-              value={form.datum_till}
-              onChange={e => setForm({ ...form, datum_till: e.target.value })}
-            />
-          )}
-        </div>
+        <Input
+          label={form.veckopass ? "Vecka som ska skapas *" : "Datum *"}
+          type="date"
+          value={form.datum}
+          onChange={e => {
+            const datum = e.target.value;
+            setForm({ ...form, datum });
+            setVeckopassTider({});
+            hämtaSchemaTid(form.personal_id, datum);
+          }}
+        />
         <label className="flex items-start gap-2 rounded-xl border p-3 text-sm" style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <input
             type="checkbox"
-            checked={form.återkommande}
-            onChange={e => setForm({ ...form, återkommande: e.target.checked, datum_till: form.datum_till || form.datum })}
+            checked={form.veckopass}
+            onChange={e => {
+              setForm({ ...form, veckopass: e.target.checked });
+              setVeckopassTider({});
+            }}
             className="mt-0.5 h-4 w-4 rounded border-gray-300"
           />
           <span>
-            Återkommande varje vecka
+            Skapa veckopass
             <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
-              Skapar ett pass per vecka från startdatum till t.o.m.-datum.
+              Skapar ett pass per vald vardag i veckan. Tider kan justeras per dag.
             </span>
           </span>
         </label>
 
-        {form.återkommande && återkommandeDatum.length > 0 && (
+        {form.veckopass && veckopassDatum.length > 0 && (
           <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                {återkommandeDatum.length} pass skapas
+                Veckans pass
               </p>
               <button
                 type="button"
-                onClick={() => setÅterkommandeTider({})}
+                onClick={() => setVeckopassTider({})}
                 className="text-xs font-medium"
                 style={{ color: 'var(--text-muted)' }}
               >
-                Återställ tider
+                Återställ
               </button>
             </div>
 
-            <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-              {återkommandeDatum.map(datum => {
+            <div className="space-y-2">
+              {veckopassDatum.map(datum => {
                 const dagensTid = tidFörDatum(datum);
 
                 return (
-                  <div key={datum} className="grid grid-cols-[1fr_96px_96px] items-end gap-2 rounded-lg border p-2" style={{ borderColor: 'var(--border)' }}>
+                  <div key={datum} className="grid grid-cols-[24px_1fr_92px_92px] items-end gap-2 rounded-lg border p-2" style={{ borderColor: 'var(--border)' }}>
+                    <input
+                      type="checkbox"
+                      checked={dagensTid.aktiv}
+                      onChange={e => uppdateraVeckopassTid(datum, { aktiv: e.target.checked })}
+                      className="mb-2 h-4 w-4 rounded"
+                    />
                     <div>
                       <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
                         {new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{datum}</p>
                     </div>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Från</span>
+                    <label>
+                      <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Från</span>
                       <input
                         type="time"
                         value={dagensTid.tid_från}
-                        onChange={e => uppdateraÅterkommandeTid(datum, 'tid_från', e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        disabled={!dagensTid.aktiv}
+                        onChange={e => uppdateraVeckopassTid(datum, { tid_från: e.target.value })}
+                        className="w-full rounded-md border px-2 py-1.5 text-sm disabled:opacity-40"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>Till</span>
+                    <label>
+                      <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Till</span>
                       <input
                         type="time"
                         value={dagensTid.tid_till}
-                        onChange={e => uppdateraÅterkommandeTid(datum, 'tid_till', e.target.value)}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        disabled={!dagensTid.aktiv}
+                        onChange={e => uppdateraVeckopassTid(datum, { tid_till: e.target.value })}
+                        className="w-full rounded-md border px-2 py-1.5 text-sm disabled:opacity-40"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </label>
@@ -783,8 +783,8 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label={form.återkommande ? "Standard från kl *" : "Från kl *"} type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
-          <Input label={form.återkommande ? "Standard till kl *" : "Till kl *"} type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
+          <Input label={form.veckopass ? "Standard från kl *" : "Från kl *"} type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
+          <Input label={form.veckopass ? "Standard till kl *" : "Till kl *"} type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>
         <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
         <div className="flex flex-col gap-1">
@@ -809,7 +809,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={spara}>
-            {form.återkommande ? 'Skapa återkommande pass' : 'Skapa pass'}
+            {form.veckopass ? 'Skapa veckopass' : 'Skapa pass'}
           </Button>
         </div>
       </div>
