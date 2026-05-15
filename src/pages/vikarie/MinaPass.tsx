@@ -55,12 +55,14 @@ function PassKort({
       </div>
 
       <div className="grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
-        <div className="flex justify-between gap-3">
-          <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
-          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>
-            {visaKortNamn(pass.personal?.namn)}
-          </span>
-        </div>
+        {pass.personal?.namn && (
+          <div className="flex justify-between gap-3">
+            <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
+            <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>
+              {visaKortNamn(pass.personal?.namn)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between gap-3">
           <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
           <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>
@@ -248,10 +250,12 @@ export default function MinaPass() {
             </div>
 
             <div className="mb-4 grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
-              <div className="flex justify-between gap-3">
-                <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
-                <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{visaKortNamn(valtPass.personal?.namn)}</span>
-              </div>
+              {valtPass.personal?.namn && (
+                <div className="flex justify-between gap-3">
+                  <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
+                  <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{visaKortNamn(valtPass.personal?.namn)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
                 <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{visaArskurs([valtPass.grupp])}</span>

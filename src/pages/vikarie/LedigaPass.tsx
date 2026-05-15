@@ -71,7 +71,6 @@ function PassKort({
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
   const arskurs = visaArskurs(grupp.pass.map(p => p.grupp));
-  const antalText = grupp.pass.length === 1 ? '1 lektion' : `${grupp.pass.length} lektioner`;
 
   return (
     <article
@@ -87,7 +86,6 @@ function PassKort({
             {new Date(`${grupp.datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
           <p className="mt-1 text-2xl font-semibold" style={{ color: 'var(--text)' }}>{tidFrån}-{tidTill}</p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{antalText}</p>
         </div>
         <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
           style={{
@@ -99,10 +97,12 @@ function PassKort({
       </div>
 
       <div className="mb-4 grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
-        <div className="flex justify-between gap-3">
-          <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
-          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
-        </div>
+        {grupp.personalNamn !== 'Okänd personal' && (
+          <div className="flex justify-between gap-3">
+            <span style={{ color: 'var(--text-muted)' }}>Vikarierar för</span>
+            <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
+          </div>
+        )}
         <div className="flex justify-between gap-3">
           <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
           <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{arskurs}</span>
