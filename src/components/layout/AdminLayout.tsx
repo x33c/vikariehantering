@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
+import AdminNotiser from '../AdminNotiser';
 
 const navItems = [
   { to: '/admin', label: 'Start', end: true },
@@ -95,6 +96,10 @@ export default function AdminLayout() {
           </div>
 
           <div className="mb-3">
+            <AdminNotiser placement="up" />
+          </div>
+
+          <div className="mb-3">
             <PushButton />
           </div>
 
@@ -131,7 +136,8 @@ export default function AdminLayout() {
             </svg>
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
+            <AdminNotiser />
             <PushButton compact />
             <button
               onClick={loggaUt}
