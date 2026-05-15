@@ -661,6 +661,7 @@ export default function Bemanning() {
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
+  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade'>('alla');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [valda, setValda] = useState<Set<string>>(new Set());
@@ -714,7 +715,23 @@ export default function Bemanning() {
   if (laddar) return <LaddaSida />;
 
   const grupper = grupperaPasser(pass);
-  const allaSynligaIds = grupper.flatMap(grupp => grupp.pass.map(p => p.id));
+  const filtreradeGrupper = grupper.filter(grupp => {
+    if (snabbFilter === 'alla') return true;
+
+    const harBokad = grupp.pass.some(p => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
+    const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
+    const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
+    const publicerad = grupp.pass.some(p => p.publicerad);
+    const avbokad = grupp.pass.every(p => p.status === 'avbokat');
+
+    if (snabbFilter === 'atgard') return harAvbokningsförfrågan || harRiktadFörfrågan || (!harBokad && !publicerad && !avbokad);
+    if (snabbFilter === 'lediga') return publicerad && !harBokad && !avbokad;
+    if (snabbFilter === 'bokade') return harBokad;
+    if (snabbFilter === 'ej_publicerade') return !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
+
+    return true;
+  });
+  const allaSynligaIds = filtreradeGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
   function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
@@ -723,7 +740,7 @@ export default function Bemanning() {
     if (shiftKey && senastMarkeradIndex !== null) {
       const start = Math.min(senastMarkeradIndex, index);
       const slut = Math.max(senastMarkeradIndex, index);
-      grupper.slice(start, slut + 1).forEach(g => {
+      filtreradeGrupper.slice(start, slut + 1).forEach(g => {
         g.pass.forEach(p => markerad ? ny.add(p.id) : ny.delete(p.id));
       });
     } else {
@@ -763,7 +780,7 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-2 sm:flex sm:flex-wrap">
+        <div className="mb-3 grid gap-2 sm:flex sm:flex-wrap">
           <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
             <option value="">Alla statusar</option>
             {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
@@ -772,11 +789,38 @@ export default function Bemanning() {
           <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
         </div>
 
-        {grupper.length === 0 ? (
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {[
+            { id: 'alla', label: 'Alla' },
+            { id: 'atgard', label: 'Åtgärd krävs' },
+            { id: 'lediga', label: 'Lediga' },
+            { id: 'bokade', label: 'Bokade' },
+            { id: 'ej_publicerade', label: 'Ej publicerade' },
+          ].map(f => {
+            const aktiv = snabbFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
+                className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                style={{
+                  background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
+                  borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                  color: aktiv ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : (
           <div className="space-y-3">
-            {grupper.map((grupp, index) => {
+            {filtreradeGrupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
               const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
