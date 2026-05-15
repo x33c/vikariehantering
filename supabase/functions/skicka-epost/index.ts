@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import webpush from 'https://esm.sh/web-push@3.6.7?target=deno';
+import { buildPushHTTPRequest } from 'npm:@pushforge/builder';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'onboarding@resend.dev';
@@ -15,6 +15,37 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+
+function base64UrlEncode(bytes: Uint8Array) {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(value: string) {
+  const padded = value + '='.repeat((4 - value.length % 4) % 4);
+  const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(base64);
+  return Uint8Array.from([...binary].map((char) => char.charCodeAt(0)));
+}
+
+function vapidPrivateJwk() {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return null;
+
+  const publicBytes = base64UrlToBytes(VAPID_PUBLIC_KEY);
+  if (publicBytes.length !== 65 || publicBytes[0] !== 4) {
+    throw new Error('Ogiltig VAPID public key.');
+  }
+
+  return {
+    kty: 'EC',
+    crv: 'P-256',
+    x: base64UrlEncode(publicBytes.slice(1, 33)),
+    y: base64UrlEncode(publicBytes.slice(33, 65)),
+    d: VAPID_PRIVATE_KEY,
+  };
+}
 
 function kortNamn(namn: string | null | undefined) {
   if (!namn) return null;
@@ -69,7 +100,8 @@ async function raknaPushPrenumerationer(supabase: ReturnType<typeof createClient
 async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: string | null, title: string, body: string, url: string) {
   if (!profilId || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
 
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  const privateJWK = vapidPrivateJwk();
+  if (!privateJWK) return;
 
   const { data: subs } = await supabase
     .from('push_prenumerationer')
@@ -79,18 +111,50 @@ async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: s
 
   for (const sub of subs ?? []) {
     try {
-      await webpush.sendNotification({
-        endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth },
-      }, JSON.stringify({ title, body, url }));
-    } catch (error) {
-      const statusCode = (error as { statusCode?: number })?.statusCode;
-      const body = (error as { body?: unknown })?.body;
+      const request = await buildPushHTTPRequest({
+        privateJWK,
+        subscription: {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        },
+        message: {
+          payload: {
+            title,
+            body,
+            url,
+            icon: '/sundbyberg-halm.png',
+            badge: '/sundbyberg-halm.png',
+          },
+          adminContact: VAPID_SUBJECT,
+          options: { urgency: 'high', ttl: 3600 },
+        },
+      });
 
+      const response = await fetch(request.endpoint, {
+        method: 'POST',
+        headers: request.headers,
+        body: request.body,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        await supabase.from('push_prenumerationer').update({
+          senaste_fel: text || `Push service svarade ${response.status}`,
+          updated_at: new Date().toISOString(),
+          aktiv: response.status === 404 || response.status === 410 ? false : true,
+        }).eq('id', sub.id);
+      } else {
+        await supabase.from('push_prenumerationer').update({
+          senaste_fel: null,
+          updated_at: new Date().toISOString(),
+          aktiv: true,
+        }).eq('id', sub.id);
+      }
+    } catch (error) {
       await supabase.from('push_prenumerationer').update({
-        senaste_fel: typeof body === 'string' ? body : String(error),
+        senaste_fel: error instanceof Error ? error.message : String(error),
         updated_at: new Date().toISOString(),
-        aktiv: statusCode === 404 || statusCode === 410 ? false : true,
+        aktiv: true,
       }).eq('id', sub.id);
     }
   }
