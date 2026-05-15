@@ -153,8 +153,18 @@ export const passApi = {
       .eq('id', id).single();
   },
   async skapa(data: NyttVikariepass) {
+    const payload = {
+      ...data,
+      personal_id: data.personal_id || null,
+      frånvaro_id: data.frånvaro_id || null,
+      schemarad_id: data.schemarad_id || null,
+      vikarie_id: data.vikarie_id || null,
+      riktad_till_vikarie_id: data.riktad_till_vikarie_id || null,
+      skapad_av: data.skapad_av || null,
+    };
+
     return supabase.from('vikariepass')
-      .insert({ publicerad: false, ...data })
+      .insert({ publicerad: false, ...payload })
       .select('*, personal(*)')
       .single();
   },
