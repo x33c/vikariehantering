@@ -2,6 +2,27 @@ import { supabase } from './supabase';
 
 const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
+async function functionErrorText(error: unknown) {
+  const context = (error as { context?: unknown })?.context;
+
+  if (context instanceof Response) {
+    try {
+      const json = await context.clone().json();
+      if (json?.error) return String(json.error);
+      if (json?.message) return String(json.message);
+      return JSON.stringify(json);
+    } catch (_) {
+      try {
+        return await context.text();
+      } catch {
+        // fall through
+      }
+    }
+  }
+
+  return error instanceof Error ? error.message : 'Okänt fel.';
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -72,10 +93,14 @@ export async function avaktiveraPush() {
 }
 
 export async function testaServerPush() {
+  // Säkerställ att webbläsarens subscription också finns i databasen.
+  await aktiveraPush();
+
   const { error } = await supabase.functions.invoke('skicka-epost', {
     body: { typ: 'test_push' },
   });
-  if (error) throw error;
+
+  if (error) throw new Error(await functionErrorText(error));
 }
 
 export async function pushStatus() {
@@ -86,5 +111,5 @@ export async function pushStatus() {
   const sub = await registration?.pushManager.getSubscription();
   if (sub) return 'aktiv' as const;
 
-  return Notification.permission === 'granted' ? 'redo' as const : 'ej_aktiv' as const;
+  return Notification.permission === 'granted' ? 'redo' as const : 'ej_aktiv';
 }
