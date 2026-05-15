@@ -75,6 +75,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
+  const [visaHistorik, setVisaHistorik] = useState(false);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -318,12 +319,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
         <div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Pass</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Pass'}</h2>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {pass.datum} · {pass.tid_från.slice(0, 5)}-{pass.tid_till.slice(0, 5)}
           </p>
         </div>
-        <button onClick={onStäng} style={{ color: 'var(--text-muted)' }}>✕</button>
+        <button onClick={onStäng} className="rounded-full px-2 py-1 text-lg leading-none" style={{ color: 'var(--text-muted)' }}>×</button>
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
@@ -335,21 +336,33 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
           </div>
         )}
 
-        <section className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Okänd personal'}</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Översikt</p>
+              <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 {pass.grupp ? `Grupp: ${pass.grupp}` : 'Ingen grupp angiven'}
               </p>
+              {pass.anteckning && (
+                <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>{pass.anteckning}</p>
+              )}
             </div>
             <StatusBadge status={pass.status} />
           </div>
 
-          <div className="grid gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <p>Synligt för vikarier: <span style={{ color: 'var(--text)' }}>{pass.publicerad ? 'Ja, som ledigt pass' : 'Nej'}</span></p>
-            {riktadVikarie && <p>Förfrågan skickad till: <span style={{ color: 'var(--text)' }}>{riktadVikarie.namn}</span></p>}
-            {tillsattVikarie && <p>Bokad vikarie: <span style={{ color: 'var(--text)' }}>{tillsattVikarie.namn}</span></p>}
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              Synlighet<br />
+              <span className="font-semibold" style={{ color: pass.publicerad ? 'var(--blue)' : 'var(--text)' }}>
+                {pass.publicerad ? 'Publicerad som ledig' : 'Inte publicerad'}
+              </span>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              Vikarie<br />
+              <span className="font-semibold" style={{ color: tillsattVikarie ? '#22c55e' : 'var(--text)' }}>
+                {tillsattVikarie?.namn ?? riktadVikarie?.namn ?? 'Ingen vald'}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -443,13 +456,13 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         </section>
 
         <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Publicering</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Synlighet</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button size="sm" variant="secondary" onClick={publiceraLedigt} loading={sparar}>
-              Publicera som ledigt
+              Gör ledigt
             </Button>
             <Button size="sm" variant="secondary" onClick={avpublicera} loading={sparar} disabled={!pass.publicerad}>
-              Avpublicera
+              Dölj
             </Button>
           </div>
         </section>
@@ -493,15 +506,27 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         </section>
 
         <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Historik</p>
-          {laddar ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Laddar...</p>
-            : historik.length === 0 ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Ingen historik.</p>
-            : historik.map(h => (
-              <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
-                {' '}{h.händelse.replace(/_/g, ' ')}
-              </div>
-            ))}
+          <button
+            type="button"
+            onClick={() => setVisaHistorik(!visaHistorik)}
+            className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg)' }}
+          >
+            <span>Historik ({historik.length})</span>
+            <span>{visaHistorik ? 'Dölj' : 'Visa'}</span>
+          </button>
+          {visaHistorik && (
+            <div className="mt-2 rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
+              {laddar ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Laddar...</p>
+                : historik.length === 0 ? <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>Ingen historik.</p>
+                : historik.map(h => (
+                  <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
+                    {' '}{h.händelse.replace(/_/g, ' ')}
+                  </div>
+                ))}
+            </div>
+          )}
         </section>
       </div>
     </div>
