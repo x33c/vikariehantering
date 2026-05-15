@@ -131,11 +131,11 @@ export default function AdminLayout() {
             </svg>
           </button>
           <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
             <PushButton compact />
             <button
               onClick={loggaUt}
-              className="rounded-xl border p-2"
+              className="ml-2 rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
               aria-label="Logga ut"
               title="Logga ut"

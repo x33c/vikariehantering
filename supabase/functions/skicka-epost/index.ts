@@ -66,6 +66,43 @@ serve(async (req) => {
   const { pass_id, vikarie_ids, typ } = body;
 
 
+
+  if (typ === 'test_push') {
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+      return new Response(JSON.stringify({ error: 'VAPID-nycklar saknas i Edge Function.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Du måste vara inloggad för att testa push.' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: subs } = await supabase
+      .from('push_prenumerationer')
+      .select('id')
+      .eq('profil_id', userData.user.id)
+      .eq('aktiv', true);
+
+    if (!subs || subs.length === 0) {
+      return new Response(JSON.stringify({ error: 'Ingen aktiv push-prenumeration hittades för kontot.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    await skickaPush(supabase, userData.user.id, 'Testnotis', 'Push fungerar på denna enhet.', '/');
+
+    return new Response(JSON.stringify({ ok: true, subscriptions: subs.length }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (typ === 'admin_avbokning') {
     if (!pass_id) {
       return new Response(JSON.stringify({ error: 'pass_id krävs.' }), {

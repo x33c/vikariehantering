@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { aktiveraPush, avaktiveraPush, pushSaknasText, pushStatus } from '../lib/push';
+import { aktiveraPush, avaktiveraPush, pushSaknasText, pushStatus, testaServerPush } from '../lib/push';
 
 export default function PushButton({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<'saknas' | 'nekad' | 'aktiv' | 'redo' | 'ej_aktiv'>('saknas');
@@ -10,23 +10,51 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
     pushStatus().then(setStatus).catch(() => setStatus('saknas'));
   }, []);
 
-  async function togglaPush() {
+  async function aktivera() {
     if (status === 'nekad' || status === 'saknas') {
-      setFel(pushSaknasText());
+      const text = pushSaknasText();
+      setFel(text);
+      if (compact) window.alert(text);
       return;
     }
 
     setLaddar(true);
     setFel('');
     try {
-      if (status === 'aktiv') {
-        await avaktiveraPush();
-      } else {
-        await aktiveraPush();
-      }
+      await aktiveraPush();
       setStatus(await pushStatus());
     } catch (err) {
-      setFel(err instanceof Error ? err.message : 'Kunde inte ändra push-notiser.');
+      const text = err instanceof Error ? err.message : 'Kunde inte aktivera push-notiser.';
+      setFel(text);
+      if (compact) window.alert(text);
+    } finally {
+      setLaddar(false);
+    }
+  }
+
+  async function testa() {
+    setLaddar(true);
+    setFel('');
+    try {
+      await testaServerPush();
+      if (compact) window.alert('Testnotis skickad.');
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Kunde inte skicka testnotis.';
+      setFel(text);
+      if (compact) window.alert(text);
+    } finally {
+      setLaddar(false);
+    }
+  }
+
+  async function stangAv() {
+    setLaddar(true);
+    setFel('');
+    try {
+      await avaktiveraPush();
+      setStatus(await pushStatus());
+    } catch (err) {
+      setFel(err instanceof Error ? err.message : 'Kunde inte stänga av push-notiser.');
     } finally {
       setLaddar(false);
     }
@@ -36,19 +64,11 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
   const nekad = status === 'nekad';
   const saknas = status === 'saknas';
 
-  const label = aktiv
-    ? 'Push aktivt'
-    : nekad
-      ? 'Push blockerat'
-      : saknas
-        ? 'Push saknas'
-        : 'Aktivera push';
-
   if (compact) {
     return (
       <button
         type="button"
-        onClick={togglaPush}
+        onClick={aktiv ? testa : aktivera}
         disabled={laddar}
         className="relative rounded-xl border p-2 disabled:opacity-60"
         style={{
@@ -56,8 +76,8 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
           borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
           background: aktiv ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'transparent',
         }}
-        aria-label={aktiv ? 'Stäng av push-notiser' : label}
-        title={aktiv ? 'Stäng av push-notiser' : saknas ? pushSaknasText() : label}
+        aria-label={aktiv ? 'Testa push-notis' : 'Aktivera push-notiser'}
+        title={aktiv ? 'Testa push-notis' : saknas ? pushSaknasText() : 'Aktivera push-notiser'}
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 0 1-6 0" />
@@ -76,16 +96,23 @@ export default function PushButton({ compact = false }: { compact?: boolean }) {
             {aktiv ? 'Aktiverat på denna enhet' : nekad ? 'Blockerat i webbläsaren' : saknas ? pushSaknasText() : 'Få nya pass och svar direkt'}
           </p>
         </div>
-        {!nekad && !saknas && (
-          <button
-            onClick={togglaPush}
-            disabled={laddar}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-            style={{ background: aktiv ? '#ef4444' : 'var(--blue)' }}
-          >
-            {laddar ? 'Vänta...' : aktiv ? 'Stäng av' : 'Aktivera'}
-          </button>
-        )}
+        <div className="flex gap-2">
+          {aktiv && (
+            <button onClick={testa} disabled={laddar} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50" style={{ background: 'var(--blue)' }}>
+              Testa
+            </button>
+          )}
+          {!nekad && !saknas && (
+            <button
+              onClick={aktiv ? stangAv : aktivera}
+              disabled={laddar}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              style={{ background: aktiv ? '#ef4444' : 'var(--blue)' }}
+            >
+              {laddar ? 'Vänta...' : aktiv ? 'Stäng av' : 'Aktivera'}
+            </button>
+          )}
+        </div>
       </div>
       {fel && <p className="text-xs text-red-500">{fel}</p>}
     </div>

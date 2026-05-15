@@ -16,20 +16,16 @@ export function pushStods() {
 export function pushSaknasText() {
   if (!publicKey) return 'Push är inte konfigurerat.';
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-    return 'Push stöds inte i denna webbläsare. På iPhone behöver sidan installeras på hemskärmen först.';
+    return 'På iPhone fungerar push normalt först när sidan är tillagd på hemskärmen som webbapp.';
   }
   return 'Push stöds inte här.';
 }
 
 export async function aktiveraPush() {
-  if (!pushStods() || !publicKey) {
-    throw new Error(pushSaknasText());
-  }
+  if (!pushStods() || !publicKey) throw new Error(pushSaknasText());
 
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    throw new Error('Push-notiser nekades i webbläsaren.');
-  }
+  if (permission !== 'granted') throw new Error('Push-notiser nekades i webbläsaren.');
 
   const registration = await navigator.serviceWorker.register('/push-sw.js');
   const existing = await registration.pushManager.getSubscription();
@@ -46,9 +42,7 @@ export async function aktiveraPush() {
   const p256dh = json.keys?.p256dh;
   const auth = json.keys?.auth;
 
-  if (!endpoint || !p256dh || !auth) {
-    throw new Error('Kunde inte läsa push-prenumerationen.');
-  }
+  if (!endpoint || !p256dh || !auth) throw new Error('Kunde inte läsa push-prenumerationen.');
 
   const { error } = await supabase.from('push_prenumerationer').upsert({
     profil_id: userData.user.id,
@@ -75,6 +69,13 @@ export async function avaktiveraPush() {
       .update({ aktiv: false, updated_at: new Date().toISOString() })
       .eq('endpoint', endpoint);
   }
+}
+
+export async function testaServerPush() {
+  const { error } = await supabase.functions.invoke('skicka-epost', {
+    body: { typ: 'test_push' },
+  });
+  if (error) throw error;
 }
 
 export async function pushStatus() {
