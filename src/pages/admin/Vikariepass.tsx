@@ -836,7 +836,6 @@ export default function Bemanning() {
   const [raderaValda, setRaderaValda] = useState(false);
   const [raderar, setRaderar] = useState(false);
   const [senastMarkeradIndex, setSenastMarkeradIndex] = useState<number | null>(null);
-  const [visaFilter, setVisaFilter] = useState(false);
 
   const ladda = useCallback(async () => {
     const [pRes, vRes, perRes] = await Promise.all([
@@ -948,13 +947,22 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="mb-3 grid gap-2 sm:flex sm:flex-wrap">
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
+            <option value="">Alla statusar</option>
+            {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
+          </Select>
+          <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
+          <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
+        </div>
+
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'alla', label: 'Alla' },
-            { id: 'atgard', label: 'Att göra' },
+            { id: 'atgard', label: 'Åtgärd krävs' },
             { id: 'lediga', label: 'Lediga' },
             { id: 'bokade', label: 'Bokade' },
-            { id: 'ej_publicerade', label: 'Dolda' },
+            { id: 'ej_publicerade', label: 'Ej publicerade' },
           ].map(f => {
             const aktiv = snabbFilter === f.id;
             return (
@@ -973,26 +981,7 @@ export default function Bemanning() {
               </button>
             );
           })}
-          <button
-            type="button"
-            onClick={() => setVisaFilter(!visaFilter)}
-            className="ml-auto shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}
-          >
-            Filter
-          </button>
         </div>
-
-        {visaFilter && (
-          <div className="mb-4 grid gap-2 rounded-xl border p-3 sm:grid-cols-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
-              <option value="">Alla statusar</option>
-              {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
-            </Select>
-            <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
-            <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
-          </div>
-        )}
 
         {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
@@ -1001,6 +990,7 @@ export default function Bemanning() {
             {filtreradeGrupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
+              const ämnen = [...new Set(grupp.pass.map(p => p.ämne).filter(Boolean))];
               const vikarie = grupp.pass.find(p => p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
               const statusar = [...new Set(grupp.pass.map(p => p.status))];
@@ -1010,13 +1000,14 @@ export default function Bemanning() {
               const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
               const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const ärAvbokat = dominerandStatus === 'avbokat';
-              const huvudStatus =
-                ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } :
-                harAvbokningsförfrågan ? { text: 'Avbokning begärd', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } :
-                vikariNamn ? { text: vikariNamn, color: '#16a34a', bg: 'rgba(34, 197, 94, 0.12)' } :
-                harRiktadFörfrågan ? { text: 'Förfrågan skickad', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' } :
-                publicerad ? { text: 'Ledigt', color: 'var(--blue)', bg: 'color-mix(in srgb, var(--blue) 14%, transparent)' } :
-                { text: 'Dolt', color: 'var(--text-subtle)', bg: 'var(--hover)' };
+              const statusPiller = [
+                ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
+                !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
+                !ärAvbokat && vikariNamn ? { text: `Bokad: ${vikariNamn}`, color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' } : null,
+                !ärAvbokat && !vikariNamn && harRiktadFörfrågan ? { text: 'Förfrågan skickad', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' } : null,
+                !ärAvbokat && !vikariNamn && publicerad ? { text: 'Publicerad som ledig', color: 'var(--blue)', bg: 'color-mix(in srgb, var(--blue) 14%, transparent)' } : null,
+                !ärAvbokat && !vikariNamn && !publicerad && !harRiktadFörfrågan ? { text: 'Ej publicerad', color: 'var(--text-subtle)', bg: 'var(--hover)' } : null,
+              ].filter(Boolean) as { text: string; color: string; bg: string }[];
 
               return (
                 <div key={`${grupp.personal_id}_${grupp.datum}`}
@@ -1034,7 +1025,7 @@ export default function Bemanning() {
                         e.stopPropagation();
                         sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey);
                       }}
-                      className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition"
+                      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition"
                       style={{
                         background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)',
                         borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
@@ -1043,11 +1034,11 @@ export default function Bemanning() {
                       }}
                     >
                       {alleMarkerade ? (
-                        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                           <path d="M5 10.5 8.2 13.5 15 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (
-                        <span className="h-1 w-1 rounded-full" style={{ background: 'currentColor' }} />
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
                       )}
                     </button>
                     <div className="min-w-0 flex-1" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
@@ -1067,6 +1058,12 @@ export default function Bemanning() {
                         <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
                         {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
                       </p>
+
+                      {ämnen.length > 0 && (
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {ämnen.join(', ')}
+                        </p>
+                      )}
 
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                         {statusPiller.map(piller => (
