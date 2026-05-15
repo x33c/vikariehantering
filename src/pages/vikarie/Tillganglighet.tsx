@@ -95,6 +95,10 @@ export default function Tillganglighet() {
     setForm(prev => ({ ...prev, tid_från, tid_till }));
   }
 
+  function ärSnabbTid(tid_från: string, tid_till: string) {
+    return form.tid_från === tid_från && form.tid_till === tid_till;
+  }
+
   async function spara() {
     if (!vikarie) return;
     if (typ === 'specifikt' && !form.datum) {
@@ -337,9 +341,29 @@ export default function Tillganglighet() {
               )}
 
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => snabbTid('', '')} className="rounded-lg border px-2 py-2 text-xs font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Heldag</button>
-                <button onClick={() => snabbTid('08:00', '12:00')} className="rounded-lg border px-2 py-2 text-xs font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>FM</button>
-                <button onClick={() => snabbTid('12:00', '17:00')} className="rounded-lg border px-2 py-2 text-xs font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>EM</button>
+                {[
+                  { label: 'Heldag', från: '', till: '' },
+                  { label: 'FM', från: '08:00', till: '12:00' },
+                  { label: 'EM', från: '12:00', till: '17:00' },
+                ].map(val => {
+                  const aktiv = ärSnabbTid(val.från, val.till);
+                  return (
+                    <button
+                      key={val.label}
+                      type="button"
+                      onClick={() => snabbTid(val.från, val.till)}
+                      className="rounded-lg border px-2 py-2 text-xs font-semibold transition-all"
+                      style={{
+                        background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
+                        borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                        color: aktiv ? '#fff' : 'var(--text)',
+                        boxShadow: aktiv ? '0 0 0 3px var(--nav-active-ring-soft)' : 'none',
+                      }}
+                    >
+                      {val.label}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
