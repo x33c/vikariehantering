@@ -83,8 +83,15 @@ async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: s
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh, auth: sub.auth },
       }, JSON.stringify({ title, body, url }));
-    } catch (_) {
-      await supabase.from('push_prenumerationer').update({ aktiv: false }).eq('id', sub.id);
+    } catch (error) {
+      const statusCode = (error as { statusCode?: number })?.statusCode;
+      const body = (error as { body?: unknown })?.body;
+
+      await supabase.from('push_prenumerationer').update({
+        senaste_fel: typeof body === 'string' ? body : String(error),
+        updated_at: new Date().toISOString(),
+        aktiv: statusCode === 404 || statusCode === 410 ? false : true,
+      }).eq('id', sub.id);
     }
   }
 }
