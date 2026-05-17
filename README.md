@@ -2,14 +2,6 @@
 
 Vikariehantering är en webbapp för att hantera frånvaro, vikariepass, bokningar, tillgänglighet, meddelanden och notiser på ett enkelt och samlat sätt.
 
-Den här startsidan är skriven för att vara säker att visa öppet. Lägg aldrig in känsligt innehåll i dokumentation, exempeldata, skärmbilder eller commits.
-
-## Viktigt om säkerhet och innehåll
-
-Publicera inte riktiga personnamn, telefonnummer, e-postadresser, skolnamn, organisationsnamn, interna enhetsnamn, logotyper, märken, grafiska symboler, lösenord, API-nycklar, tokens eller skärmbilder där användare, pass, meddelanden eller notiser kan identifieras.
-
-Använd neutrala exempel när du dokumenterar eller testar.
-
 ## Kom igång som vikarie
 
 ### 1. Få ett konto
