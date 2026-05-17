@@ -35,7 +35,7 @@ export default function AdminLayout() {
   const { mörkt, toggla } = useDarkMode();
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
       {menyÖppen && (
         <div className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden" onClick={() => setMenyÖppen(false)} />
       )}
@@ -136,20 +136,9 @@ export default function AdminLayout() {
             </svg>
           </button>
           <span className="ml-3 min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <AdminNotiser />
             <PushButton compact />
-            <button
-              onClick={loggaUt}
-              className="ml-2 rounded-xl border p-2"
-              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
-              aria-label="Logga ut"
-              title="Logga ut"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 9V5.75A1.75 1.75 0 0 0 14 4h-7A1.75 1.75 0 0 0 5.25 5.75v12.5C5.25 19.22 6.03 20 7 20h7a1.75 1.75 0 0 0 1.75-1.75V15M12 8l-4 4m0 0 4 4m-4-4h12" />
-              </svg>
-            </button>
             <button
               onClick={toggla}
               className="rounded-xl border p-2"
@@ -171,7 +160,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-8 sm:py-5 lg:px-10">
+          <div className="mx-auto w-full max-w-7xl overflow-x-hidden px-3 py-4 sm:px-8 sm:py-5 lg:px-10">
             <Outlet />
           </div>
         </main>

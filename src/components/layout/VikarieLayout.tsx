@@ -31,7 +31,7 @@ export default function VikarieLayout() {
   const { mörkt, toggla } = useDarkMode();
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
       {false && menyÖppen && (
         <div
           className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden"
@@ -85,6 +85,16 @@ export default function VikarieLayout() {
               {item.label}
             </NavLink>
           ))}
+          <button
+            type="button"
+            onClick={loggaUt}
+            className="flex min-h-12 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-semibold sm:text-xs"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Logga ut"
+            title="Logga ut"
+          >
+            Logga ut
+          </button>
         </nav>
 
         {/* Botten */}
@@ -119,7 +129,7 @@ export default function VikarieLayout() {
       </aside>
 
       {/* Main */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Topbar mobil */}
         <header
           className="flex h-14 shrink-0 items-center border-b px-3 sm:px-4 lg:hidden"
@@ -128,17 +138,6 @@ export default function VikarieLayout() {
           <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <PushButton compact />
-            <button
-              onClick={loggaUt}
-              className="ml-2 rounded-xl border p-2"
-              style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
-              aria-label="Logga ut"
-              title="Logga ut"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 9V5.75A1.75 1.75 0 0 0 14 4h-7A1.75 1.75 0 0 0 5.25 5.75v12.5C5.25 19.22 6.03 20 7 20h7a1.75 1.75 0 0 0 1.75-1.75V15M12 8l-4 4m0 0 4 4m-4-4h12" />
-              </svg>
-            </button>
             <button
               onClick={toggla}
               className="rounded-xl border p-2"
@@ -162,7 +161,7 @@ export default function VikarieLayout() {
           <Outlet />
         </main>
         <nav
-          className="grid shrink-0 grid-cols-4 border-t px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 lg:hidden"
+          className="grid shrink-0 grid-cols-5 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           {navItems.map((item) => (

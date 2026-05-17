@@ -200,7 +200,7 @@ export default function Tillganglighet() {
   const specifika = tillg.filter(t => !t.återkommande);
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-3 pb-6 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden p-3 pb-6 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Tillgänglighet</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -241,8 +241,8 @@ export default function Tillganglighet() {
               ) : specifika.map(t => {
                 const { dag, tid, vecka } = formatRad(t);
                 return (
-                  <article key={t.id} className="rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    <div className="flex items-start justify-between gap-3">
+                  <article key={t.id} className="min-w-0 rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dag}</p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tid}</p>
@@ -277,8 +277,8 @@ export default function Tillganglighet() {
               ) : återkommande.map(t => {
                 const { dag, tid } = formatRad(t);
                 return (
-                  <article key={t.id} className="rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    <div className="flex items-start justify-between gap-3">
+                  <article key={t.id} className="min-w-0 rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dag}</p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tid}</p>
@@ -306,7 +306,7 @@ export default function Tillganglighet() {
       {modalÖppen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
-          <div className="relative max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto rounded-2xl border p-4 shadow-xl sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
@@ -439,7 +439,7 @@ export default function Tillganglighet() {
       {raderaId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setRaderaId(null)} />
-          <div className="relative w-full rounded-2xl border p-4 shadow-xl sm:max-w-sm sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative w-full max-w-full overflow-x-hidden rounded-2xl border p-4 shadow-xl sm:max-w-sm sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text)' }}>Ta bort tillgänglighet?</h2>
             <div className="flex gap-2">
               <button onClick={() => setRaderaId(null)} className="min-h-11 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
