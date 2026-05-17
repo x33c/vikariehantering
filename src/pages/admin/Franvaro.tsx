@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
-import type { Frånvaro, Personal, Schemarad, Vikarie } from '../../types';
+import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
 import {
   Button, Input, Select, Textarea, Modal, Confirm, TomtTillstånd, LaddaSida, Alert
 } from '../../components/ui';
@@ -74,6 +75,27 @@ function byggLayout(rader: Schemarad[]) {
   }
 
   return layout;
+}
+
+function datumIntervall(start: string, slut: string) {
+  const datum: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    datum.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 1);
+  }
+
+  return datum;
+}
+
+function anteckningFörPass(frånvaro: Frånvaro) {
+  return (frånvaro.anteckning ?? '')
+    .split('\n')
+    .filter(rad => rad.trim().toLowerCase() !== 'ingen vikarie behövs')
+    .join('\n')
+    .trim() || null;
 }
 
 function SchemaVal({
@@ -245,7 +267,10 @@ function FrånvaroModal({
       tid_från: helDag ? null : tidFrån,
       tid_till: helDag ? null : tidTill,
       orsak: orsak || null,
-      anteckning: anteckning || null,
+      anteckning: [
+        anteckning.trim() || null,
+        ingenVikarieBehövs ? 'Ingen vikarie behövs' : null,
+      ].filter(Boolean).join('\n') || null,
       skapad_av: null,
     });
 
@@ -460,26 +485,138 @@ function FrånvaroModal({
 }
 
 export default function Franvaro() {
+  const navigate = useNavigate();
   const [frånvaron, setFrånvaron] = useState<Frånvaro[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
+  const [vikariepass, setVikariepass] = useState<Vikariepass[]>([]);
   const [laddar, setLaddar] = useState(true);
   const [modal, setModal] = useState<{ öppen: boolean; personalId?: string }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
+  const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
+  const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
 
   useEffect(() => { ladda(); }, []);
 
   async function ladda() {
-    const [fRes, pRes, vRes] = await Promise.all([
+    const [fRes, pRes, vRes, passRes] = await Promise.all([
       frånvaroApi.lista(),
       personalApi.lista(),
       vikariApi.lista(),
+      passApi.lista(),
     ]);
     setFrånvaron((fRes.data ?? []) as Frånvaro[]);
     setPersonal((pRes.data ?? []) as Personal[]);
     setVikarier((vRes.data ?? []) as Vikarie[]);
+    setVikariepass((passRes.data ?? []) as Vikariepass[]);
     setLaddar(false);
+  }
+
+  function aktivaPassFör(frånvaro: Frånvaro) {
+    return vikariepass.filter((pass) => pass.frånvaro_id === frånvaro.id && pass.status !== 'avbokat');
+  }
+
+  async function skapaPassFrånFrånvaro(frånvaro: Frånvaro) {
+    const befintligaPass = aktivaPassFör(frånvaro);
+    if (befintligaPass.length > 0) {
+      navigate('/admin/vikariepass');
+      return;
+    }
+
+    setSkaparPassId(frånvaro.id);
+    setSidFel('');
+
+    const schemaRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(
+      frånvaro.personal_id,
+      frånvaro.datum_från,
+      frånvaro.datum_till
+    );
+
+    if (schemaRes.error) {
+      setSidFel(schemaRes.error.message);
+      setSkaparPassId(null);
+      return;
+    }
+
+    const schemarader = sorteraOchRensaSchemarader((schemaRes.data ?? []) as Schemarad[])
+      .filter((rad) => rad.datum && rad.tid_från && rad.tid_till);
+
+    try {
+      if (schemarader.length > 0) {
+        const raderPerDatum = new Map<string, Schemarad[]>();
+
+        for (const rad of schemarader) {
+          if (!rad.datum) continue;
+          raderPerDatum.set(rad.datum, [...(raderPerDatum.get(rad.datum) ?? []), rad]);
+        }
+
+        for (const [datum, dagensRader] of raderPerDatum) {
+          const sorterade = [...dagensRader].sort((a, b) =>
+            minuter(a.tid_från) - minuter(b.tid_från) ||
+            minuter(a.tid_till) - minuter(b.tid_till)
+          );
+          const första = sorterade[0];
+          const sista = sorterade.reduce((senast, rad) =>
+            minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
+          , sorterade[0]);
+          const grupper = [...new Set(sorterade.map((rad) => rad.grupp).filter(Boolean))] as string[];
+
+          const res = await passApi.skapa({
+            frånvaro_id: frånvaro.id,
+            schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
+            personal_id: frånvaro.personal_id,
+            vikarie_id: null,
+            datum,
+            tid_från: första.tid_från!,
+            tid_till: sista.tid_till!,
+            typ: 'del_av_dag',
+            ämne: null,
+            grupp: grupper.length <= 3 ? grupper.join(', ') || null : `${grupper.length} grupper`,
+            sal: null,
+            anteckning: anteckningFörPass(frånvaro),
+            riktad_till_vikarie_id: null,
+            publicerad: false,
+            status: 'obokat',
+            skapad_av: null,
+          });
+
+          if (res.error) throw new Error(res.error.message);
+          if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat', { frånvaro_id: frånvaro.id, källa: 'frånvaro_i_efterhand' });
+        }
+      } else {
+        for (const datum of datumIntervall(frånvaro.datum_från, frånvaro.datum_till)) {
+          const res = await passApi.skapa({
+            frånvaro_id: frånvaro.id,
+            schemarad_id: null,
+            personal_id: frånvaro.personal_id,
+            vikarie_id: null,
+            datum,
+            tid_från: frånvaro.hel_dag ? '08:00' : tid(frånvaro.tid_från) || '08:00',
+            tid_till: frånvaro.hel_dag ? '17:00' : tid(frånvaro.tid_till) || '17:00',
+            typ: frånvaro.hel_dag ? 'hel_dag' : 'del_av_dag',
+            ämne: null,
+            grupp: null,
+            sal: null,
+            anteckning: anteckningFörPass(frånvaro),
+            riktad_till_vikarie_id: null,
+            publicerad: false,
+            status: 'obokat',
+            skapad_av: null,
+          });
+
+          if (res.error) throw new Error(res.error.message);
+          if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat', { frånvaro_id: frånvaro.id, källa: 'frånvaro_i_efterhand' });
+        }
+      }
+
+      await ladda();
+      navigate('/admin/vikariepass');
+    } catch (error) {
+      setSidFel(error instanceof Error ? error.message : 'Passet kunde inte skapas.');
+    } finally {
+      setSkaparPassId(null);
+    }
   }
 
   const filtrerade = sök
@@ -504,6 +641,8 @@ export default function Franvaro() {
         </div>
         <Button onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
       </div>
+
+      {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
       <input
         type="search"
@@ -560,6 +699,13 @@ export default function Franvaro() {
                     </p>
                   )}
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {aktivaPassFör(f).length > 0 ? (
+                    <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
+                  ) : (
+                    <Button size="sm" loading={skaparPassId === f.id} onClick={() => skapaPassFrånFrånvaro(f)}>Skapa pass</Button>
+                  )}
+                </div>
               </article>
             ))}
           </div>
@@ -587,9 +733,16 @@ export default function Franvaro() {
                     </td>
                     <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => setRaderaId(f.id)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--danger)' }}>
-                        Ta bort
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        {aktivaPassFör(f).length > 0 ? (
+                          <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
+                        ) : (
+                          <Button size="sm" loading={skaparPassId === f.id} onClick={() => skapaPassFrånFrånvaro(f)}>Skapa pass</Button>
+                        )}
+                        <button onClick={() => setRaderaId(f.id)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--danger)' }}>
+                          Ta bort
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
