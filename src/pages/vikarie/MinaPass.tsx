@@ -216,19 +216,6 @@ export default function MinaPass() {
         </p>
       </div>
 
-      {visaTidigare && tidigare.length > 0 && (
-        <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setVisaTidigare(v => !v)}
-            className="rounded-xl border px-3 py-2 text-sm font-semibold"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg-card)' }}
-          >
-            {visaTidigare ? 'Dölj arkiv' : `Visa arkiv (${tidigare.length})`}
-          </button>
-        </div>
-      )}
-
       {kommande.length === 0 ? (
         <div className="rounded-2xl border border-dashed px-4 py-10 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -251,14 +238,25 @@ export default function MinaPass() {
         </section>
       )}
 
-      {visaTidigare && tidigare.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Arkiv</h2>
-            <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
-              {tidigare.length}
-            </span>
+      {tidigare.length > 0 && (
+        <div className="mt-6 mb-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Arkiv</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{tidigare.length} tidigare pass</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setVisaTidigare(v => !v)}
+            className="shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+          >
+            {visaTidigare ? 'Dölj' : 'Visa'}
+          </button>
+        </div>
+      )}
+
+      {visaTidigare && tidigare.length > 0 && (
+        <section className="mt-3">
           <div className="grid gap-3 lg:grid-cols-2 opacity-80">
             {tidigare.map(p => (
               <PassKort key={p.id} pass={p} meddelanden={meddelandeAntal[p.id] ?? 0} onClick={() => öppnaPass(p)} />
