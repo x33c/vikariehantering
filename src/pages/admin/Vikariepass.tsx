@@ -898,7 +898,7 @@ export default function Bemanning() {
     const publicerad = grupp.pass.some(p => p.publicerad);
     const avbokad = grupp.pass.every(p => p.status === 'avbokat');
     const ejPublicerad = !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
-    const atgard = harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad;
+    const atgard = harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || avbokad;
 
     return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, ejPublicerad, atgard };
   }
@@ -1041,7 +1041,7 @@ export default function Bemanning() {
               const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
               const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const ärAvbokat = dominerandStatus === 'avbokat';
-              const kräverÅtgärd = harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat);
+              const kräverÅtgärd = ärAvbokat || harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat);
               const statusPiller = [
                 ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
                 !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
