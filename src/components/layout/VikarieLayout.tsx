@@ -179,6 +179,16 @@ export default function VikarieLayout() {
               {item.label === 'Tillgänglighet' ? 'Tid' : item.label}
             </NavLink>
           ))}
+          <button
+            type="button"
+            onClick={loggaUt}
+            className="flex min-h-12 items-center justify-center rounded-xl px-1 text-center text-[11px] font-semibold sm:text-xs"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label="Logga ut från vikarievyn"
+            title="Logga ut"
+          >
+            Logga ut
+          </button>
         </nav>
       </div>
     </div>

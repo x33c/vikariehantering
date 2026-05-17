@@ -304,9 +304,9 @@ export default function Tillganglighet() {
       )}
 
       {modalÖppen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
-          <div className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:w-full sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
@@ -330,10 +330,10 @@ export default function Tillganglighet() {
               ))}
             </div>
 
-            <div className="space-y-3">
+            <div className="mobile-form-grid space-y-3">
               {typ === 'specifikt' ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block">
+                <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block min-w-0">
                     <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från datum</span>
                     <input
                       type="date"
@@ -343,7 +343,7 @@ export default function Tillganglighet() {
                       style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                     />
                   </label>
-                  <label className="block">
+                  <label className="block min-w-0">
                     <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>T.o.m. datum</span>
                     <input
                       type="date"
@@ -362,7 +362,7 @@ export default function Tillganglighet() {
                   )}
                 </div>
               ) : (
-                <label className="block">
+                <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Veckodag</span>
                   <select value={form.veckodag} onChange={e => setForm({ ...form, veckodag: e.target.value })}
                     className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
@@ -374,7 +374,7 @@ export default function Tillganglighet() {
                 </label>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-2">
                 {[
                   { label: 'Heldag', från: '', till: '' },
                   { label: 'FM', från: '08:00', till: '12:00' },
@@ -400,14 +400,14 @@ export default function Tillganglighet() {
                 })}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block">
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från</span>
                   <input type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })}
                     className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                     style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
                 </label>
-                <label className="block">
+                <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Till</span>
                   <input type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })}
                     className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
@@ -415,7 +415,7 @@ export default function Tillganglighet() {
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                 <button onClick={() => setForm({ ...form, tillgänglig: true })} className="rounded-lg border px-3 py-2 text-sm font-semibold" style={{ borderColor: form.tillgänglig ? '#22c55e' : 'var(--border)', color: form.tillgänglig ? '#22c55e' : 'var(--text)' }}>Tillgänglig</button>
                 <button onClick={() => setForm({ ...form, tillgänglig: false })} className="rounded-lg border px-3 py-2 text-sm font-semibold" style={{ borderColor: !form.tillgänglig ? '#ef4444' : 'var(--border)', color: !form.tillgänglig ? '#ef4444' : 'var(--text)' }}>Inte tillgänglig</button>
               </div>
@@ -437,9 +437,9 @@ export default function Tillganglighet() {
       )}
 
       {raderaId && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setRaderaId(null)} />
-          <div className="relative w-full max-w-full overflow-x-hidden rounded-2xl border p-4 shadow-xl sm:max-w-sm sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden rounded-2xl border p-4 shadow-xl sm:w-full sm:max-w-sm sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text)' }}>Ta bort tillgänglighet?</h2>
             <div className="flex gap-2">
               <button onClick={() => setRaderaId(null)} className="min-h-11 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
