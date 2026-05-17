@@ -87,7 +87,10 @@ function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
 function historikText(h: Passhistorik) {
   const metadata = h.metadata ?? {};
   const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : null;
-  const tillfrågad = typeof metadata.tillfrågad_vikarie_namn === 'string' ? metadata.tillfrågad_vikarie_namn : vikarieNamn;
+  const profilNamn = h.utförd_av_profil?.namn ?? h.utförd_av_profil?.epost ?? null;
+  const tillfrågad = typeof metadata.tillfrågad_vikarie_namn === 'string'
+    ? metadata.tillfrågad_vikarie_namn
+    : vikarieNamn ?? profilNamn;
 
   if (h.händelse === 'vikarie_borttagen' && metadata.svar === 'nej') {
     return tillfrågad ? `Vikarie tackade nej: ${tillfrågad}` : 'Vikarie tackade nej';

@@ -33,16 +33,17 @@ function händelseRubrik(händelse: HändelsTyp, metadata: Record<string, unknow
   return HÄNDELSE_LABELS[händelse];
 }
 
-function MetadataDetalj({ händelse, metadata, vikariepass }: {
+function MetadataDetalj({ händelse, metadata, vikariepass, utfördAvNamn }: {
   händelse: HändelsTyp;
   metadata: Record<string, unknown> | null;
   vikariepass: HistorikRad['vikariepass'];
+  utfördAvNamn?: string | null;
 }) {
   const delar: string[] = [];
   const metadataTid = metadataText(metadata, 'tid');
   const metadataDatum = metadataText(metadata, 'datum');
   const metadataPersonal = metadataText(metadata, 'personal_namn');
-  const tillfrågad = metadataText(metadata, 'tillfrågad_vikarie_namn') ?? metadataText(metadata, 'vikarie_namn');
+  const tillfrågad = metadataText(metadata, 'tillfrågad_vikarie_namn') ?? metadataText(metadata, 'vikarie_namn') ?? utfördAvNamn ?? null;
 
   if (metadataDatum || metadataTid) {
     delar.push([metadataDatum, metadataTid].filter(Boolean).join(' '));
@@ -204,6 +205,7 @@ export default function Historik() {
                         händelse={r.händelse}
                         metadata={r.metadata}
                         vikariepass={r.vikariepass}
+                        utfördAvNamn={r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? null}
                       />
                     </td>
                     <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>
