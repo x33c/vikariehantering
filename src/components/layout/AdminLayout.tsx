@@ -32,6 +32,7 @@ function useDarkMode() {
 export default function AdminLayout() {
   const { profil, loggaUt } = useAuth();
   const [menyÖppen, setMenyÖppen] = useState(false);
+  const [bekraftaLoggaUt, setBekraftaLoggaUt] = useState(false);
   const { mörkt, toggla } = useDarkMode();
 
   return (
@@ -116,7 +117,7 @@ export default function AdminLayout() {
           </div>
 
           <button
-            onClick={loggaUt}
+            onClick={() => setBekraftaLoggaUt(true)}
             className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition-colors hover:opacity-80"
             style={{ color: 'var(--text)' }}
           >
@@ -165,6 +166,35 @@ export default function AdminLayout() {
           </div>
         </main>
       </div>
+
+      {bekraftaLoggaUt && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:items-center sm:p-4">
+          <div className="w-full max-w-sm rounded-2xl border p-4 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Vill du logga ut?</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Du behöver logga in igen för att administrera pass.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBekraftaLoggaUt(false)}
+                className="min-h-11 rounded-xl border px-4 py-2.5 text-sm font-semibold"
+                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                onClick={loggaUt}
+                className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+                style={{ background: 'var(--danger)' }}
+              >
+                Logga ut
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

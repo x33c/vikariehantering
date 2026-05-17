@@ -260,3 +260,53 @@ textarea {
   }
 }
 
+/* Robusta mobilfält i modaler. Native date/time kan annars rita bredare än sin container. */
+.availability-modal {
+  width: 100%;
+  max-width: 28rem;
+  box-sizing: border-box;
+}
+
+.availability-modal *,
+.availability-modal *::before,
+.availability-modal *::after {
+  box-sizing: border-box;
+}
+
+.availability-modal label,
+.availability-modal .field-shell {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.availability-modal input,
+.availability-modal select,
+.availability-modal textarea {
+  display: block;
+  inline-size: 100% !important;
+  max-inline-size: 100% !important;
+  min-inline-size: 0 !important;
+}
+
+.availability-modal input[type="date"],
+.availability-modal input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  overflow: hidden;
+  padding-inline-end: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .availability-modal {
+    max-width: 100%;
+  }
+
+  .availability-modal input,
+  .availability-modal select,
+  .availability-modal textarea {
+    font-size: 16px !important;
+  }
+}
+

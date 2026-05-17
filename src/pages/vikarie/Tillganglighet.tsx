@@ -304,9 +304,9 @@ export default function Tillganglighet() {
       )}
 
       {modalÖppen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
-          <div className="relative max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:w-full sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="availability-modal relative max-h-[calc(100dvh-1.5rem)] overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
@@ -332,26 +332,30 @@ export default function Tillganglighet() {
 
             <div className="mobile-form-grid space-y-3">
               {typ === 'specifikt' ? (
-                <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
                   <label className="block min-w-0">
                     <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från datum</span>
-                    <input
-                      type="date"
-                      value={form.datum}
-                      onChange={e => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
-                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
-                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                    />
+                    <span className="field-shell block">
+                      <input
+                        type="date"
+                        value={form.datum}
+                        onChange={e => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
+                        className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </span>
                   </label>
                   <label className="block min-w-0">
                     <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>T.o.m. datum</span>
-                    <input
-                      type="date"
-                      value={form.datum_till}
-                      onChange={e => setForm({ ...form, datum_till: e.target.value })}
-                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
-                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                    />
+                    <span className="field-shell block">
+                      <input
+                        type="date"
+                        value={form.datum_till}
+                        onChange={e => setForm({ ...form, datum_till: e.target.value })}
+                        className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </span>
                   </label>
                   {form.datum && (
                     <p className="text-xs sm:col-span-2" style={{ color: 'var(--text-muted)' }}>
@@ -400,18 +404,22 @@ export default function Tillganglighet() {
                 })}
               </div>
 
-              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
                 <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från</span>
-                  <input type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })}
-                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
-                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
+                  <span className="field-shell block">
+                    <input type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })}
+                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
+                  </span>
                 </label>
                 <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Till</span>
-                  <input type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })}
-                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
-                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
+                  <span className="field-shell block">
+                    <input type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })}
+                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
+                  </span>
                 </label>
               </div>
 
