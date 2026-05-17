@@ -293,7 +293,8 @@ export const notisApi = {
       body: { pass_id: passId, vikarie_ids: vikariIds },
     });
   },
-  async skapaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej') {
+  async skapaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej', vikarieNamn?: string) {
+    const namn = vikarieNamn?.trim() || 'Vikarien';
     return supabase.from('notiser').insert({
       pass_id: passId,
       vikarie_id: vikarieId,
@@ -302,9 +303,14 @@ export const notisApi = {
       mottagare: 'admin',
       ämne: svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej',
       innehåll: svar === 'ja'
-        ? 'Vikarien har tackat ja till förfrågan.'
-        : 'Vikarien har tackat nej till förfrågan.',
+        ? `${namn} har tackat ja till förfrågan.`
+        : `${namn} har tackat nej till förfrågan.`,
       skickat_kl: new Date().toISOString(),
+    });
+  },
+  async skickaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej') {
+    return supabase.functions.invoke('skicka-epost', {
+      body: { typ: 'admin_vikarie_svar', pass_id: passId, vikarie_id: vikarieId, svar },
     });
   },
   async skapaAdminAvbokning(passId: string) {

@@ -74,6 +74,26 @@ function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
   );
 }
 
+function historikText(h: Passhistorik) {
+  const metadata = h.metadata ?? {};
+  const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : null;
+  const tillfrågad = typeof metadata.tillfrågad_vikarie_namn === 'string' ? metadata.tillfrågad_vikarie_namn : vikarieNamn;
+
+  if (h.händelse === 'vikarie_borttagen' && metadata.svar === 'nej') {
+    return tillfrågad ? `Vikarie tackade nej: ${tillfrågad}` : 'Vikarie tackade nej';
+  }
+
+  if (h.händelse === 'vikarie_bokat' && metadata.svar === 'ja') {
+    return tillfrågad ? `Vikarie tackade ja: ${tillfrågad}` : 'Vikarie tackade ja';
+  }
+
+  if (h.händelse === 'vikarie_notifierat') {
+    return tillfrågad ? `Förfrågan skickad till ${tillfrågad}` : 'Förfrågan skickad';
+  }
+
+  return HÄNDELSE_LABELS[h.händelse] ?? h.händelse.replace(/_/g, ' ');
+}
+
 function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   pass: Bemanning;
   vikarier: Vikarie[];
@@ -567,7 +587,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
                 : historik.map(h => (
                   <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
-                    {' '}{h.händelse.replace(/_/g, ' ')}
+                    {' '}{historikText(h)}
                   </div>
                 ))}
             </div>

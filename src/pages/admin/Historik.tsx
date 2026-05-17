@@ -21,25 +21,55 @@ interface HistorikRad {
   } | null;
 }
 
+function metadataText(metadata: Record<string, unknown> | null, key: string) {
+  const value = metadata?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function händelseRubrik(händelse: HändelsTyp, metadata: Record<string, unknown> | null) {
+  if (händelse === 'vikarie_borttagen' && metadata?.svar === 'nej') return 'Vikarie tackade nej';
+  if (händelse === 'vikarie_bokat' && metadata?.svar === 'ja') return 'Vikarie tackade ja';
+  if (händelse === 'vikarie_notifierat') return 'Förfrågan skickad';
+  return HÄNDELSE_LABELS[händelse];
+}
+
 function MetadataDetalj({ händelse, metadata, vikariepass }: {
   händelse: HändelsTyp;
   metadata: Record<string, unknown> | null;
   vikariepass: HistorikRad['vikariepass'];
 }) {
   const delar: string[] = [];
+  const metadataTid = metadataText(metadata, 'tid');
+  const metadataDatum = metadataText(metadata, 'datum');
+  const metadataPersonal = metadataText(metadata, 'personal_namn');
+  const tillfrågad = metadataText(metadata, 'tillfrågad_vikarie_namn') ?? metadataText(metadata, 'vikarie_namn');
 
-  if (vikariepass) {
+  if (metadataDatum || metadataTid) {
+    delar.push([metadataDatum, metadataTid].filter(Boolean).join(' '));
+  } else if (vikariepass) {
     delar.push(`${vikariepass.datum} ${vikariepass.tid_från?.slice(0,5)}–${vikariepass.tid_till?.slice(0,5)}`);
-    if (vikariepass.personal?.namn) delar.push(vikariepass.personal.namn);
   }
 
-  if (metadata) {
-    if (metadata.ny_status) delar.push(`→ ${metadata.ny_status}`);
-    if (metadata.antal) delar.push(`${metadata.antal} notifierade`);
-    if (vikariepass?.vikarie?.namn && händelse === 'vikarie_bokat') {
-      delar.push(vikariepass.vikarie.namn);
-    }
+  if (metadataPersonal) {
+    delar.push(metadataPersonal);
+  } else if (vikariepass?.personal?.namn) {
+    delar.push(vikariepass.personal.namn);
   }
+
+  if (tillfrågad) {
+    delar.push(
+      händelse === 'vikarie_borttagen' && metadata?.svar === 'nej'
+        ? `Tackade nej: ${tillfrågad}`
+        : `Vikarie: ${tillfrågad}`
+    );
+  } else if (vikariepass?.vikarie?.namn && händelse === 'vikarie_bokat') {
+    delar.push(`Vikarie: ${vikariepass.vikarie.namn}`);
+  }
+
+  if (metadata?.svar === 'ja') delar.push('Svar: ja');
+  if (metadata?.svar === 'nej') delar.push('Svar: nej');
+  if (metadata?.ny_status) delar.push(`→ ${metadata.ny_status}`);
+  if (metadata?.antal) delar.push(`${metadata.antal} notifierade`);
 
   if (delar.length === 0) return <span style={{ color: 'var(--text-subtle)' }}>–</span>;
 
@@ -100,7 +130,8 @@ export default function Historik() {
     ? rader.filter(r =>
         r.vikariepass?.personal?.namn?.toLowerCase().includes(sök.toLowerCase()) ||
         r.utförd_av_profil?.namn?.toLowerCase().includes(sök.toLowerCase()) ||
-        HÄNDELSE_LABELS[r.händelse]?.toLowerCase().includes(sök.toLowerCase())
+        händelseRubrik(r.händelse, r.metadata)?.toLowerCase().includes(sök.toLowerCase()) ||
+        JSON.stringify(r.metadata ?? {}).toLowerCase().includes(sök.toLowerCase())
       )
     : rader;
 
@@ -164,7 +195,7 @@ export default function Historik() {
                         <span className="h-1.5 w-1.5 rounded-full shrink-0"
                           style={{ background: HÄNDELSE_FÄRG[r.händelse] ?? 'var(--text-subtle)' }} />
                         <span className="font-medium" style={{ color: 'var(--text)' }}>
-                          {HÄNDELSE_LABELS[r.händelse]}
+                          {händelseRubrik(r.händelse, r.metadata)}
                         </span>
                       </span>
                     </td>

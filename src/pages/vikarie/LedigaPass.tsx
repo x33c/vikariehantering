@@ -198,11 +198,19 @@ export default function LedigaPass() {
 
         await historikApi.skapa(passrad.id, 'vikarie_bokat', {
           vikarie_id: minVikarie.id,
+          vikarie_namn: minVikarie.namn,
+          tillfrågad_vikarie_id: minVikarie.id,
+          tillfrågad_vikarie_namn: minVikarie.namn,
           svar: grupp.riktad ? 'ja' : 'bokad',
-        });
+          personal_namn: grupp.personalNamn,
+          datum: passrad.datum,
+          tid: `${passrad.tid_från.slice(0, 5)}-${passrad.tid_till.slice(0, 5)}`,
+          riktad: grupp.riktad,
+        }, grupp.riktad ? `${minVikarie.namn} tackade ja till förfrågan.` : `${minVikarie.namn} bokade passet.`);
 
         if (grupp.riktad) {
-          await notisApi.skapaAdminSvar(passrad.id, minVikarie.id, 'ja');
+          await notisApi.skapaAdminSvar(passrad.id, minVikarie.id, 'ja', minVikarie.namn);
+          void notisApi.skickaAdminSvar(passrad.id, minVikarie.id, 'ja');
         }
 
         lyckades++;
@@ -240,8 +248,19 @@ export default function LedigaPass() {
 
     for (const p of grupp.pass) {
       await passApi.tackaNej(p.id, minVikarie.id);
-      await historikApi.skapa(p.id, 'vikarie_borttagen', { vikarie_id: minVikarie.id, svar: 'nej' });
-      await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'nej');
+      await historikApi.skapa(p.id, 'vikarie_borttagen', {
+        vikarie_id: minVikarie.id,
+        vikarie_namn: minVikarie.namn,
+        tillfrågad_vikarie_id: minVikarie.id,
+        tillfrågad_vikarie_namn: minVikarie.namn,
+        svar: 'nej',
+        personal_namn: grupp.personalNamn,
+        datum: p.datum,
+        tid: `${p.tid_från.slice(0, 5)}-${p.tid_till.slice(0, 5)}`,
+        riktad: grupp.riktad,
+      }, `${minVikarie.namn} tackade nej till förfrågan.`);
+      await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'nej', minVikarie.namn);
+      void notisApi.skickaAdminSvar(p.id, minVikarie.id, 'nej');
     }
 
     setSparar(false);

@@ -165,7 +165,7 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const body = await req.json();
-  const { pass_id, vikarie_ids, typ, avsandare_roll, meddelande } = body;
+  const { pass_id, vikarie_ids, typ, avsandare_roll, meddelande, vikarie_id, svar } = body;
 
 
 
@@ -245,6 +245,52 @@ serve(async (req) => {
     });
   }
 
+
+  if (typ === 'admin_vikarie_svar') {
+    if (!pass_id || !vikarie_id || (svar !== 'ja' && svar !== 'nej')) {
+      return new Response(JSON.stringify({ error: 'pass_id, vikarie_id och svar krävs.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: pass, error: passError } = await supabase
+      .from('vikariepass')
+      .select('*, personal(namn)')
+      .eq('id', pass_id)
+      .single();
+
+    if (passError || !pass) {
+      return new Response(JSON.stringify({ error: 'Passet hittades inte.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: vikarie } = await supabase
+      .from('vikarier')
+      .select('id, namn')
+      .eq('id', vikarie_id)
+      .maybeSingle();
+
+    const { data: admins } = await supabase
+      .from('profiler')
+      .select('id, namn, epost')
+      .eq('roll', 'admin')
+      .eq('aktiv', true);
+
+    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+    const vikarieNamn = vikarie?.namn ?? 'Vikarie';
+    const passNamn = pass.personal?.namn ?? 'Fristående pass';
+    const title = svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej';
+    const bodyText = `${vikarieNamn} ${svar === 'ja' ? 'tackade ja' : 'tackade nej'} · ${passNamn} · ${pass.datum} ${tid}`;
+
+    for (const admin of admins ?? []) {
+      await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
+    }
+
+    return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   if (typ === 'pass_meddelande') {
     if (!pass_id || (avsandare_roll !== 'admin' && avsandare_roll !== 'vikarie')) {
