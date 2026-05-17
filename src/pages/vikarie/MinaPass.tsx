@@ -29,6 +29,12 @@ function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
 }
 
 
+function meddelandeAvsandareNamn(m: Passmeddelande) {
+  const namn = m.avsandare?.namn ?? m.avsandare?.epost;
+  if (namn) return m.avsandare_roll === 'admin' ? `Admin: ${namn}` : namn;
+  return m.avsandare_roll === 'admin' ? 'Admin' : 'Du';
+}
+
 function ärAvbokningsmeddelande(text: string) {
   const normaliserad = text.toLowerCase();
   return normaliserad.includes('avboka') || normaliserad.includes('avbokning');
@@ -316,7 +322,7 @@ export default function MinaPass() {
               ) : meddelanden.map(m => (
                 <div key={m.id} className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                   <div className="mb-1 flex justify-between gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    <span>{m.avsandare_roll === 'admin' ? 'Admin' : 'Du'}</span>
+                    <span>{meddelandeAvsandareNamn(m)}</span>
                     <span>{new Date(m.created_at).toLocaleString('sv-SE')}</span>
                   </div>
                   <p style={{ color: 'var(--text)' }}>{m.meddelande}</p>

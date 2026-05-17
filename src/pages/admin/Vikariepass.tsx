@@ -84,6 +84,12 @@ function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
   );
 }
 
+function meddelandeAvsandareNamn(m: Passmeddelande, fallbackVikarie?: string | null) {
+  const namn = m.avsandare?.namn ?? m.avsandare?.epost;
+  if (namn) return m.avsandare_roll === 'admin' ? `Admin: ${namn}` : namn;
+  return m.avsandare_roll === 'admin' ? 'Admin' : fallbackVikarie ?? 'Vikarie';
+}
+
 function historikText(h: Passhistorik) {
   const metadata = h.metadata ?? {};
   const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : null;
@@ -544,7 +550,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               ) : meddelanden.map(m => (
                 <div key={m.id} className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
                   <div className="mb-1 flex items-center justify-between gap-2" style={{ color: 'var(--text-muted)' }}>
-                    <span>{m.avsandare_roll === 'admin' ? 'Admin' : 'Vikarie'}</span>
+                    <span>{meddelandeAvsandareNamn(m, tillsattVikarie?.namn ?? riktadVikarie?.namn)}</span>
                     <div className="flex items-center gap-2">
                       <span>{new Date(m.created_at).toLocaleString('sv-SE')}</span>
                       <button
