@@ -15,6 +15,12 @@ interface Passgrupp {
 }
 
 
+function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
+  const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
+  return new Date(`${pass.datum}T${sluttid}:00`).getTime() < Date.now();
+}
+
+
 function bokningsFelText(message?: string) {
   const text = message ?? '';
   if (
@@ -155,13 +161,14 @@ export default function LedigaPass() {
 
     const pRes = await passApi.lista({ status: ['obokat', 'notifierat'] });
     const alla = (pRes.data ?? []) as Vikariepass[];
+    const aktiva = alla.filter((p) => !ärPassPasserat(p));
 
     setFörfrågningar(
-      alla.filter((p) => p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
+      aktiva.filter((p) => p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
     );
 
     setLedigaPass(
-      alla.filter((p) => p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id)
+      aktiva.filter((p) => p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id)
     );
 
     setLaddar(false);

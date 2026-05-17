@@ -12,6 +12,16 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
+
+function ärPassPasserat(pass: { datum: string; tid_till: string }) {
+  const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
+  return new Date(`${pass.datum}T${sluttid}:00`).getTime() < Date.now();
+}
+
+function ärGruppPasserad(grupp: { pass: Array<{ datum: string; tid_till: string }> }) {
+  return grupp.pass.length > 0 && grupp.pass.every(ärPassPasserat);
+}
+
 function tomTillNull(value?: string | null) {
   return value && value.trim() ? value : null;
 }
@@ -854,7 +864,7 @@ export default function Bemanning() {
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
-  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade'>('atgard');
+  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('atgard');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [valda, setValda] = useState<Set<string>>(new Set());
@@ -917,14 +927,19 @@ export default function Bemanning() {
     const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
     const publicerad = grupp.pass.some(p => p.publicerad);
     const avbokad = grupp.pass.every(p => p.status === 'avbokat');
+    const passerad = ärGruppPasserad(grupp);
     const ejPublicerad = !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
-    const atgard = harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || avbokad;
+    const atgard = !passerad && (harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || avbokad);
 
-    return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, ejPublicerad, atgard };
+    return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, passerad, ejPublicerad, atgard };
   }
 
   function matcharSnabbFilter(grupp: Passgrupp, filter: SnabbFilter) {
     const info = gruppInfo(grupp);
+
+    if (filter === 'arkiv') return info.passerad;
+    if (info.passerad) return false;
+
     if (filter === 'alla') return true;
     if (filter === 'atgard') return info.atgard;
     if (filter === 'lediga') return info.publicerad && !info.harBokad && !info.avbokad;
@@ -934,14 +949,22 @@ export default function Bemanning() {
   }
 
   const filterCounts: Record<SnabbFilter, number> = {
-    alla: grupper.length,
+    alla: grupper.filter(g => matcharSnabbFilter(g, 'alla')).length,
     atgard: grupper.filter(g => matcharSnabbFilter(g, 'atgard')).length,
     lediga: grupper.filter(g => matcharSnabbFilter(g, 'lediga')).length,
     bokade: grupper.filter(g => matcharSnabbFilter(g, 'bokade')).length,
     ej_publicerade: grupper.filter(g => matcharSnabbFilter(g, 'ej_publicerade')).length,
+    arkiv: grupper.filter(g => matcharSnabbFilter(g, 'arkiv')).length,
   };
 
-  const filtreradeGrupper = grupper.filter(grupp => matcharSnabbFilter(grupp, snabbFilter));
+  const filtreradeGrupper = grupper
+    .filter(grupp => matcharSnabbFilter(grupp, snabbFilter))
+    .sort((a, b) => {
+      if (snabbFilter === 'arkiv') {
+        return b.datum.localeCompare(a.datum) || b.pass[0].tid_från.localeCompare(a.pass[0].tid_från);
+      }
+      return a.datum.localeCompare(b.datum) || a.pass[0].tid_från.localeCompare(b.pass[0].tid_från);
+    });
   const allaSynligaIds = filtreradeGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
@@ -1018,10 +1041,11 @@ export default function Bemanning() {
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
-            { id: 'alla', label: 'Alla', count: filterCounts.alla },
+            { id: 'alla', label: 'Aktiva', count: filterCounts.alla },
             { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
             { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
             { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
+            { id: 'arkiv', label: 'Arkiv', count: filterCounts.arkiv },
           ].map(f => {
             const aktiv = snabbFilter === f.id;
             return (
@@ -1061,8 +1085,10 @@ export default function Bemanning() {
               const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
               const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
               const ärAvbokat = dominerandStatus === 'avbokat';
-              const kräverÅtgärd = ärAvbokat || harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat);
+              const ärPasserad = ärGruppPasserad(grupp);
+              const kräverÅtgärd = !ärPasserad && (ärAvbokat || harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat));
               const statusPiller = [
+                ärPasserad ? { text: 'Arkiv', color: 'var(--text-muted)', bg: 'var(--hover)' } : null,
                 ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
                 !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
                 !ärAvbokat && vikariNamn ? { text: `Bokad: ${vikariNamn}`, color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' } : null,

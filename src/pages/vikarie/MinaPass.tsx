@@ -23,6 +23,12 @@ function passNyckel(p: Vikariepass) {
   return `${p.datum}T${p.tid_från.slice(0, 5)}`;
 }
 
+function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
+  const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
+  return new Date(`${pass.datum}T${sluttid}:00`).getTime() < Date.now();
+}
+
+
 function ärAvbokningsmeddelande(text: string) {
   const normaliserad = text.toLowerCase();
   return normaliserad.includes('avboka') || normaliserad.includes('avbokning');
@@ -102,6 +108,7 @@ export default function MinaPass() {
   const [modalInfo, setModalInfo] = useState('');
   const [laddar, setLaddar] = useState(true);
   const [sparar, setSparar] = useState(false);
+  const [visaTidigare, setVisaTidigare] = useState(false);
 
   useEffect(() => {
     async function ladda() {
@@ -194,9 +201,8 @@ export default function MinaPass() {
     </div>
   );
 
-  const idag = idagIso();
-  const kommande = pass.filter(p => p.datum >= idag);
-  const tidigare = pass.filter(p => p.datum < idag).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
+  const kommande = pass.filter(p => !ärPassPasserat(p));
+  const tidigare = pass.filter(ärPassPasserat).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
 
   return (
     <div className="p-3 sm:p-6">
@@ -209,6 +215,19 @@ export default function MinaPass() {
           Behöver du ändra eller avboka ett pass, skicka meddelande till admin.
         </p>
       </div>
+
+      {visaTidigare && tidigare.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setVisaTidigare(v => !v)}
+            className="rounded-xl border px-3 py-2 text-sm font-semibold"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg-card)' }}
+          >
+            {visaTidigare ? 'Dölj arkiv' : `Visa arkiv (${tidigare.length})`}
+          </button>
+        </div>
+      )}
 
       {kommande.length === 0 ? (
         <div className="rounded-2xl border border-dashed px-4 py-10 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
@@ -232,10 +251,10 @@ export default function MinaPass() {
         </section>
       )}
 
-      {tidigare.length > 0 && (
+      {visaTidigare && tidigare.length > 0 && (
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Tidigare</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Arkiv</h2>
             <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
               {tidigare.length}
             </span>
@@ -286,11 +305,11 @@ export default function MinaPass() {
 
             <button
               onClick={beOmAvbokning}
-              disabled={sparar}
+              disabled={sparar || ärPassPasserat(valtPass)}
               className="mb-4 w-full rounded-xl border px-4 py-3 text-sm font-semibold disabled:opacity-50"
               style={{ borderColor: '#ef4444', color: '#ef4444' }}
             >
-              Jag behöver avboka
+              {ärPassPasserat(valtPass) ? 'Passet är arkiverat' : 'Jag behöver avboka'}
             </button>
 
             <div className="mb-4 space-y-2">
