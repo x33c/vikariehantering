@@ -127,7 +127,7 @@ export default function AdminLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
-          className="sticky top-0 z-10 flex h-16 items-center border-b px-4 backdrop-blur lg:hidden"
+          className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b px-3 backdrop-blur sm:px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           <button onClick={() => setMenyÖppen(true)} className="rounded-xl border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
@@ -135,13 +135,13 @@ export default function AdminLayout() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
-          <span className="ml-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
-          <div className="ml-auto flex items-center gap-2">
+          <span className="ml-3 min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <AdminNotiser />
             <PushButton compact />
             <button
               onClick={loggaUt}
-              className="ml-4 rounded-xl border p-2"
+              className="ml-2 rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
               aria-label="Logga ut"
               title="Logga ut"
@@ -171,7 +171,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-7xl px-5 py-5 sm:px-8 lg:px-10">
+          <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-8 sm:py-5 lg:px-10">
             <Outlet />
           </div>
         </main>

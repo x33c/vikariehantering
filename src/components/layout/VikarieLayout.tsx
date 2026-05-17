@@ -122,15 +122,15 @@ export default function VikarieLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Topbar mobil */}
         <header
-          className="flex h-14 items-center border-b px-4 lg:hidden"
+          className="flex h-14 shrink-0 items-center border-b px-3 sm:px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
-          <div className="ml-auto flex items-center gap-3">
+          <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <PushButton compact />
             <button
               onClick={loggaUt}
-              className="ml-4 rounded-xl border p-2"
+              className="ml-2 rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
               aria-label="Logga ut"
               title="Logga ut"
@@ -158,11 +158,11 @@ export default function VikarieLayout() {
             </button>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto pb-3 lg:pb-0">
+        <main className="min-h-0 flex-1 overflow-y-auto pb-4 lg:pb-0">
           <Outlet />
         </main>
         <nav
-          className="shrink-0 grid grid-cols-4 border-t px-2 py-2 lg:hidden"
+          className="grid shrink-0 grid-cols-4 border-t px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           {navItems.map((item) => (
@@ -170,7 +170,7 @@ export default function VikarieLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
-              className="flex min-h-12 items-center justify-center rounded-xl px-2 text-center text-xs font-semibold"
+              className="flex min-h-12 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-semibold sm:text-xs"
               style={({ isActive }) => ({
                 background: isActive ? 'var(--nav-active)' : 'transparent',
                 color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',

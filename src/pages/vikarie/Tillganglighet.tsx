@@ -200,7 +200,7 @@ export default function Tillganglighet() {
   const specifika = tillg.filter(t => !t.återkommande);
 
   return (
-    <div className="p-3 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl p-3 pb-6 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Tillgänglighet</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -304,9 +304,9 @@ export default function Tillganglighet() {
       )}
 
       {modalÖppen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
-          <div className="relative w-full rounded-t-2xl border p-5 shadow-xl sm:max-w-sm sm:rounded-2xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto rounded-2xl border p-4 shadow-xl sm:max-w-md sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
@@ -332,14 +332,14 @@ export default function Tillganglighet() {
 
             <div className="space-y-3">
               {typ === 'specifikt' ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från datum</span>
                     <input
                       type="date"
                       value={form.datum}
                       onChange={e => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                       style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                     />
                   </label>
@@ -349,12 +349,12 @@ export default function Tillganglighet() {
                       type="date"
                       value={form.datum_till}
                       onChange={e => setForm({ ...form, datum_till: e.target.value })}
-                      className="w-full rounded-lg border px-3 py-2 text-sm"
+                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                       style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                     />
                   </label>
                   {form.datum && (
-                    <p className="col-span-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-xs sm:col-span-2" style={{ color: 'var(--text-muted)' }}>
                       {form.datum_till && form.datum_till !== form.datum
                         ? `Vecka ${veckaFörDatum(form.datum)}–${veckaFörDatum(form.datum_till)}`
                         : `Vecka ${veckaFörDatum(form.datum)}`}
@@ -365,7 +365,7 @@ export default function Tillganglighet() {
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Veckodag</span>
                   <select value={form.veckodag} onChange={e => setForm({ ...form, veckodag: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                     style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
                     {VECKODAG_LABELS.slice(1, 6).map((dag, i) => (
                       <option key={i + 1} value={i + 1}>{dag}</option>
@@ -386,7 +386,7 @@ export default function Tillganglighet() {
                       key={val.label}
                       type="button"
                       onClick={() => snabbTid(val.från, val.till)}
-                      className="rounded-lg border px-2 py-2 text-xs font-semibold transition-all"
+                      className="min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold transition-all"
                       style={{
                         background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
                         borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
@@ -400,34 +400,34 @@ export default function Tillganglighet() {
                 })}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från</span>
                   <input type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                     style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Till</span>
                   <input type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })}
-                    className="w-full rounded-lg border px-3 py-2 text-sm"
+                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                     style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button onClick={() => setForm({ ...form, tillgänglig: true })} className="rounded-lg border px-3 py-2 text-sm font-semibold" style={{ borderColor: form.tillgänglig ? '#22c55e' : 'var(--border)', color: form.tillgänglig ? '#22c55e' : 'var(--text)' }}>Tillgänglig</button>
                 <button onClick={() => setForm({ ...form, tillgänglig: false })} className="rounded-lg border px-3 py-2 text-sm font-semibold" style={{ borderColor: !form.tillgänglig ? '#ef4444' : 'var(--border)', color: !form.tillgänglig ? '#ef4444' : 'var(--text)' }}>Inte tillgänglig</button>
               </div>
 
               <input value={form.anteckning} onChange={e => setForm({ ...form, anteckning: e.target.value })}
                 placeholder="Anteckning"
-                className="w-full rounded-lg border px-3 py-2 text-sm"
+                className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
                 style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
 
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setModalÖppen(false)} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
-                <button onClick={spara} disabled={sparar} className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--blue)' }}>
+              <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+                <button onClick={() => setModalÖppen(false)} className="min-h-11 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
+                <button onClick={spara} disabled={sparar} className="min-h-11 rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: 'var(--blue)' }}>
                   {sparar ? 'Sparar...' : redigerar ? 'Spara ändringar' : 'Spara'}
                 </button>
               </div>
@@ -437,12 +437,12 @@ export default function Tillganglighet() {
       )}
 
       {raderaId && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setRaderaId(null)} />
-          <div className="relative w-full rounded-t-2xl border p-5 shadow-xl sm:max-w-sm sm:rounded-2xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="relative w-full rounded-2xl border p-4 shadow-xl sm:max-w-sm sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <h2 className="mb-4 text-base font-semibold" style={{ color: 'var(--text)' }}>Ta bort tillgänglighet?</h2>
             <div className="flex gap-2">
-              <button onClick={() => setRaderaId(null)} className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
+              <button onClick={() => setRaderaId(null)} className="min-h-11 rounded-lg border px-4 py-2.5 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>Avbryt</button>
               <button onClick={radera} className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white">Ta bort</button>
             </div>
           </div>
