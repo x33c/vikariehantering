@@ -1,6 +1,10 @@
-# Vikariehantering
+# Passportalen
 
-Vikariehantering är en webbapp för att hantera frånvaro, vikariepass, bokningar, tillgänglighet, meddelanden och notiser på ett enkelt och samlat sätt.
+Passportalen är en webbapp för att hantera frånvaro, vikariepass, bokningar, tillgänglighet, meddelanden och notiser på ett enkelt och samlat sätt.
+
+Appen finns på:
+
+https://passportalen.vercel.app
 
 ## Kom igång som vikarie
 
