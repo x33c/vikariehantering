@@ -102,18 +102,70 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   const [epost, setEpost] = useState('');
   const [lösenord, setLösenord] = useState(STANDARD_LOSENORD);
   const [laddar, setLaddar] = useState(false);
+  const [laddarRoll, setLaddarRoll] = useState(false);
+  const [roll, setRoll] = useState<'vikarie' | 'admin'>('vikarie');
+  const [adminLosenord, setAdminLosenord] = useState('');
   const [fel, setFel] = useState('');
   const [ok, setOk] = useState('');
 
   useEffect(() => {
     if (!öppen || !vikarie) return;
+
     setEpost(vikarie.epost ?? '');
     setLösenord(STANDARD_LOSENORD);
+    setRoll('vikarie');
+    setAdminLosenord('');
     setFel('');
     setOk('');
+
+    if (vikarie.profil_id) {
+      supabase
+        .from('profiler')
+        .select('roll')
+        .eq('id', vikarie.profil_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setRoll(data?.roll === 'admin' ? 'admin' : 'vikarie');
+        });
+    }
   }, [vikarie, öppen]);
 
   if (!öppen || !vikarie) return null;
+
+  async function sparaRoll() {
+    setFel('');
+    setOk('');
+
+    if (!vikarie?.profil_id) {
+      setFel('Skapa kontot först. Därefter kan du ändra roll.');
+      return;
+    }
+
+    if (roll === 'admin' && !adminLosenord.trim()) {
+      setFel('Ange ditt adminlösenord för att tilldela adminroll.');
+      return;
+    }
+
+    setLaddarRoll(true);
+    const { error } = await anropaHanteraAnvandare({
+      åtgärd: 'uppdatera_roll',
+      profil_id: vikarie.profil_id,
+      roll,
+      namn: vikarie.namn,
+      aktiv: true,
+      admin_losenord: roll === 'admin' ? adminLosenord : undefined,
+    });
+    setLaddarRoll(false);
+
+    if (error) {
+      setFel(error.message || 'Kunde inte uppdatera rollen.');
+      return;
+    }
+
+    setAdminLosenord('');
+    setOk(roll === 'admin' ? 'Klart. Kontot har adminbehörighet.' : 'Klart. Kontot är nu vikarie.');
+    onUppdaterad();
+  }
 
   async function sparaKonto() {
     setFel('');
@@ -211,6 +263,64 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
             />
           </label>
 
+          <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Roll och behörighet</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Gör bara någon till admin om personen ska kunna ändra konton, pass och inställningar.
+            </p>
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setRoll('vikarie')}
+                className="rounded-lg border px-3 py-2 text-sm font-medium"
+                style={{
+                  borderColor: roll === 'vikarie' ? 'var(--blue)' : 'var(--border)',
+                  background: roll === 'vikarie' ? 'color-mix(in srgb, var(--blue) 12%, var(--bg-card))' : 'var(--bg-card)',
+                  color: 'var(--text)',
+                }}
+              >
+                Vikarie
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoll('admin')}
+                className="rounded-lg border px-3 py-2 text-sm font-medium"
+                style={{
+                  borderColor: roll === 'admin' ? 'var(--danger)' : 'var(--border)',
+                  background: roll === 'admin' ? 'rgba(239, 68, 68, 0.10)' : 'var(--bg-card)',
+                  color: roll === 'admin' ? 'var(--danger)' : 'var(--text)',
+                }}
+              >
+                Admin
+              </button>
+            </div>
+
+            {roll === 'admin' && (
+              <label className="mt-3 block">
+                <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Ditt adminlösenord</span>
+                <input
+                  type="password"
+                  value={adminLosenord}
+                  onChange={e => setAdminLosenord(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                  placeholder="Krävs för adminroll"
+                />
+              </label>
+            )}
+
+            <button
+              type="button"
+              onClick={sparaRoll}
+              disabled={laddarRoll || !vikarie.profil_id}
+              className="mt-3 w-full rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              style={{ background: roll === 'admin' ? 'var(--danger)' : 'var(--blue)' }}
+            >
+              {laddarRoll ? 'Sparar roll…' : vikarie.profil_id ? 'Spara roll' : 'Skapa konto först'}
+            </button>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -277,8 +387,14 @@ export default function Vikarier() {
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [laddarTillg, setLaddarTillg] = useState(false);
 
+  async function laddaVikarier() {
+    const res = await vikariApi.lista();
+    setVikarier((res.data ?? []) as Vikarie[]);
+    setLaddar(false);
+  }
+
   useEffect(() => {
-    vikariApi.lista().then(res => { setVikarier((res.data ?? []) as Vikarie[]); setLaddar(false); });
+    laddaVikarier();
   }, []);
 
   useEffect(() => {
@@ -374,7 +490,12 @@ export default function Vikarier() {
         onSparad={v => { setVikarier(prev => modal.rad ? prev.map(x => x.id === v.id ? v : x) : [...prev, v]); setModal({ öppen: false }); }} />
 
       {kontoModal.öppen && kontoModal.rad && (
-        <KontoModal öppen={kontoModal.öppen} onStäng={() => setKontoModal({ öppen: false })} vikarie={kontoModal.rad} />
+        <KontoModal
+          öppen={kontoModal.öppen}
+          onStäng={() => setKontoModal({ öppen: false })}
+          vikarie={kontoModal.rad}
+          onUppdaterad={laddaVikarier}
+        />
       )}
 
       {raderaId && (
