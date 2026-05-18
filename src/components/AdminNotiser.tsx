@@ -91,6 +91,12 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
   function oppnaNotis(notis: AdminNotis) {
     markeraSomLast(notis.id);
     setOppen(false);
+
+    if (notis.pass_id) {
+      navigate(`/admin/vikariepass?pass=${notis.pass_id}`);
+      return;
+    }
+
     navigate('/admin/vikariepass');
   }
 

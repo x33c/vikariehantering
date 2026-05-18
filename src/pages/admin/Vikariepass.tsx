@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi } from '../../lib/api';
 import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
@@ -983,6 +984,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
 }
 
 export default function Bemanning() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [pass, setPass] = useState<Bemanning[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
@@ -1031,6 +1033,24 @@ export default function Bemanning() {
 
   useEffect(() => { ladda(); }, [ladda]);
   useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser']);
+
+  const passIdFrånUrl = searchParams.get('pass');
+
+  useEffect(() => {
+    if (!passIdFrånUrl || pass.length === 0) return;
+    const hittatPass = pass.find(p => p.id === passIdFrånUrl);
+    if (hittatPass) setValtPass(hittatPass);
+  }, [passIdFrånUrl, pass]);
+
+  function stängPassModal() {
+    setValtPass(null);
+
+    if (searchParams.has('pass')) {
+      const nästa = new URLSearchParams(searchParams);
+      nästa.delete('pass');
+      setSearchParams(nästa, { replace: true });
+    }
+  }
 
   async function raderaMånga() {
     setRaderar(true);
@@ -1307,11 +1327,11 @@ export default function Bemanning() {
       </div>
 
       {valtPass && (
-        <Modal öppen={!!valtPass} onStäng={() => setValtPass(null)} bredd="xl">
+        <Modal öppen={!!valtPass} onStäng={stängPassModal} bredd="xl">
           <PassDetaljer
             pass={valtPass}
             vikarier={vikarier}
-            onStäng={() => setValtPass(null)}
+            onStäng={stängPassModal}
             onUppdaterad={uppdaterad => {
               setPass(prev => prev.map(p => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
               setValtPass(uppdaterad);
