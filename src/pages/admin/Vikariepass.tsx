@@ -540,7 +540,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             </div>
           )}
 
-          <div className="mb-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="relative z-20 mb-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <button
               type="button"
               onClick={() => setVisaAllaVikarier(v => !v)}
@@ -557,7 +557,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             </button>
 
             {visaAllaVikarier && (
-              <div className="border-t p-2" style={{ borderColor: 'var(--border)' }}>
+              <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-xl border p-2 shadow-xl" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
                 <input value={vikarieSök} onChange={e => setVikarieSök(e.target.value)} placeholder="Sök vikarie..."
                   className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
                   style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
@@ -1099,6 +1099,7 @@ export default function Bemanning() {
     grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
   }));
   const veckaSlut = veckodagar[4];
+  const idag = new Date().toLocaleDateString('sv-SE');
   const allaSynligaIds = kalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
@@ -1246,7 +1247,7 @@ export default function Bemanning() {
             <div className="overflow-x-auto pb-2">
               <div className="grid min-w-[900px] grid-cols-5 gap-2">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[300px] rounded-xl border p-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                  <section key={datum} className="min-h-[300px] rounded-xl border p-2 transition" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? '0 0 0 2px color-mix(in srgb, var(--blue) 45%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
