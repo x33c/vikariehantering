@@ -780,6 +780,25 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
       }
     }
 
+    if (form.personal_id) {
+      for (const dag of passSomSkaSkapas) {
+        const befintliga = await passApi.lista({ datumFrån: dag.datum, datumTill: dag.datum });
+        const krock = ((befintliga.data ?? []) as Bemanning[]).find(p =>
+          p.personal_id === form.personal_id &&
+          p.status !== 'avbokat' &&
+          dag.tid_från < p.tid_till &&
+          dag.tid_till > p.tid_från
+        );
+
+        if (krock) {
+          setLaddar(false);
+          const namn = personal.find(p => p.id === form.personal_id)?.namn ?? 'Personen';
+          setFel(`${namn} har redan ett pass ${dag.datum} ${krock.tid_från.slice(0, 5)}-${krock.tid_till.slice(0, 5)} som överlappar.`);
+          return;
+        }
+      }
+    }
+
     for (const dag of passSomSkaSkapas) {
       const res = await passApi.skapa({
         personal_id: form.personal_id || null,
@@ -992,6 +1011,7 @@ export default function Bemanning() {
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
+  const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
@@ -1066,6 +1086,9 @@ export default function Bemanning() {
   if (laddar) return <LaddaSida />;
 
   const grupper = grupperaPasser(pass);
+  const grupperEfterVikarie = vikarieFilter
+    ? grupper.filter(grupp => grupp.pass.some(p => p.vikarie_id === vikarieFilter))
+    : grupper;
   type SnabbFilter = typeof snabbFilter;
 
   function gruppInfo(grupp: Passgrupp) {
@@ -1096,15 +1119,15 @@ export default function Bemanning() {
   }
 
   const filterCounts: Record<SnabbFilter, number> = {
-    alla: grupper.filter(g => matcharSnabbFilter(g, 'alla')).length,
-    atgard: grupper.filter(g => matcharSnabbFilter(g, 'atgard')).length,
-    lediga: grupper.filter(g => matcharSnabbFilter(g, 'lediga')).length,
-    bokade: grupper.filter(g => matcharSnabbFilter(g, 'bokade')).length,
-    ej_publicerade: grupper.filter(g => matcharSnabbFilter(g, 'ej_publicerade')).length,
-    arkiv: grupper.filter(g => matcharSnabbFilter(g, 'arkiv')).length,
+    alla: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'alla')).length,
+    atgard: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'atgard')).length,
+    lediga: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'lediga')).length,
+    bokade: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'bokade')).length,
+    ej_publicerade: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'ej_publicerade')).length,
+    arkiv: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'arkiv')).length,
   };
 
-  const filtreradeGrupper = grupper
+  const filtreradeGrupper = grupperEfterVikarie
     .filter(grupp => matcharSnabbFilter(grupp, snabbFilter))
     .sort((a, b) => {
       if (snabbFilter === 'arkiv') {
@@ -1179,7 +1202,7 @@ export default function Bemanning() {
         <details className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
             Filter och datum
-            {(statusFilter || datumFrån || datumTill) && (
+            {(statusFilter || datumFrån || datumTill || vikarieFilter) && (
               <span className="ml-2 rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--hover)', color: 'var(--blue)' }}>
                 aktiva
               </span>
@@ -1189,6 +1212,10 @@ export default function Bemanning() {
             <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
               <option value="">Alla statusar</option>
               {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
+            </Select>
+            <Select value={vikarieFilter} onChange={e => setVikarieFilter(e.target.value)}>
+              <option value="">Alla vikarier</option>
+              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
             </Select>
             <Input type="date" value={datumFrån} onChange={e => {
               setDatumFrån(e.target.value);
