@@ -161,6 +161,7 @@ async function skickaPush(supabase: ReturnType<typeof createClient>, profilId: s
 }
 
 serve(async (req) => {
+  try {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -253,16 +254,21 @@ serve(async (req) => {
     let utanPush = 0;
 
     for (const vikarie of mottagare ?? []) {
-      const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
-      const prenumerationer = await raknaPushPrenumerationer(supabase, profilId);
+      try {
+        const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
+        const prenumerationer = await raknaPushPrenumerationer(supabase, profilId);
 
-      if (!profilId || prenumerationer === 0) {
+        if (!profilId || prenumerationer === 0) {
+          utanPush += 1;
+          continue;
+        }
+
+        await skickaPush(supabase, profilId, title, text, '/vikarie');
+        skickade += 1;
+      } catch (error) {
         utanPush += 1;
-        continue;
+        console.error('Kunde inte skicka massmeddelande till vikarie', vikarie.id, error);
       }
-
-      await skickaPush(supabase, profilId, title, text, '/vikarie');
-      skickade += 1;
     }
 
     return new Response(JSON.stringify({
@@ -614,4 +620,12 @@ serve(async (req) => {
   return new Response(JSON.stringify({ resultat }), {
     status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 });

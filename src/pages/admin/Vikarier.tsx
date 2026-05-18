@@ -473,6 +473,17 @@ export default function Vikarier() {
     setSkickarMass(false);
 
     if (error) {
+      const context = (error as any).context;
+      if (context && typeof context.json === 'function') {
+        try {
+          const body = await context.json();
+          setMassFel(body?.error || error.message || 'Meddelandet kunde inte skickas.');
+          return;
+        } catch {
+          // Visa standardfel nedan.
+        }
+      }
+
       setMassFel(error.message || 'Meddelandet kunde inte skickas.');
       return;
     }
