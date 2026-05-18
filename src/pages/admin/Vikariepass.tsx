@@ -1015,6 +1015,7 @@ export default function Bemanning() {
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
+  const [döljPasserade, setDöljPasserade] = useState(false);
   const [veckaStart, setVeckaStart] = useState(() => veckaStartIso(new Date().toISOString().slice(0, 10)));
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
@@ -1108,7 +1109,7 @@ export default function Bemanning() {
     const info = gruppInfo(grupp);
 
     if (filter === 'arkiv') return info.passerad;
-    if (info.passerad) return false;
+    if (info.passerad && döljPasserade) return false;
 
     if (filter === 'alla') return true;
     if (filter === 'atgard') return info.atgard;
@@ -1228,7 +1229,7 @@ export default function Bemanning() {
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
-            { id: 'alla', label: 'Aktiva', count: filterCounts.alla },
+            { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
             { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
             { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
             { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
@@ -1323,8 +1324,8 @@ export default function Bemanning() {
                           const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
                           const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
                           const info = gruppInfo(grupp);
-                          const statusText = info.avbokad ? 'Avbokat' : info.harAvbokningsförfrågan ? 'Avbokning' : vikariNamn ? `Bokad: ${vikariNamn}` : info.harRiktadFörfrågan ? 'Förfrågan' : info.publicerad ? 'Ledigt' : 'Ej publicerad';
-                          const statusColor = vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
+                          const statusText = info.passerad && vikariNamn ? `Passerat: ${vikariNamn}` : info.passerad ? 'Passerat' : info.avbokad ? 'Avbokat' : info.harAvbokningsförfrågan ? 'Avbokning' : vikariNamn ? `Bokad: ${vikariNamn}` : info.harRiktadFörfrågan ? 'Förfrågan' : info.publicerad ? 'Ledigt' : 'Ej publicerad';
+                          const statusColor = info.passerad ? 'var(--text-muted)' : vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
 
                           return (
                             <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-lg border p-2" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
