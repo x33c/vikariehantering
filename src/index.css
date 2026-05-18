@@ -310,3 +310,21 @@ textarea {
   }
 }
 
+
+
+/* Tydligare tabellkänsla i ljust läge. */
+thead tr {
+  background: color-mix(in srgb, var(--hover) 68%, var(--bg-card)) !important;
+}
+
+tbody tr {
+  border-color: color-mix(in srgb, var(--border) 86%, var(--text-subtle)) !important;
+}
+
+tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--hover) 24%, transparent);
+}
+
+.dark tbody tr:nth-child(even) {
+  background: transparent;
+}

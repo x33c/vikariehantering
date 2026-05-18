@@ -165,6 +165,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
   const [visaHistorik, setVisaHistorik] = useState(false);
+  const [visaAllaVikarier, setVisaAllaVikarier] = useState(false);
+  const [vikarieSök, setVikarieSök] = useState('');
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -371,22 +373,6 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     return () => { aktiv = false; };
   }, [vikarier, pass.datum]);
 
-  function vikarieValLabel(v: Vikarie) {
-    const tillg = tillgMap[v.id];
-    const bokad = bokadeVikarier[v.id];
-
-    if (bokad) return `⚠ ${v.namn} (bokad ${bokad.tid_från.slice(0, 5)}-${bokad.tid_till.slice(0, 5)})`;
-    if (!tillg) return `${v.namn} (okänd tillgänglighet)`;
-
-    const tid = tillg.tid_från && tillg.tid_till
-      ? ` ${tillg.tid_från.slice(0, 5)}-${tillg.tid_till.slice(0, 5)}`
-      : ' heldag';
-
-    return tillg.tillgänglig
-      ? `✓ ${v.namn} (${tid})`
-      : `✕ ${v.namn} (inte tillgänglig)`;
-  }
-
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
   const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
@@ -419,6 +405,24 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return (prioritet[a.status] ?? 9) - (prioritet[b.status] ?? 9) || a.vikarie.namn.localeCompare(b.vikarie.namn);
     });
   const rekommenderadeSynliga = rekommenderadeVikarier.slice(0, 4);
+  const sökText = vikarieSök.trim().toLowerCase();
+  const filtreradeVikarier = sökText
+    ? rekommenderadeVikarier.filter(({ vikarie }) => vikarie.namn.toLowerCase().includes(sökText))
+    : rekommenderadeVikarier;
+
+  function vikarieStatusFärg(status: string) {
+    if (status === 'ledig') return '#16a34a';
+    if (status === 'bokad') return '#ef4444';
+    if (status === 'otillgänglig') return '#f59e0b';
+    return 'var(--text-muted)';
+  }
+
+  function väljVikarie(id: string) {
+    setValdVikarieId(id);
+    setVisaAllaVikarier(false);
+    setVikarieSök('');
+  }
+
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
 
@@ -513,7 +517,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
                 {rekommenderadeSynliga.map(({ vikarie, status, detalj }) => {
                   const vald = vikarie.id === valdVikarieId;
                   const ärBokad = status === 'bokad';
-                  const färg = status === 'ledig' ? '#16a34a' : status === 'bokad' ? '#ef4444' : status === 'otillgänglig' ? '#f59e0b' : 'var(--text-muted)';
+                  const färg = vikarieStatusFärg(status);
 
                   return (
                     <button
@@ -536,15 +540,47 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             </div>
           )}
 
-          <select
-            value={valdVikarieId}
-            onChange={e => setValdVikarieId(e.target.value)}
-            className="mb-3 w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          >
-            <option value="">Välj annan vikarie</option>
-            {vikarier.map(v => <option key={v.id} value={v.id}>{vikarieValLabel(v)}</option>)}
-          </select>
+          <div className="mb-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <button
+              type="button"
+              onClick={() => setVisaAllaVikarier(v => !v)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm"
+              style={{ color: 'var(--text)' }}
+            >
+              <span className="min-w-0">
+                <span className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Alla vikarier</span>
+                <span className="block truncate font-semibold">{valdVikarie ? valdVikarie.namn : 'Välj från hela listan'}</span>
+              </span>
+              <span className="shrink-0 text-xs font-semibold" style={{ color: 'var(--blue)' }}>
+                {visaAllaVikarier ? 'Stäng' : 'Visa'}
+              </span>
+            </button>
+
+            {visaAllaVikarier && (
+              <div className="border-t p-2" style={{ borderColor: 'var(--border)' }}>
+                <input value={vikarieSök} onChange={e => setVikarieSök(e.target.value)} placeholder="Sök vikarie..."
+                  className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {filtreradeVikarier.map(({ vikarie, status, detalj }) => {
+                    const vald = vikarie.id === valdVikarieId;
+                    const ärBokad = status === 'bokad';
+                    return (
+                      <button key={vikarie.id} type="button" onClick={() => väljVikarie(vikarie.id)} disabled={ärBokad}
+                        className="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                        style={{ borderColor: vald ? 'var(--blue)' : 'transparent', background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'transparent' }}>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                          <span className="block truncate text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
+                        </span>
+                        {vald && <span className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>Vald</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
