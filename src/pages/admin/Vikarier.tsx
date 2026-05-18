@@ -462,7 +462,20 @@ export default function Vikarier() {
     }
 
     setSkickarMass(true);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+
+    if (!token) {
+      setSkickarMass(false);
+      setMassFel('Du måste logga in igen innan du kan skicka meddelanden.');
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke('skicka-epost', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: {
         typ: 'massmeddelande_vikarier',
         vikarie_ids: [...markeradeIds],
