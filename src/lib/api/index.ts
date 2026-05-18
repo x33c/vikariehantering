@@ -293,6 +293,19 @@ export const notisApi = {
       body: { pass_id: passId, vikarie_ids: vikariIds },
     });
   },
+  async skapaAdminBokning(passId: string, vikarieId: string, vikarieNamn?: string) {
+    const namn = vikarieNamn?.trim() || 'Vikarien';
+    return supabase.from('notiser').insert({
+      pass_id: passId,
+      vikarie_id: vikarieId,
+      kanal: 'push',
+      status: 'skickat',
+      mottagare: 'admin',
+      ämne: 'Pass bokat',
+      innehåll: `${namn} har bokat ett ledigt pass.`,
+      skickat_kl: new Date().toISOString(),
+    });
+  },
   async skapaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej', vikarieNamn?: string) {
     const namn = vikarieNamn?.trim() || 'Vikarien';
     return supabase.from('notiser').insert({
