@@ -123,9 +123,11 @@ function meddelandeAvsandareNamn(m: Passmeddelande, fallbackVikarie?: string | n
   return m.avsandare_roll === 'admin' ? 'Admin' : fallbackVikarie ?? 'Vikarie';
 }
 
-function historikText(h: Passhistorik) {
+function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
   const metadata = h.metadata ?? {};
-  const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : null;
+  const vikarieId = typeof metadata.vikarie_id === 'string' ? metadata.vikarie_id : null;
+  const uppslagetVikarieNamn = vikarieId ? vikarier.find(v => v.id === vikarieId)?.namn ?? null : null;
+  const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : uppslagetVikarieNamn;
   const profilNamn = h.utförd_av_profil?.namn ?? h.utförd_av_profil?.epost ?? null;
   const tillfrågad = typeof metadata.tillfrågad_vikarie_namn === 'string'
     ? metadata.tillfrågad_vikarie_namn
@@ -274,7 +276,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return;
     }
 
-    await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+    await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId, tillfrågad_vikarie_namn: valdVikarie?.namn });
 
     setSparar(false);
     onUppdaterad({
@@ -306,7 +308,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       { åtgärd: 'bokade_direkt', vikarie_id: valdVikarieId }
     );
 
-    if (ok) await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: valdVikarieId });
+    if (ok) await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: valdVikarieId, vikarie_namn: valdVikarie?.namn });
   }
 
   async function avbokaPass() {
@@ -675,7 +677,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
                 : historik.map(h => (
                   <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
-                    {' '}{historikText(h)}
+                    {' '}{historikText(h, vikarier)}
                   </div>
                 ))}
             </div>
