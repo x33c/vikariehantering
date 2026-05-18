@@ -136,7 +136,7 @@ export default function AdminLayout() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
-          <span className="ml-3 min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Vikariehantering</span>
+          <span className="ml-3 min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Passportalen</span>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <AdminNotiser />
             <PushButton compact />
@@ -161,7 +161,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-none overflow-x-hidden px-2 py-3 sm:px-4 sm:py-4 lg:px-5">
+          <div className="w-full max-w-none overflow-x-hidden px-1.5 py-2 sm:px-4 sm:py-4 lg:px-5">
             <Outlet />
           </div>
         </main>

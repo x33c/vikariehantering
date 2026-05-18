@@ -1134,14 +1134,14 @@ export default function Bemanning() {
   return (
     <div className="flex h-full">
       <div className={`flex flex-col flex-1 p-2 sm:p-3 lg:p-4 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
             <p className="mt-1 text-sm" style={{ color: filterCounts.atgard > 0 ? '#f97316' : 'var(--text-muted)' }}>
               {filterCounts.atgard > 0 ? `${filterCounts.atgard} pass behöver åtgärd` : 'Inga akuta pass just nu'}
             </p>
           </div>
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {grupper.length > 0 && (
               <Button variant="secondary" size="sm" onClick={växlaAllaSynliga}>
                 {allaSynligaMarkerade ? 'Avmarkera alla' : 'Markera alla'}
@@ -1234,22 +1234,22 @@ export default function Bemanning() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <div className="flex flex-col gap-3 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
               </div>
-              <div className="grid grid-cols-3 gap-2 sm:flex">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end">
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>Föregående</Button>
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>Idag</Button>
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>Nästa</Button>
               </div>
             </div>
 
-            <div className="overflow-x-auto pb-2">
-              <div className="grid min-w-[900px] grid-cols-5 gap-2">
+            <div className="pb-2">
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[300px] rounded-xl border p-2 transition" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
+                  <section key={datum} className="min-h-[180px] rounded-xl border p-2 transition xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
