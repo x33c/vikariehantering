@@ -9,7 +9,7 @@ const navItems = [
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
   { to: '/admin/arbetslag', label: 'Personal' },
-  { to: '/admin/vikarier', label: 'Vikarier' },
+  { to: '/admin/vikarier', label: 'Konton' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
 ];
@@ -59,7 +59,7 @@ export default function AdminLayout() {
             />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-                Vikarier
+                Konton
               </p>
               
             </div>

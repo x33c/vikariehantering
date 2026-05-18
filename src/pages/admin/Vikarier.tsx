@@ -432,19 +432,19 @@ export default function Vikarier() {
   return (
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Vikarier</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Konton</h1>
         <button onClick={() => setModal({ öppen: true })}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          + Lägg till vikarie
+          + Lägg till konto
         </button>
       </div>
-      <input type="search" placeholder="Sök vikarie…" value={sök} onChange={e => setSök(e.target.value)}
+      <input type="search" placeholder="Sök konto…" value={sök} onChange={e => setSök(e.target.value)}
         className="mb-4 w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
       {filtrerade.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 py-16">
-          <p className="text-sm text-gray-500">Inga vikarier registrerade.</p>
+          <p className="text-sm text-gray-500">Inga konton registrerade.</p>
           <button onClick={() => setModal({ öppen: true })}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">Lägg till vikarie</button>
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">Lägg till konto</button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
