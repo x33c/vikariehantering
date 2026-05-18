@@ -59,7 +59,7 @@ export default function AdminLayout() {
             />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
-                Konton
+                Passportalen
               </p>
               
             </div>
