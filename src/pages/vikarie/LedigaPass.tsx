@@ -143,6 +143,7 @@ export default function LedigaPass() {
   const [sparar, setSparar] = useState(false);
   const [fel, setFel] = useState('');
   const [bekräftelse, setBekräftelse] = useState('');
+  const [bekräftaBokning, setBekräftaBokning] = useState<Passgrupp | null>(null);
 
   useEffect(() => { ladda(); }, [användare]);
   useRealtimeRefresh(!!minVikarie, ladda, ['vikariepass', 'notiser']);
@@ -369,13 +370,70 @@ export default function LedigaPass() {
                 grupp={grupp}
                 knappText="Boka passet"
                 disabled={sparar}
-                onKlick={() => { setFel(''); tackaJa(grupp); }}
+                onKlick={() => { setFel(''); setBekräftaBokning(grupp); }}
               />
             ))}
           </div>
         )}
       </section>
 
+
+      {bekräftaBokning && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <button
+            type="button"
+            aria-label="Stäng"
+            className="absolute inset-0 bg-black/45"
+            onClick={() => setBekräftaBokning(null)}
+          />
+          <div className="relative w-full rounded-t-2xl border p-5 shadow-xl sm:max-w-md sm:rounded-2xl"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Boka pass?</h2>
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Bekräfta att du vill boka detta pass.
+            </p>
+
+            <div className="mt-4 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
+              <p className="font-semibold capitalize" style={{ color: 'var(--text)' }}>
+                {new Date(`${bekräftaBokning.datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>
+                {bekräftaBokning.pass[0].tid_från.slice(0, 5)}-{bekräftaBokning.pass[bekräftaBokning.pass.length - 1].tid_till.slice(0, 5)}
+              </p>
+              {bekräftaBokning.personalNamn !== 'Okänd personal' && bekräftaBokning.personalNamn !== 'Fristående pass' && (
+                <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Vikarierar för <span className="font-semibold" style={{ color: 'var(--text)' }}>{bekräftaBokning.personalNamn}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBekräftaBokning(null)}
+                className="rounded-xl border px-4 py-3 text-sm font-semibold"
+                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                disabled={sparar}
+                onClick={() => {
+                  const grupp = bekräftaBokning;
+                  setBekräftaBokning(null);
+                  setFel('');
+                  tackaJa(grupp);
+                }}
+                className="rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: 'var(--blue)' }}
+              >
+                {sparar ? 'Bokar...' : 'Ja, boka'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
