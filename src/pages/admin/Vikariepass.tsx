@@ -1040,8 +1040,8 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full">
-      <div className={`flex flex-col flex-1 p-3 sm:p-6 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className={`flex flex-col flex-1 p-2 sm:p-3 lg:p-4 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
             <p className="mt-1 text-sm" style={{ color: filterCounts.atgard > 0 ? '#f97316' : 'var(--text-muted)' }}>
@@ -1063,7 +1063,7 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <details className="mb-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <details className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
             Filter och datum
             {(statusFilter || datumFrån || datumTill) && (
@@ -1085,7 +1085,7 @@ export default function Bemanning() {
           </div>
         </details>
 
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
             { id: 'alla', label: 'Aktiva', count: filterCounts.alla },
@@ -1141,7 +1141,7 @@ export default function Bemanning() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <div className="flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
@@ -1153,11 +1153,11 @@ export default function Bemanning() {
               </div>
             </div>
 
-            <div className="overflow-x-auto pb-3">
-              <div className="grid min-w-[980px] grid-cols-5 gap-3">
+            <div className="overflow-x-auto pb-2">
+              <div className="grid min-w-[900px] grid-cols-5 gap-2">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[420px] rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-                    <div className="mb-3 flex items-start justify-between gap-2">
+                  <section key={datum} className="min-h-[300px] rounded-xl border p-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                    <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
@@ -1187,7 +1187,7 @@ export default function Bemanning() {
                           const statusColor = vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
 
                           return (
-                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-lg border p-2.5" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
+                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-lg border p-2" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
                               <div className="flex items-start gap-2">
                                 <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
                                 <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
