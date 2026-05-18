@@ -200,6 +200,82 @@ serve(async (req) => {
     });
   }
 
+  if (typ === 'massmeddelande_vikarier') {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '');
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: 'Du måste vara inloggad.' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: profil } = await supabase
+      .from('profiler')
+      .select('roll')
+      .eq('id', userData.user.id)
+      .maybeSingle();
+
+    if (profil?.roll !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Endast admin kan skicka massmeddelanden.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const ids = Array.isArray(body.vikarie_ids)
+      ? body.vikarie_ids.filter((id: unknown) => typeof id === 'string')
+      : [];
+    const title = typeof body.titel === 'string' && body.titel.trim()
+      ? body.titel.trim()
+      : 'Meddelande från admin';
+    const text = typeof body.meddelande === 'string' ? body.meddelande.trim() : '';
+
+    if (ids.length === 0 || !text) {
+      return new Response(JSON.stringify({ error: 'Välj mottagare och skriv ett meddelande.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: mottagare, error } = await supabase
+      .from('vikarier')
+      .select('id, namn, epost, profil_id')
+      .in('id', ids)
+      .eq('aktiv', true);
+
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let skickade = 0;
+    let utanPush = 0;
+
+    for (const vikarie of mottagare ?? []) {
+      const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
+      const prenumerationer = await raknaPushPrenumerationer(supabase, profilId);
+
+      if (!profilId || prenumerationer === 0) {
+        utanPush += 1;
+        continue;
+      }
+
+      await skickaPush(supabase, profilId, title, text, '/vikarie');
+      skickade += 1;
+    }
+
+    return new Response(JSON.stringify({
+      ok: true,
+      valda: ids.length,
+      matchade: mottagare?.length ?? 0,
+      skickade,
+      utan_push: utanPush,
+    }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (typ === 'test_push') {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return new Response(JSON.stringify({ error: 'VAPID-nycklar saknas i Edge Function.' }), {
