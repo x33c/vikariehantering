@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 
@@ -131,7 +131,7 @@ export default function VikarieLayout() {
           className="flex h-14 shrink-0 items-center border-b px-3 sm:px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Lediga pass</span>
+          <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{sidtitel}</span>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <PushButton compact />
             <button
@@ -153,11 +153,11 @@ export default function VikarieLayout() {
             </button>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto pb-4 lg:pb-0">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-4 lg:pb-0">
           <Outlet />
         </main>
         <nav
-          className="grid shrink-0 grid-cols-5 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 lg:hidden"
+          className="grid shrink-0 grid-cols-5 gap-1 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           {navItems.map((item) => (

@@ -47,7 +47,7 @@ export default function Profil() {
   );
 
   if (!vikarie) return (
-    <div className="p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6">
       <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
         Din vikarieprofil är inte konfigurerad. Kontakta administratören.
       </div>
@@ -55,12 +55,12 @@ export default function Profil() {
   );
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6">
       <h1 className="mb-6 text-xl font-semibold" style={{ color: 'var(--text)' }}>Profil & kontakt</h1>
       {fel && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{fel}</p>}
       {sparat && <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Uppgifterna är sparade.</p>}
 
-      <div className="max-w-md space-y-4">
+      <div className="w-full max-w-md space-y-4">
         {[
           { label: 'Namn', key: 'namn', type: 'text' },
           { label: 'E-postadress', key: 'epost', type: 'email' },

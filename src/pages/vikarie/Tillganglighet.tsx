@@ -242,13 +242,13 @@ export default function Tillganglighet() {
                 const { dag, tid, vecka } = formatRad(t);
                 return (
                   <article key={t.id} className="min-w-0 rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dag}</p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tid}</p>
                         {vecka && <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>{vecka}</p>}
                       </div>
-                      <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{
+                      <span className="self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style={{
                         background: t.tillgänglig ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
                         color: t.tillgänglig ? '#22c55e' : '#ef4444',
                       }}>
@@ -278,12 +278,12 @@ export default function Tillganglighet() {
                 const { dag, tid } = formatRad(t);
                 return (
                   <article key={t.id} className="min-w-0 rounded-xl border p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-3 min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
                       <div>
                         <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dag}</p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tid}</p>
                       </div>
-                      <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{
+                      <span className="self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style={{
                         background: t.tillgänglig ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
                         color: t.tillgänglig ? '#22c55e' : '#ef4444',
                       }}>
@@ -306,7 +306,7 @@ export default function Tillganglighet() {
       {modalÖppen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalÖppen(false)} />
-          <div className="availability-modal relative max-h-[calc(100dvh-1.5rem)] overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="availability-modal relative max-h-[calc(100dvh-1.5rem)] w-full max-w-md min-w-0 overflow-x-hidden overflow-y-auto rounded-2xl border p-4 shadow-xl sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{redigerar ? 'Redigera tillgänglighet' : 'Lägg till tillgänglighet'}</h2>
               <button onClick={() => setModalÖppen(false)} style={{ color: 'var(--text-muted)' }}>✕</button>
@@ -340,7 +340,7 @@ export default function Tillganglighet() {
                         type="date"
                         value={form.datum}
                         onChange={e => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
-                        className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                        className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </span>
@@ -352,7 +352,7 @@ export default function Tillganglighet() {
                         type="date"
                         value={form.datum_till}
                         onChange={e => setForm({ ...form, datum_till: e.target.value })}
-                        className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                        className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </span>
@@ -369,7 +369,7 @@ export default function Tillganglighet() {
                 <label className="block min-w-0">
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Veckodag</span>
                   <select value={form.veckodag} onChange={e => setForm({ ...form, veckodag: e.target.value })}
-                    className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                    className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                     style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}>
                     {VECKODAG_LABELS.slice(1, 6).map((dag, i) => (
                       <option key={i + 1} value={i + 1}>{dag}</option>
@@ -409,7 +409,7 @@ export default function Tillganglighet() {
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Från</span>
                   <span className="field-shell block">
                     <input type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })}
-                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                      className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                       style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
                   </span>
                 </label>
@@ -417,7 +417,7 @@ export default function Tillganglighet() {
                   <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Till</span>
                   <span className="field-shell block">
                     <input type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })}
-                      className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                      className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                       style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
                   </span>
                 </label>
@@ -430,7 +430,7 @@ export default function Tillganglighet() {
 
               <input value={form.anteckning} onChange={e => setForm({ ...form, anteckning: e.target.value })}
                 placeholder="Anteckning"
-                className="min-h-11 w-full min-w-0 rounded-lg border px-3 py-2 text-base sm:text-sm"
+                className="min-h-11 w-full max-w-full min-w-0 appearance-none rounded-lg border px-3 py-2 text-base sm:text-sm"
                 style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
 
               <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">

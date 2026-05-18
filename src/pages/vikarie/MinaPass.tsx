@@ -211,7 +211,7 @@ export default function MinaPass() {
   const tidigare = pass.filter(ärPassPasserat).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
 
   return (
-    <div className="p-3 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl overflow-x-hidden p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6">
       <div className="mb-5 rounded-2xl border p-4 sm:p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Mina pass</p>
         <h1 className="mt-1 text-2xl font-semibold" style={{ color: 'var(--text)' }}>
@@ -272,9 +272,9 @@ export default function MinaPass() {
       )}
 
       {valtPass && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setValtPass(null)} />
-          <div className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl p-4 shadow-xl sm:max-w-lg sm:rounded-2xl sm:p-5" style={{ background: 'var(--bg-card)' }}>
+          <div className="relative max-h-[calc(100dvh-1.5rem)] w-full overflow-y-auto rounded-2xl p-4 shadow-xl sm:max-w-lg sm:p-5" style={{ background: 'var(--bg-card)' }}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Pass</h2>
