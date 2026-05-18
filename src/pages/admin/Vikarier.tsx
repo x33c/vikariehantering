@@ -393,10 +393,30 @@ export default function Vikarier() {
   const [tillgDatum, setTillgDatum] = useState(datumIdag());
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [laddarTillg, setLaddarTillg] = useState(false);
+  const [pushAntalByProfilId, setPushAntalByProfilId] = useState<Record<string, number>>({});
 
   async function laddaVikarier() {
     const res = await vikariApi.lista();
-    setVikarier((res.data ?? []) as Vikarie[]);
+    const lista = (res.data ?? []) as Vikarie[];
+    setVikarier(lista);
+
+    const profilIds = lista.map(v => v.profil_id).filter(Boolean) as string[];
+    if (profilIds.length > 0) {
+      const { data } = await supabase
+        .from('push_prenumerationer')
+        .select('profil_id')
+        .in('profil_id', profilIds)
+        .eq('aktiv', true);
+
+      const antal: Record<string, number> = {};
+      for (const rad of data ?? []) {
+        if (rad.profil_id) antal[rad.profil_id] = (antal[rad.profil_id] ?? 0) + 1;
+      }
+      setPushAntalByProfilId(antal);
+    } else {
+      setPushAntalByProfilId({});
+    }
+
     setLaddar(false);
   }
 
@@ -553,6 +573,7 @@ export default function Vikarier() {
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">E-post</th>
               <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Telefon</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">Konto</th>
+              <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Notiser</th>
               <th className="px-4 py-2.5" />
               </tr>
             </thead>
@@ -574,6 +595,17 @@ export default function Vikarier() {
                     {v.profil_id
                       ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Aktivt konto</span>
                       : <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Inget konto</span>}
+                  </td>
+                  <td className="hidden px-4 py-3 lg:table-cell">
+                    {!v.profil_id ? (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Inget konto</span>
+                    ) : (pushAntalByProfilId[v.profil_id] ?? 0) > 0 ? (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        På ({pushAntalByProfilId[v.profil_id]})
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Av</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
