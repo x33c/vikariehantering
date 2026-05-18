@@ -28,9 +28,15 @@ function useDarkMode() {
 
 export default function VikarieLayout() {
   const { profil } = useAuth();
+  const location = useLocation();
   const [menyÖppen, setMenyÖppen] = useState(false);
   const [visaNotisLathund, setVisaNotisLathund] = useState(false);
   const { mörkt, toggla } = useDarkMode();
+
+  const aktivSida = navItems.find((item) =>
+    item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
+  );
+  const sidtitel = aktivSida?.label ?? 'Pass';
 
   useEffect(() => {
     if (!profil?.id) return;
