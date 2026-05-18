@@ -33,17 +33,22 @@ function händelseRubrik(händelse: HändelsTyp, metadata: Record<string, unknow
   return HÄNDELSE_LABELS[händelse];
 }
 
-function MetadataDetalj({ händelse, metadata, vikariepass, utfördAvNamn }: {
+function MetadataDetalj({ händelse, metadata, vikariepass, utfördAvNamn, vikarieNamnById }: {
   händelse: HändelsTyp;
   metadata: Record<string, unknown> | null;
   vikariepass: HistorikRad['vikariepass'];
   utfördAvNamn?: string | null;
+  vikarieNamnById: Record<string, string>;
 }) {
   const delar: string[] = [];
   const metadataTid = metadataText(metadata, 'tid');
   const metadataDatum = metadataText(metadata, 'datum');
   const metadataPersonal = metadataText(metadata, 'personal_namn');
-  const tillfrågad = metadataText(metadata, 'tillfrågad_vikarie_namn') ?? metadataText(metadata, 'vikarie_namn') ?? utfördAvNamn ?? null;
+  const vikarieId = metadataText(metadata, 'vikarie_id');
+  const direktVikarieNamn = metadataText(metadata, 'tillfrågad_vikarie_namn') ?? metadataText(metadata, 'vikarie_namn');
+  const tillfrågad = direktVikarieNamn
+    ?? (vikarieId ? vikarieNamnById[vikarieId] ?? null : null)
+    ?? ((händelse === 'vikarie_borttagen' || händelse === 'vikarie_bokat') ? utfördAvNamn ?? null : null);
 
   if (metadataDatum || metadataTid) {
     delar.push([metadataDatum, metadataTid].filter(Boolean).join(' '));
@@ -98,6 +103,7 @@ export default function Historik() {
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [sök, setSök] = useState('');
+  const [vikarieNamnById, setVikarieNamnById] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function ladda() {
@@ -120,7 +126,12 @@ export default function Historik() {
       if (datumFrån) q = q.gte('created_at', datumFrån);
       if (datumTill) q = q.lte('created_at', datumTill + 'T23:59:59');
 
-      const { data } = await q;
+      const [{ data }, vikarierRes] = await Promise.all([
+        q,
+        supabase.from('vikarier').select('id, namn'),
+      ]);
+
+      setVikarieNamnById(Object.fromEntries(((vikarierRes.data ?? []) as Array<{ id: string; namn: string }>).map(v => [v.id, v.namn])));
       setRader((data ?? []) as HistorikRad[]);
       setLaddar(false);
     }
@@ -206,6 +217,7 @@ export default function Historik() {
                         metadata={r.metadata}
                         vikariepass={r.vikariepass}
                         utfördAvNamn={r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? null}
+                        vikarieNamnById={vikarieNamnById}
                       />
                     </td>
                     <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>
