@@ -12,6 +12,31 @@ function minuter(tid?: string | null) {
   return h * 60 + m;
 }
 
+function isoDatum(datum: Date) {
+  return datum.toISOString().slice(0, 10);
+}
+
+function veckaStartIso(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  const veckodag = d.getDay() || 7;
+  d.setDate(d.getDate() - veckodag + 1);
+  return isoDatum(d);
+}
+
+function läggTillDagarIso(datum: string, dagar: number) {
+  const d = new Date(`${datum}T12:00:00`);
+  d.setDate(d.getDate() + dagar);
+  return isoDatum(d);
+}
+
+function kortVeckodag(datum: string) {
+  return new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'numeric',
+  });
+}
+
 
 function ärPassPasserat(pass: { datum: string; tid_till: string }) {
   const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
@@ -876,6 +901,7 @@ export default function Bemanning() {
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('atgard');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
+  const [veckaStart, setVeckaStart] = useState(() => veckaStartIso(new Date().toISOString().slice(0, 10)));
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
   const [raderaValda, setRaderaValda] = useState(false);
@@ -974,7 +1000,16 @@ export default function Bemanning() {
       }
       return a.datum.localeCompare(b.datum) || a.pass[0].tid_från.localeCompare(b.pass[0].tid_från);
     });
-  const allaSynligaIds = filtreradeGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
+  const veckodagar = Array.from({ length: 5 }, (_, index) => läggTillDagarIso(veckaStart, index));
+  const kalenderGrupper = snabbFilter === 'arkiv'
+    ? filtreradeGrupper
+    : filtreradeGrupper.filter(grupp => veckodagar.includes(grupp.datum));
+  const grupperPerDag = veckodagar.map((datum) => ({
+    datum,
+    grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
+  }));
+  const veckaSlut = veckodagar[4];
+  const allaSynligaIds = kalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
   function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
@@ -1042,7 +1077,10 @@ export default function Bemanning() {
               <option value="">Alla statusar</option>
               {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
             </Select>
-            <Input type="date" value={datumFrån} onChange={e => setDatumFrån(e.target.value)} />
+            <Input type="date" value={datumFrån} onChange={e => {
+              setDatumFrån(e.target.value);
+              if (e.target.value) setVeckaStart(veckaStartIso(e.target.value));
+            }} />
             <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
           </div>
         </details>
@@ -1080,98 +1118,97 @@ export default function Bemanning() {
 
         {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
-        ) : (
+        ) : snabbFilter === 'arkiv' ? (
           <div className="space-y-3">
-            {filtreradeGrupper.map((grupp, index) => {
+            {kalenderGrupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
-              const vikarie = grupp.pass.find(p => p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
-              const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
-              const statusar = [...new Set(grupp.pass.map(p => p.status))];
-              const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
               const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
-              const publicerad = grupp.pass.some(p => p.publicerad);
-              const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
-              const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
-              const ärAvbokat = dominerandStatus === 'avbokat';
-              const ärPasserad = ärGruppPasserad(grupp);
-              const kräverÅtgärd = !ärPasserad && (ärAvbokat || harAvbokningsförfrågan || harRiktadFörfrågan || (!vikariNamn && !publicerad && !ärAvbokat));
-              const statusPiller = [
-                ärPasserad ? { text: 'Arkiv', color: 'var(--text-muted)', bg: 'var(--hover)' } : null,
-                ärAvbokat ? { text: 'Avbokat', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' } : null,
-                !ärAvbokat && harAvbokningsförfrågan ? { text: 'Avbokningsförfrågan', color: '#fb923c', bg: 'rgba(249, 115, 22, 0.14)' } : null,
-                !ärAvbokat && vikariNamn ? { text: `Bokad: ${vikariNamn}`, color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' } : null,
-                !ärAvbokat && !vikariNamn && harRiktadFörfrågan ? { text: 'Förfrågan skickad', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' } : null,
-                !ärAvbokat && !vikariNamn && publicerad ? { text: 'Publicerad som ledig', color: 'var(--blue)', bg: 'color-mix(in srgb, var(--blue) 14%, transparent)' } : null,
-                !ärAvbokat && !vikariNamn && !publicerad && !harRiktadFörfrågan ? { text: 'Ej publicerad', color: 'var(--text-subtle)', bg: 'var(--hover)' } : null,
-              ].filter(Boolean) as { text: string; color: string; bg: string }[];
 
               return (
-                <div key={`${grupp.personal_id}_${grupp.datum}`}
-                  className="rounded-xl border p-3 shadow-sm sm:p-4"
-                  style={{
-                    background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
-                    borderColor: alleMarkerade ? 'var(--blue)' : kräverÅtgärd ? '#f97316' : 'var(--border)',
-                  }}>
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      aria-pressed={alleMarkerade}
-                      aria-label={alleMarkerade ? 'Avmarkera pass' : 'Markera pass'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey);
-                      }}
-                      className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition"
-                      style={{
-                        background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)',
-                        borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
-                        color: alleMarkerade ? '#fff' : 'var(--text-subtle)',
-                        boxShadow: alleMarkerade ? '0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent)' : 'none',
-                      }}
-                    >
-                      {alleMarkerade ? (
-                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                          <path d="M5 10.5 8.2 13.5 15 6.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
-                      )}
+                <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-xl border p-3 shadow-sm sm:p-4" style={{ background: 'var(--bg-card)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)' }}>
+                  <div className="flex items-start gap-3">
+                    <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey); }} className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
+                    <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{new Date(`${grupp.datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}><span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>{grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}</p>
                     </button>
-                    <div className="min-w-0 flex-1" onClick={() => setValtPass(grupp.pass[0])} style={{ cursor: 'pointer' }}>
-                      <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                            {new Date(grupp.datum).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
-                          </p>
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                            {tidFrån}–{tidTill}
-                          </p>
-                        </div>
-                        <span />
-                      </div>
-
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
-                        {grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                        {statusPiller.map(piller => (
-                          <span
-                            key={piller.text}
-                            className="rounded-full px-2.5 py-1 font-semibold"
-                            style={{ color: piller.color, background: piller.bg }}
-                          >
-                            {piller.text}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:flex">
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>Föregående</Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>Idag</Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>Nästa</Button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto pb-3">
+              <div className="grid min-w-[980px] grid-cols-5 gap-3">
+                {grupperPerDag.map(({ datum, grupper }) => (
+                  <section key={datum} className="min-h-[420px] rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
+                      </div>
+                      {grupper.some(grupp => gruppInfo(grupp).atgard) && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: '#f97316', background: 'rgba(249, 115, 22, 0.12)' }}>Åtgärd</span>
+                      )}
+                    </div>
+
+                    {grupper.length === 0 ? (
+                      <div className="rounded-lg border border-dashed px-3 py-8 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
+                        Inga pass
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {grupper.map((grupp) => {
+                          const globalIndex = filtreradeGrupper.findIndex(g => g.personal_id === grupp.personal_id && g.datum === grupp.datum);
+                          const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
+                          const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
+                          const vikarie = grupp.pass.find(p => p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
+                          const vikariNamn = vikarie ? vikarier.find(v => v.id === vikarie.vikarie_id)?.namn : null;
+                          const statusar = [...new Set(grupp.pass.map(p => p.status))];
+                          const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
+                          const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
+                          const info = gruppInfo(grupp);
+                          const statusText = info.avbokad ? 'Avbokat' : info.harAvbokningsförfrågan ? 'Avbokning' : vikariNamn ? `Bokad: ${vikariNamn}` : info.harRiktadFörfrågan ? 'Förfrågan' : info.publicerad ? 'Ledigt' : 'Ej publicerad';
+                          const statusColor = vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
+
+                          return (
+                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-lg border p-2.5" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
+                              <div className="flex items-start gap-2">
+                                <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
+                                <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
+                                  <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{tidFrån}–{tidTill}</p>
+                                  <p className="mt-1 truncate text-xs font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                  <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
+                                  <div className="mt-2 flex items-center justify-between gap-2">
+                                    <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
+                                    <StatusBadge status={dominerandStatus as PassStatus} />
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
