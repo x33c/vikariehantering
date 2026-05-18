@@ -1304,8 +1304,8 @@ export default function Bemanning() {
                               <div className="flex items-start gap-2">
                                 <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
                                 <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
-                                  <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{tidFrån}–{tidTill}</p>
-                                  <p className="mt-1 truncate text-xs font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                  <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                  <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
                                   <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
                                   <div className="mt-2 flex items-center justify-between gap-2">
                                     <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
