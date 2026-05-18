@@ -1255,6 +1255,19 @@ export default function Bemanning() {
               </button>
             );
           })}
+          <button
+            type="button"
+            data-hide-past-toggle
+            onClick={() => setDöljPasserade(!döljPasserade)}
+            className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+            style={{
+              background: döljPasserade ? 'var(--blue)' : 'var(--bg-card)',
+              borderColor: döljPasserade ? 'var(--blue)' : 'var(--border)',
+              color: döljPasserade ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            {döljPasserade ? 'Visar aktiva' : 'Dölj passerade'}
+          </button>
         </div>
 
         {filtreradeGrupper.length === 0 ? (
@@ -1337,7 +1350,13 @@ export default function Bemanning() {
                                   <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
                                   <div className="mt-2 flex items-center justify-between gap-2">
                                     <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
-                                    <StatusBadge status={dominerandStatus as PassStatus} />
+                                    {info.passerad ? (
+                                      <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ color: 'var(--text-muted)', background: 'var(--hover)' }}>
+                                        Passerat
+                                      </span>
+                                    ) : (
+                                      <StatusBadge status={dominerandStatus as PassStatus} />
+                                    )}
                                   </div>
                                 </button>
                               </div>
