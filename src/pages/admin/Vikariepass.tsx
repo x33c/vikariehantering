@@ -1247,7 +1247,7 @@ export default function Bemanning() {
             <div className="overflow-x-auto pb-2">
               <div className="grid min-w-[900px] grid-cols-5 gap-2">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[300px] rounded-xl border p-2 transition" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? '0 0 0 2px color-mix(in srgb, var(--blue) 45%, transparent)' : 'none' }}>
+                  <section key={datum} className="min-h-[300px] rounded-xl border p-2 transition" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
