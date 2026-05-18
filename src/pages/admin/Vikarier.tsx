@@ -382,6 +382,13 @@ export default function Vikarier() {
   const [modal, setModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [kontoModal, setKontoModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
+  const [markeradeIds, setMarkeradeIds] = useState<Set<string>>(new Set());
+  const [massModal, setMassModal] = useState(false);
+  const [massTitel, setMassTitel] = useState('Meddelande från admin');
+  const [massText, setMassText] = useState('');
+  const [massFel, setMassFel] = useState('');
+  const [massOk, setMassOk] = useState('');
+  const [skickarMass, setSkickarMass] = useState(false);
   const [sök, setSök] = useState('');
   const [tillgDatum, setTillgDatum] = useState(datumIdag());
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
@@ -423,6 +430,57 @@ export default function Vikarier() {
     ? vikarier.filter(v => v.namn.toLowerCase().includes(sök.toLowerCase()) || v.epost?.toLowerCase().includes(sök.toLowerCase()))
     : vikarier;
 
+  const allaFiltreradeMarkerade = filtrerade.length > 0 && filtrerade.every(v => markeradeIds.has(v.id));
+
+  function växlaMarkerad(id: string) {
+    setMarkeradeIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function växlaAllaFiltrerade() {
+    setMarkeradeIds(prev => {
+      if (allaFiltreradeMarkerade) return new Set();
+      return new Set([...prev, ...filtrerade.map(v => v.id)]);
+    });
+  }
+
+  async function skickaMassmeddelande() {
+    setMassFel('');
+    setMassOk('');
+
+    if (markeradeIds.size === 0) {
+      setMassFel('Välj minst en vikarie.');
+      return;
+    }
+
+    if (!massText.trim()) {
+      setMassFel('Skriv ett meddelande.');
+      return;
+    }
+
+    setSkickarMass(true);
+    const { data, error } = await supabase.functions.invoke('skicka-epost', {
+      body: {
+        typ: 'massmeddelande_vikarier',
+        vikarie_ids: [...markeradeIds],
+        titel: massTitel,
+        meddelande: massText,
+      },
+    });
+    setSkickarMass(false);
+
+    if (error) {
+      setMassFel(error.message || 'Meddelandet kunde inte skickas.');
+      return;
+    }
+
+    setMassOk(`Skickat till ${data?.skickade ?? 0} mottagare. ${data?.utan_push ? `${data.utan_push} saknar aktiva push-notiser.` : ''}`);
+    setMassText('');
+  }
+
   if (laddar) return (
     <div className="flex h-64 items-center justify-center">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
@@ -438,8 +496,23 @@ export default function Vikarier() {
           + Lägg till konto
         </button>
       </div>
-      <input type="search" placeholder="Sök konto…" value={sök} onChange={e => setSök(e.target.value)}
-        className="mb-4 w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <input type="search" placeholder="Sök konto…" value={sök} onChange={e => setSök(e.target.value)}
+          className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+        <div className="flex flex-wrap gap-2">
+          <button onClick={växlaAllaFiltrerade}
+            className="rounded-md border px-3 py-2 text-sm font-medium">
+            {allaFiltreradeMarkerade ? 'Avmarkera alla' : 'Markera alla'}
+          </button>
+          <button
+            onClick={() => setMassModal(true)}
+            disabled={markeradeIds.size === 0}
+            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+            Skicka meddelande ({markeradeIds.size})
+          </button>
+        </div>
+      </div>
       {filtrerade.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 py-16">
           <p className="text-sm text-gray-500">Inga konton registrerade.</p>
@@ -451,6 +524,7 @@ export default function Vikarier() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-xs text-gray-500">
+<th className="px-4 py-2.5 text-left font-medium w-10"></th>
 <th className="px-4 py-2.5 text-left font-medium">Namn</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell">E-post</th>
               <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Telefon</th>
@@ -461,6 +535,14 @@ export default function Vikarier() {
             <tbody className="divide-y divide-gray-100">
               {filtrerade.map(v => (
                 <tr key={v.id} className="hover:bg-gray-50">
+<td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={markeradeIds.has(v.id)}
+                      onChange={() => växlaMarkerad(v.id)}
+                      className="h-4 w-4 rounded"
+                    />
+                  </td>
 <td className="px-4 py-3 font-medium text-gray-900">{v.namn}</td>
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{v.epost ?? '–'}</td>
                   <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{v.telefon ?? '–'}</td>
@@ -496,6 +578,55 @@ export default function Vikarier() {
           vikarie={kontoModal.rad}
           onUppdaterad={laddaVikarier}
         />
+      )}
+
+      {massModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-xl border p-5 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Skicka meddelande</h2>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{markeradeIds.size} valda mottagare</p>
+              </div>
+              <button onClick={() => setMassModal(false)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>
+            </div>
+
+            {massFel && <div className="mb-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{massFel}</div>}
+            {massOk && <div className="mb-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-600">{massOk}</div>}
+
+            <label className="mb-3 block">
+              <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Rubrik</span>
+              <input
+                value={massTitel}
+                onChange={e => setMassTitel(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Meddelande</span>
+              <textarea
+                value={massText}
+                onChange={e => setMassText(e.target.value)}
+                rows={4}
+                placeholder="Exempel: Appen har uppdaterats. Starta gärna om appen om du inte ser nya pass."
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+            </label>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setMassModal(false)} className="rounded-md border px-4 py-2 text-sm">Stäng</button>
+              <button
+                onClick={skickaMassmeddelande}
+                disabled={skickarMass}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                {skickarMass ? 'Skickar…' : 'Skicka'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {raderaId && (
