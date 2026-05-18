@@ -4,10 +4,13 @@ import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
 
-const navItems = [
+const huvudNavItems = [
   { to: '/admin', label: 'Start', end: true },
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
+];
+
+const registerNavItems = [
   { to: '/admin/arbetslag', label: 'Personal' },
   { to: '/admin/vikarier', label: 'Konton' },
   { to: '/admin/import', label: 'Schema' },
@@ -66,60 +69,82 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={() => setMenyÖppen(false)}
-              className="group flex items-center rounded-2xl border px-4 py-3 text-sm font-medium transition-all"
-              style={({ isActive }) => ({
-                background: isActive ? 'var(--nav-active)' : 'transparent',
-                color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
-                borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
-                boxShadow: isActive
-                  ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)`
-                  : 'none',
-              })}
-            >
-              <span className="truncate">{item.label}</span>
-            </NavLink>
-          ))}
+        <nav className="flex-1 overflow-y-auto px-4 py-2">
+          <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+            Dagligt arbete
+          </p>
+          <div className="space-y-1">
+            {huvudNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={() => setMenyÖppen(false)}
+                className="group flex min-h-12 items-center rounded-2xl border px-4 py-3 text-sm font-semibold transition-all"
+                style={({ isActive }) => ({
+                  background: isActive ? 'var(--nav-active)' : 'transparent',
+                  color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                  borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                  boxShadow: isActive ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)` : 'none',
+                })}
+              >
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+
+          <p className="mb-2 mt-5 px-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+            Register och historik
+          </p>
+          <div className="space-y-1">
+            {registerNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={() => setMenyÖppen(false)}
+                className="group flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-sm font-medium transition-all"
+                style={({ isActive }) => ({
+                  background: isActive ? 'var(--nav-active)' : 'transparent',
+                  color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                  borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                  boxShadow: isActive ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
+                })}
+              >
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
         <div className="border-t p-4" style={{ borderColor: 'var(--border)' }}>
-          <div className="mb-4 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="mb-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
               {profil?.namn ?? profil?.epost}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
 
-          <div className="mb-3">
+          <div className="grid grid-cols-2 gap-2">
             <AdminNotiser placement="up" />
-          </div>
-
-          <div className="mb-3">
-            <PushButton />
-          </div>
-
-          <div className="mb-3 flex items-center justify-between px-1">
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{mörkt ? 'Mörkt läge' : 'Ljust läge'}</span>
             <button
               onClick={toggla}
-              className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors"
-              style={{ background: mörkt ? 'var(--accent)' : 'var(--toggle-bg)' }}
+              className="flex min-h-10 items-center justify-center rounded-xl border px-3 text-sm font-medium"
+              style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}
               aria-label="Växla tema"
             >
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${mörkt ? 'translate-x-6' : 'translate-x-1'}`} />
+              {mörkt ? 'Mörkt' : 'Ljust'}
             </button>
+          </div>
+
+          <div className="mt-2">
+            <PushButton />
           </div>
 
           <button
             onClick={() => setBekraftaLoggaUt(true)}
-            className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition-colors hover:opacity-80"
-            style={{ color: 'var(--text)' }}
+            className="mt-2 w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors hover:opacity-80"
+            style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}
           >
             Logga ut
           </button>
