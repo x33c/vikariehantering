@@ -122,12 +122,19 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
       </button>
 
       {oppen && (
-        <div
-          className={`absolute z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border shadow-xl ${
-            placement === 'up' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-2'
-          }`}
-          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-        >
+        <>
+          <button
+            type="button"
+            aria-label="Stäng notiser"
+            className="fixed inset-0 z-40 bg-transparent sm:hidden"
+            onClick={() => setOppen(false)}
+          />
+          <div
+            className={`fixed inset-x-3 top-16 z-50 max-h-[calc(100dvh-5rem)] overflow-hidden rounded-2xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:w-80 sm:max-w-[calc(100vw-2rem)] ${
+              placement === 'up' ? 'sm:bottom-full sm:left-0 sm:mb-2' : 'sm:right-0 sm:top-full sm:mt-2'
+            }`}
+            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+          >
           <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Adminnotiser</p>
@@ -135,14 +142,19 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
                 {olasta.length > 0 ? `${olasta.length} nya` : 'Inget nytt'}
               </p>
             </div>
-            {notiser.length > 0 && (
-              <button type="button" onClick={markeraAlla} className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>
-                Markera lästa
+            <div className="flex items-center gap-3">
+              {notiser.length > 0 && (
+                <button type="button" onClick={markeraAlla} className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>
+                  Markera lästa
+                </button>
+              )}
+              <button type="button" onClick={() => setOppen(false)} className="text-lg leading-none sm:hidden" style={{ color: 'var(--text-muted)' }}>
+                ×
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="max-h-96 overflow-y-auto p-2">
+          <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto p-2 sm:max-h-96">
             {synliga.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                 Inga notiser ännu.
@@ -178,7 +190,8 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
               );
             })}
           </div>
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
