@@ -37,6 +37,14 @@ function kortVeckodag(datum: string) {
   });
 }
 
+function veckonummer(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const vecka1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - vecka1.getTime()) / 86400000 - 3 + ((vecka1.getDay() + 6) % 7)) / 7);
+}
+
 
 function ärPassPasserat(pass: { datum: string; tid_till: string }) {
   const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
@@ -1143,7 +1151,7 @@ export default function Bemanning() {
           <div className="space-y-3">
             <div className="flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
               </div>
               <div className="grid grid-cols-3 gap-2 sm:flex">
