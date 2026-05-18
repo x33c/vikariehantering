@@ -719,16 +719,62 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
 
   async function spara() {
     setLaddar(true);
-    const res = await passApi.skapa({
-      personal_id: form.personal_id, frånvaro_id: null, schemarad_id: null, vikarie_id: null,
-      datum: form.datum, tid_från: form.tid_från, tid_till: form.tid_till, typ: 'del_av_dag',
-      ämne: null, grupp: form.grupp || null, sal: null,
-      anteckning: form.anteckning || null, riktad_till_vikarie_id: null, publicerad: form.publicerad, status: 'obokat', skapad_av: null,
+    setFel('');
+
+    const passSomSkaSkapas = form.veckopass
+      ? veckopassDatum
+          .map((datum) => ({ datum, ...tidFörDatum(datum) }))
+          .filter((dag) => dag.aktiv)
+      : [{ datum: form.datum, aktiv: true, tid_från: form.tid_från, tid_till: form.tid_till }];
+
+    if (passSomSkaSkapas.length === 0) {
+      setLaddar(false);
+      setFel('Välj minst en dag för veckopasset.');
+      return;
     }
-);
+
+    for (const dag of passSomSkaSkapas) {
+      if (!dag.tid_från || !dag.tid_till || dag.tid_från >= dag.tid_till) {
+        setLaddar(false);
+        setFel('Kontrollera tiderna för veckopasset.');
+        return;
+      }
+    }
+
+    for (const dag of passSomSkaSkapas) {
+      const res = await passApi.skapa({
+        personal_id: form.personal_id || null,
+        frånvaro_id: null,
+        schemarad_id: null,
+        vikarie_id: null,
+        datum: dag.datum,
+        tid_från: dag.tid_från,
+        tid_till: dag.tid_till,
+        typ: 'del_av_dag',
+        ämne: null,
+        grupp: form.grupp || null,
+        sal: null,
+        anteckning: form.anteckning || null,
+        riktad_till_vikarie_id: null,
+        publicerad: form.publicerad,
+        status: 'obokat',
+        skapad_av: null,
+      });
+
+      if (res.error) {
+        setLaddar(false);
+        setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad')
+          ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.'
+          : res.error.message);
+        return;
+      }
+
+      if (res.data) {
+        await historikApi.skapa(res.data.id, 'pass_skapat', form.veckopass ? { typ: 'veckopass', datum: dag.datum } : undefined);
+      }
+    }
+
     setLaddar(false);
-    if (res.error) { setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message); return; }
-    if (res.data) await historikApi.skapa(res.data.id, 'pass_skapat');
     onSkapad();
     onStäng();
   }
