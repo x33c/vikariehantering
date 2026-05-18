@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
@@ -29,7 +29,21 @@ function useDarkMode() {
 export default function VikarieLayout() {
   const { profil } = useAuth();
   const [menyÖppen, setMenyÖppen] = useState(false);
+  const [visaNotisLathund, setVisaNotisLathund] = useState(false);
   const { mörkt, toggla } = useDarkMode();
+
+  useEffect(() => {
+    if (!profil?.id) return;
+    const nyckel = `notis_lathund_visad_${profil.id}`;
+    if (!localStorage.getItem(nyckel)) {
+      setVisaNotisLathund(true);
+    }
+  }, [profil?.id]);
+
+  function stängNotisLathund() {
+    if (profil?.id) localStorage.setItem(`notis_lathund_visad_${profil.id}`, 'true');
+    setVisaNotisLathund(false);
+  }
 
   return (
     <div className="flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -163,6 +177,48 @@ export default function VikarieLayout() {
           ))}
         </nav>
       </div>
+
+
+      {visaNotisLathund && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:items-center sm:p-4">
+          <div className="w-full max-w-md rounded-2xl border p-5 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
+              Kom igång med notiser
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Aktivera notiser så får du nya pass och meddelanden utan att behöva uppdatera sidan.
+            </p>
+
+            <div className="mt-4 space-y-3 text-sm" style={{ color: 'var(--text)' }}>
+              <div className="rounded-xl px-3 py-3" style={{ background: 'var(--bg)' }}>
+                <p className="font-semibold">iPhone</p>
+                <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Öppna sidan i Safari, välj Dela och Lägg till på hemskärmen. Öppna sedan appen från hemskärmen och tryck på Notiser.
+                </p>
+              </div>
+              <div className="rounded-xl px-3 py-3" style={{ background: 'var(--bg)' }}>
+                <p className="font-semibold">Android</p>
+                <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Öppna sidan i Chrome, tryck på Notiser och tillåt aviseringar när mobilen frågar.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border p-3" style={{ borderColor: 'var(--border)' }}>
+              <PushButton />
+            </div>
+
+            <button
+              type="button"
+              onClick={stängNotisLathund}
+              className="mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white"
+              style={{ background: 'var(--blue)' }}
+            >
+              Jag förstår
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
