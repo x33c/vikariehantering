@@ -46,7 +46,7 @@ export default function AdminLayout() {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r
+          fixed inset-y-0 left-0 z-30 flex w-72 max-w-[88vw] flex-col border-r lg:max-w-none
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
@@ -117,7 +117,7 @@ export default function AdminLayout() {
           </div>
         </nav>
 
-        <div className="border-t p-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="hidden border-t p-4 lg:block" style={{ borderColor: 'var(--border)' }}>
           <div className="mb-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
               {profil?.namn ?? profil?.epost}
@@ -148,6 +148,24 @@ export default function AdminLayout() {
           >
             Logga ut
           </button>
+        </div>
+
+        <div className="border-t p-3 lg:hidden" style={{ borderColor: 'var(--border)' }} data-admin-mobile-sidebar-footer>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                {profil?.namn ?? profil?.epost}
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Administratör</p>
+            </div>
+            <button
+              onClick={() => setBekraftaLoggaUt(true)}
+              className="shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold"
+              style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            >
+              Logga ut
+            </button>
+          </div>
         </div>
       </aside>
 
