@@ -292,9 +292,17 @@ function FrånvaroModal({
     setSteg('pass');
   }
 
-  async function skapaVikariepass() {
+  async function skapaVikariepass(läge: 'bemanning' | 'förfrågan' | 'direkt') {
     if (!skapadFrånvaro) return;
+    if ((läge === 'förfrågan' || läge === 'direkt') && !valdVikarieId) {
+      setFel('Välj vikarie först.');
+      return;
+    }
+
+    const skickarFörfrågan = läge === 'förfrågan';
+    const bokarDirekt = läge === 'direkt';
     setSkaparPass(true);
+    setFel('');
 
     const valdaRader = schemarader
       .filter((r) => valda.has(r.id))
@@ -335,7 +343,7 @@ function FrånvaroModal({
           frånvaro_id: skapadFrånvaro.id,
           schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
           personal_id: personalId,
-          vikarie_id: null,
+          vikarie_id: bokarDirekt ? valdVikarieId : null,
           datum,
           tid_från: första.tid_från!,
           tid_till: sista.tid_till!,
@@ -344,16 +352,20 @@ function FrånvaroModal({
           grupp: grupper.length <= 3 ? grupper.join(', ') || null : `${grupper.length} grupper`,
           sal: salar.length === 1 ? salar[0] : null,
           anteckning: `Sammanhållet pass från ${sorterade.length} lektioner:\n${lektionslista}`,
-          riktad_till_vikarie_id: valdVikarieId || null,
-          status: valdVikarieId ? 'notifierat' : 'obokat',
+          riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
+          status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
           skapad_av: null,
         });
 
         if (res.data) {
           await historikApi.skapa(res.data.id, 'pass_skapat');
-          if (valdVikarieId) {
+          if (skickarFörfrågan) {
             await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
             await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+          }
+          if (bokarDirekt) {
+            await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId, källa: 'frånvaro_boka_direkt' });
+            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
           }
         }
       }
@@ -362,7 +374,7 @@ function FrånvaroModal({
         frånvaro_id: skapadFrånvaro.id,
         schemarad_id: null,
         personal_id: personalId,
-        vikarie_id: null,
+        vikarie_id: bokarDirekt ? valdVikarieId : null,
         datum: datumFrån,
         tid_från: helDag ? '08:00' : tidFrån,
         tid_till: helDag ? '17:00' : tidTill,
@@ -371,16 +383,20 @@ function FrånvaroModal({
         grupp: null,
         sal: null,
         anteckning: null,
-        riktad_till_vikarie_id: valdVikarieId || null,
-        status: valdVikarieId ? 'notifierat' : 'obokat',
+        riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
+        status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
         skapad_av: null,
       });
       if (res.data) {
         await historikApi.skapa(res.data.id, 'pass_skapat');
-        if (valdVikarieId) {
-            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
-            await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
-          }
+        if (skickarFörfrågan) {
+          await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+          await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+        }
+        if (bokarDirekt) {
+          await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId, källa: 'frånvaro_boka_direkt' });
+          await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+        }
       }
     }
 
@@ -455,7 +471,7 @@ function FrånvaroModal({
               ))}
             </Select>
             <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Om du väljer vikarie nu skickas en förfrågan. Passet markeras som tillfrågat tills vikarien svarar.
+              Välj vikarie om du vill skicka förfrågan eller boka personen direkt. Lämna tomt för att bara skapa pass för bemanning.
             </p>
           </div>
 
@@ -473,10 +489,21 @@ function FrånvaroModal({
             className="sticky bottom-0 -mx-6 flex flex-wrap justify-end gap-2 border-t px-6 py-4 shadow-lg"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
           >
-            <Button variant="secondary" onClick={() => { onRegistrerad(); onStäng(); }}>Spara utan vikarie</Button>
-            <Button loading={skaparPass} onClick={skapaVikariepass}>
-              {valdVikarieId ? 'Skicka förfrågan' : 'Skapa pass för bemanning'}
-            </Button>
+            <Button variant="secondary" onClick={() => { onRegistrerad(); onStäng(); }}>Spara utan pass</Button>
+            {valdVikarieId ? (
+              <>
+                <Button variant="secondary" loading={skaparPass} onClick={() => skapaVikariepass('förfrågan')}>
+                  Skicka förfrågan
+                </Button>
+                <Button loading={skaparPass} onClick={() => skapaVikariepass('direkt')}>
+                  Boka direkt
+                </Button>
+              </>
+            ) : (
+              <Button loading={skaparPass} onClick={() => skapaVikariepass('bemanning')}>
+                Skapa pass för bemanning
+              </Button>
+            )}
           </div>
         </div>
       )}
