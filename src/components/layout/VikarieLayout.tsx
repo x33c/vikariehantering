@@ -8,6 +8,7 @@ const navItems = [
   { to: '/vikarie/mina-pass', label: 'Mina pass' },
   { to: '/vikarie/tillganglighet', label: 'Tillgänglighet' },
   { to: '/vikarie/profil', label: 'Profil' },
+  { to: '/vikarie/logga-ut', label: 'Logga ut' },
 ];
 
 function useDarkMode() {
@@ -26,9 +27,8 @@ function useDarkMode() {
 }
 
 export default function VikarieLayout() {
-  const { profil, loggaUt } = useAuth();
+  const { profil } = useAuth();
   const [menyÖppen, setMenyÖppen] = useState(false);
-  const [bekraftaLoggaUt, setBekraftaLoggaUt] = useState(false);
   const { mörkt, toggla } = useDarkMode();
 
   return (
@@ -86,16 +86,6 @@ export default function VikarieLayout() {
               {item.label}
             </NavLink>
           ))}
-          <button
-            type="button"
-            onClick={() => setBekraftaLoggaUt(true)}
-            className="flex min-h-12 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-semibold sm:text-xs"
-            style={{ color: 'var(--text-muted)' }}
-            aria-label="Logga ut"
-            title="Logga ut"
-          >
-            Logga ut
-          </button>
         </nav>
 
         {/* Botten */}
@@ -117,15 +107,6 @@ export default function VikarieLayout() {
               <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${mörkt ? 'translate-x-4' : 'translate-x-1'}`} />
             </button>
           </div>
-          <button
-            onClick={() => setBekraftaLoggaUt(true)}
-            className="w-full rounded-2xl border px-4 py-2.5 text-left text-sm font-medium transition-all"
-            style={{ color: 'var(--text-muted)', borderColor: 'transparent' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            Logga ut
-          </button>
         </div>
       </aside>
 
@@ -180,47 +161,9 @@ export default function VikarieLayout() {
               {item.label === 'Tillgänglighet' ? 'Tid' : item.label}
             </NavLink>
           ))}
-          <button
-            type="button"
-            onClick={() => setBekraftaLoggaUt(true)}
-            className="flex min-h-12 items-center justify-center rounded-xl px-1 text-center text-[11px] font-semibold sm:text-xs"
-            style={{ color: 'var(--text-muted)' }}
-            aria-label="Logga ut från vikarievyn"
-            title="Logga ut"
-          >
-            Logga ut
-          </button>
         </nav>
       </div>
 
-      {bekraftaLoggaUt && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:items-center sm:p-4">
-          <div className="w-full max-w-sm rounded-2xl border p-4 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Vill du logga ut?</h2>
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Du behöver logga in igen för att se pass och notiser.
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setBekraftaLoggaUt(false)}
-                className="min-h-11 rounded-xl border px-4 py-2.5 text-sm font-semibold"
-                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-              >
-                Avbryt
-              </button>
-              <button
-                type="button"
-                onClick={loggaUt}
-                className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
-                style={{ background: 'var(--danger)' }}
-              >
-                Logga ut
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
