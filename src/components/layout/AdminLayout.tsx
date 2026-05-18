@@ -9,7 +9,7 @@ const navItems = [
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
   { to: '/admin/arbetslag', label: 'Personal' },
-  { to: '/admin/vikarier', label: 'Konton' },
+  { to: '/admin/vikarier', label: 'Passportalen' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
 ];

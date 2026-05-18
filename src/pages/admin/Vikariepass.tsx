@@ -952,7 +952,7 @@ export default function Bemanning() {
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
-  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('atgard');
+  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [veckaStart, setVeckaStart] = useState(() => veckaStartIso(new Date().toISOString().slice(0, 10)));
