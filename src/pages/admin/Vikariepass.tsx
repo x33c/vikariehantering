@@ -1141,13 +1141,33 @@ export default function Bemanning() {
   const kalenderGrupper = snabbFilter === 'arkiv'
     ? filtreradeGrupper
     : filtreradeGrupper.filter(grupp => veckodagar.includes(grupp.datum));
+  const bemanningSokTerm = bemanningSok.trim().toLowerCase();
+
+  function matcharBemanningSok(grupp: Passgrupp) {
+    if (!bemanningSokTerm) return true;
+
+    const text = [
+      grupp.personalNamn,
+      grupp.arbetslagNamn,
+      grupp.datum,
+      ...grupp.pass.flatMap((p) => {
+        const bokadVikarie = p.vikarie_id ? vikarier.find(v => v.id === p.vikarie_id)?.namn : '';
+        const riktadVikarie = p.riktad_till_vikarie_id ? vikarier.find(v => v.id === p.riktad_till_vikarie_id)?.namn : '';
+        return [p.grupp, p.ämne, p.anteckning, p.status, bokadVikarie, riktadVikarie];
+      }),
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return text.includes(bemanningSokTerm);
+  }
+
+  const synligaKalenderGrupper = kalenderGrupper.filter(matcharBemanningSok);
   const grupperPerDag = veckodagar.map((datum) => ({
     datum,
-    grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
+    grupper: synligaKalenderGrupper.filter(grupp => grupp.datum === datum),
   }));
   const veckaSlut = veckodagar[4];
   const idag = new Date().toLocaleDateString('sv-SE');
-  const allaSynligaIds = kalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
+  const allaSynligaIds = synligaKalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
   const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
   function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
@@ -1271,11 +1291,11 @@ export default function Bemanning() {
           </button>
         </div>
 
-        {filtreradeGrupper.length === 0 ? (
+        {synligaKalenderGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : snabbFilter === 'arkiv' ? (
           <div className="space-y-3">
-            {kalenderGrupper.map((grupp, index) => {
+            {synligaKalenderGrupper.map((grupp, index) => {
               const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
               const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
               const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
