@@ -29,6 +29,7 @@ import MinaPass from './pages/vikarie/MinaPass';
 import Tillganglighet from './pages/vikarie/Tillganglighet';
 import Profil from './pages/vikarie/Profil';
 import LoggaUt from './pages/vikarie/LoggaUt';
+import Schema from './pages/vikarie/Schema';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { profil, laddar } = useAuth();
@@ -99,6 +100,7 @@ export default function App() {
             <Route index element={<LedigaPass />} />
             <Route path="mina-pass" element={<MinaPass />} />
             <Route path="tillganglighet" element={<Tillganglighet />} />
+            <Route path="schema" element={<Schema />} />
             <Route path="profil" element={<Profil />} />
             <Route path="logga-ut" element={<LoggaUt />} />
           </Route>

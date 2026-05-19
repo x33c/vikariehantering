@@ -7,6 +7,7 @@ const navItems = [
   { to: '/vikarie', label: 'Pass', end: true },
   { to: '/vikarie/mina-pass', label: 'Mina pass' },
   { to: '/vikarie/tillganglighet', label: 'Tillgänglighet' },
+  { to: '/vikarie/schema', label: 'Schema' },
   { to: '/vikarie/profil', label: 'Profil' },
   { to: '/vikarie/logga-ut', label: 'Logga ut' },
 ];
@@ -163,7 +164,7 @@ export default function VikarieLayout() {
           <Outlet />
         </main>
         <nav
-          className="grid shrink-0 grid-cols-5 gap-1 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 lg:hidden"
+          className="grid shrink-0 grid-cols-6 gap-1 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           {navItems.map((item) => (
