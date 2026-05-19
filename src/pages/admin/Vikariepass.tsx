@@ -1342,30 +1342,39 @@ export default function Bemanning() {
                           const statusColor = info.passerad ? 'var(--text-muted)' : vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
 
                           return (
-                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-lg border p-2" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
-                              <div className="flex items-start gap-2">
-                                <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
+                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-xl border p-3" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
+                              <div className="flex items-start gap-3">
+                                <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
                                 <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
-                                  {vikariNamn ? (
-                                    <>
-                                      <p className="truncate text-sm font-semibold" style={{ color: info.passerad ? 'var(--text)' : '#22c55e' }}>{vikariNamn}</p>
-                                      <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>Ersätter: {grupp.personalNamn}</p>
-                                    </>
-                                  ) : (
-                                    <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
-                                  )}
-                                  <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
-                                  <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
-                                  <div className="mt-2 flex items-center justify-between gap-2">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      {vikariNamn ? (
+                                        <>
+                                          <p className="truncate text-sm font-semibold" style={{ color: info.passerad ? 'var(--text)' : '#22c55e' }}>{vikariNamn}</p>
+                                          <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>Ersätter: {grupp.personalNamn}</p>
+                                        </>
+                                      ) : (
+                                        <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                      )}
+                                    </div>
+                                    <div className="shrink-0">
+                                      {info.passerad ? (
+                                        <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ color: 'var(--text-muted)', background: 'var(--hover)' }}>
+                                          Passerat
+                                        </span>
+                                      ) : (
+                                        <StatusBadge status={dominerandStatus as PassStatus} />
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-2">
+                                    <div className="min-w-0">
+                                      <p className="text-base font-semibold leading-tight" style={{ color: 'var(--text)' }}>{tidFrån}–{tidTill}</p>
+                                      <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
+                                    </div>
                                     {!vikariNamn && (
                                       <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
-                                    )}
-                                    {info.passerad ? (
-                                      <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ color: 'var(--text-muted)', background: 'var(--hover)' }}>
-                                        Passerat
-                                      </span>
-                                    ) : (
-                                      <StatusBadge status={dominerandStatus as PassStatus} />
                                     )}
                                   </div>
                                 </button>
