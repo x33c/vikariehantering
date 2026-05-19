@@ -134,9 +134,26 @@ function PassKort({
             background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : 'var(--hover)',
             color: grupp.riktad ? 'var(--blue)' : 'var(--text-muted)',
           }}>
-          {grupp.riktad ? 'Förfrågan' : 'Ledigt'}
+          {grupp.riktad ? 'Bara för dig' : 'Ledigt'}
         </span>
       </div>
+
+      {grupp.riktad && (
+        <div
+          className="mb-4 rounded-xl border px-3 py-3 text-sm"
+          style={{
+            background: 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))',
+            borderColor: 'color-mix(in srgb, var(--blue) 45%, var(--border))',
+          }}
+        >
+          <p className="font-semibold" style={{ color: 'var(--text)' }}>
+            Personlig förfrågan
+          </p>
+          <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Det här passet är skickat direkt till dig och visas inte som ett ledigt pass för andra vikarier.
+          </p>
+        </div>
+      )}
 
       <div className="mb-4 grid gap-2 rounded-xl px-3 py-3 text-sm" style={{ background: 'var(--bg)' }}>
         {grupp.personalNamn !== 'Okänd personal' && grupp.personalNamn !== 'Fristående pass' && (
@@ -363,8 +380,13 @@ export default function LedigaPass() {
       )}
 
       <section className="mb-8">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Förfrågningar</h2>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Förfrågningar</h2>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Pass som admin har skickat direkt till dig.
+            </p>
+          </div>
           <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
             {förfrågningsGrupper.length}
           </span>
