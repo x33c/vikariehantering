@@ -1013,6 +1013,7 @@ export default function Bemanning() {
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
+  const [sök, setSök] = useState('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [döljPasserade, setDöljPasserade] = useState(false);
