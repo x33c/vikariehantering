@@ -21,8 +21,22 @@ function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
 }
 
 
-function bokningsFelText(message?: string) {
-  const text = message ?? '';
+function felTillText(error: unknown) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && 'message' in error) {
+    return String((error as { message?: unknown }).message ?? '');
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function bokningsFelText(error?: unknown) {
+  const text = felTillText(error).toLowerCase();
   if (
     text.includes('överlappar') ||
     text.includes('redan bokad') ||
@@ -32,6 +46,27 @@ function bokningsFelText(message?: string) {
   }
 
   return 'Passet kunde inte bokas. Det kan redan ha ändrats.';
+}
+
+function tiderÖverlappar(startA: string, slutA: string, startB: string, slutB: string) {
+  return startA < slutB && slutA > startB;
+}
+
+async function hittaÖverlappandeBokning(grupp: Passgrupp, vikarieId: string) {
+  const start = grupp.pass[0].tid_från;
+  const slut = grupp.pass[grupp.pass.length - 1].tid_till;
+
+  const res = await passApi.lista({
+    datumFrån: grupp.datum,
+    datumTill: grupp.datum,
+    status: ['bokat', 'bekräftat'],
+  });
+
+  return ((res.data ?? []) as Vikariepass[]).find((pass) =>
+    pass.vikarie_id === vikarieId &&
+    pass.datum === grupp.datum &&
+    tiderÖverlappar(start, slut, pass.tid_från, pass.tid_till)
+  );
 }
 
 function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[] {
@@ -189,6 +224,12 @@ export default function LedigaPass() {
     let senasteFel: unknown = null;
 
     try {
+      const överlappande = await hittaÖverlappandeBokning(grupp, minVikarie.id);
+      if (överlappande) {
+        setFel(`Du är redan bokad ${överlappande.tid_från.slice(0, 5)}-${överlappande.tid_till.slice(0, 5)} den här dagen. Du kan inte boka ett pass som överlappar.`);
+        return;
+      }
+
       for (const passrad of grupp.pass) {
         const svar = grupp.riktad
           ? await passApi.tackaJa(passrad.id, minVikarie.id)
