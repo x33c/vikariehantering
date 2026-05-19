@@ -545,6 +545,138 @@ function FrånvaroModal({
   );
 }
 
+
+function RedigeraFrånvaroModal({
+  frånvaro,
+  personal,
+  onStäng,
+  onSparad,
+}: {
+  frånvaro: Frånvaro | null;
+  personal: Personal[];
+  onStäng: () => void;
+  onSparad: () => void;
+}) {
+  const [personalId, setPersonalId] = useState('');
+  const [datumFrån, setDatumFrån] = useState(datumIdag());
+  const [datumTill, setDatumTill] = useState(datumIdag());
+  const [helDag, setHelDag] = useState(true);
+  const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
+  const [tidFrån, setTidFrån] = useState('08:00');
+  const [tidTill, setTidTill] = useState('17:00');
+  const [orsak, setOrsak] = useState('');
+  const [anteckning, setAnteckning] = useState('');
+  const [sparar, setSparar] = useState(false);
+  const [fel, setFel] = useState('');
+
+  useEffect(() => {
+    if (!frånvaro) return;
+
+    const anteckningar = (frånvaro.anteckning ?? '').split('\n');
+    const markeradIngenVikarie = anteckningar.some((rad) => rad.trim().toLowerCase() === 'ingen vikarie behövs');
+    const synligAnteckning = anteckningar
+      .filter((rad) => rad.trim().toLowerCase() !== 'ingen vikarie behövs')
+      .join('\n')
+      .trim();
+
+    setPersonalId(frånvaro.personal_id);
+    setDatumFrån(frånvaro.datum_från);
+    setDatumTill(frånvaro.datum_till);
+    setHelDag(frånvaro.hel_dag);
+    setIngenVikarieBehövs(markeradIngenVikarie);
+    setTidFrån(tid(frånvaro.tid_från) || '08:00');
+    setTidTill(tid(frånvaro.tid_till) || '17:00');
+    setOrsak(frånvaro.orsak ?? '');
+    setAnteckning(synligAnteckning);
+    setFel('');
+  }, [frånvaro]);
+
+  if (!frånvaro) return null;
+
+  async function spara() {
+    if (!personalId) { setFel('Välj person.'); return; }
+    if (datumTill < datumFrån) { setFel('Slutdatum kan inte vara före startdatum.'); return; }
+
+    setSparar(true);
+    setFel('');
+
+    const res = await frånvaroApi.uppdatera(frånvaro.id, {
+      personal_id: personalId,
+      datum_från: datumFrån,
+      datum_till: datumTill,
+      hel_dag: helDag,
+      tid_från: helDag ? null : tidFrån,
+      tid_till: helDag ? null : tidTill,
+      orsak: orsak || null,
+      anteckning: [
+        anteckning.trim() || null,
+        ingenVikarieBehövs ? 'Ingen vikarie behövs' : null,
+      ].filter(Boolean).join('\n') || null,
+      skapad_av: frånvaro.skapad_av,
+    });
+
+    setSparar(false);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    onSparad();
+    onStäng();
+  }
+
+  return (
+    <Modal öppen={!!frånvaro} onStäng={onStäng} titel="Redigera frånvaro" bredd="lg">
+      <div className="space-y-4">
+        {fel && <Alert typ="error">{fel}</Alert>}
+
+        <Select label="Vem är frånvarande? *" value={personalId} onChange={(e) => setPersonalId(e.target.value)}>
+          <option value="">Välj person</option>
+          {personal.map((p) => (
+            <option key={p.id} value={p.id}>{p.namn} {p.arbetslag ? `(${p.arbetslag.namn})` : ''}</option>
+          ))}
+        </Select>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Första dag *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
+          <Input label="Sista dag *" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
+        </div>
+
+        <div className="grid gap-2 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+            <input type="checkbox" checked={helDag} onChange={(e) => setHelDag(e.target.checked)} className="h-4 w-4 rounded" />
+            Heldag
+          </label>
+          <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--text)' }}>
+            <input type="checkbox" checked={ingenVikarieBehövs} onChange={(e) => setIngenVikarieBehövs(e.target.checked)} className="mt-0.5 h-4 w-4 rounded" />
+            <span>
+              Ingen vikarie behövs
+              <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Frånvaron sparas utan vikariepass.</span>
+            </span>
+          </label>
+        </div>
+
+        {!helDag && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label="Från" type="time" value={tidFrån} onChange={(e) => setTidFrån(e.target.value)} />
+            <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
+          </div>
+        )}
+
+        <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak(e.target.value)} />
+        <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={3} />
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
+          <Button loading={sparar} onClick={spara}>Spara ändringar</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+
 export default function Franvaro() {
   const navigate = useNavigate();
   const [frånvaron, setFrånvaron] = useState<Frånvaro[]>([]);
@@ -557,6 +689,8 @@ export default function Franvaro() {
   const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
   const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
+  const [visaLista, setVisaLista] = useState(false);
+  const [redigeraFrånvaro, setRedigeraFrånvaro] = useState<Frånvaro | null>(null);
   const [kalenderDatum, setKalenderDatum] = useState(datumIdag());
 
   useEffect(() => { ladda(); }, []);
@@ -682,7 +816,14 @@ export default function Franvaro() {
   }
 
   const filtrerade = sök
-    ? frånvaron.filter((f) => f.personal?.namn.toLowerCase().includes(sök.toLowerCase()))
+    ? frånvaron.filter((f) => {
+        const term = sök.toLowerCase();
+        return (
+          f.personal?.namn.toLowerCase().includes(term) ||
+          f.personal?.arbetslag?.namn.toLowerCase().includes(term) ||
+          f.orsak?.toLowerCase().includes(term)
+        );
+      })
     : frånvaron;
 
   const veckaStart = startPåVecka(kalenderDatum);
@@ -720,13 +861,22 @@ export default function Franvaro() {
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <input
-        type="search"
-        placeholder="Sök person"
-        value={sök}
-        onChange={(e) => setSök(e.target.value)}
-        className="mb-4 w-full max-w-xs rounded-lg border px-3 py-2 text-sm"
-      />
+      <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,360px)_auto_auto] sm:items-center">
+        <input
+          type="search"
+          placeholder="Sök personal, arbetslag eller orsak"
+          value={sök}
+          onChange={(e) => setSök(e.target.value)}
+          className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm"
+          style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+        />
+        <Button variant="secondary" onClick={() => setVisaLista(!visaLista)}>
+          {visaLista ? 'Dölj lista' : 'Visa lista'}
+        </Button>
+        {sök && (
+          <Button variant="secondary" onClick={() => setSök('')}>Rensa</Button>
+        )}
+      </div>
 
 
       <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
@@ -802,7 +952,8 @@ export default function Franvaro() {
                             {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
                           </p>
 
-                          <div className="mt-3">
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(frånvaro)}>Redigera</Button>
                             {harPass ? (
                               <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
                             ) : (
@@ -820,7 +971,13 @@ export default function Franvaro() {
         </div>
       </section>
 
-      {filtrerade.length === 0 ? (
+      {!visaLista && (
+        <div className="mb-6 rounded-xl border border-dashed px-4 py-3 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+          Listan är dold. Använd kalendern ovan eller välj <button type="button" onClick={() => setVisaLista(true)} className="font-semibold" style={{ color: 'var(--accent)' }}>Visa lista</button>.
+        </div>
+      )}
+
+      {visaLista && (filtrerade.length === 0 ? (
         <TomtTillstånd text="Ingen frånvaro ännu." åtgärd={
           <Button size="sm" onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
         } />
@@ -868,6 +1025,7 @@ export default function Franvaro() {
                   )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                   {aktivaPassFör(f).length > 0 ? (
                     <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
                   ) : (
@@ -902,6 +1060,7 @@ export default function Franvaro() {
                     <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                         {aktivaPassFör(f).length > 0 ? (
                           <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
                         ) : (
@@ -918,7 +1077,14 @@ export default function Franvaro() {
             </table>
           </div>
         </>
-      )}
+      ))}
+
+      <RedigeraFrånvaroModal
+        frånvaro={redigeraFrånvaro}
+        personal={personal}
+        onStäng={() => setRedigeraFrånvaro(null)}
+        onSparad={ladda}
+      />
 
       <FrånvaroModal
         öppen={modal.öppen}
