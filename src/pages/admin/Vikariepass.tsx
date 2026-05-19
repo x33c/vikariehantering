@@ -1338,7 +1338,7 @@ export default function Bemanning() {
                           const dominerandStatus = statusar.length === 1 ? statusar[0] : 'obokat';
                           const alleMarkerade = grupp.pass.every(p => valda.has(p.id));
                           const info = gruppInfo(grupp);
-                          const statusText = info.passerad && vikariNamn ? `Passerat: ${vikariNamn}` : info.passerad ? 'Passerat' : info.avbokad ? 'Avbokat' : info.harAvbokningsförfrågan ? 'Avbokning' : vikariNamn ? `Bokad: ${vikariNamn}` : info.harRiktadFörfrågan ? 'Förfrågan' : info.publicerad ? 'Ledigt' : 'Ej publicerad';
+                          const statusText = info.passerad ? 'Passerat' : info.avbokad ? 'Avbokat' : info.harAvbokningsförfrågan ? 'Avbokning' : vikariNamn ? 'Bokad' : info.harRiktadFörfrågan ? 'Förfrågan' : info.publicerad ? 'Ledigt' : 'Ej publicerad';
                           const statusColor = info.passerad ? 'var(--text-muted)' : vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
 
                           return (
@@ -1346,7 +1346,14 @@ export default function Bemanning() {
                               <div className="flex items-start gap-2">
                                 <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
                                 <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
-                                  <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                  {vikariNamn ? (
+                                    <>
+                                      <p className="truncate text-sm font-semibold" style={{ color: info.passerad ? 'var(--text)' : '#22c55e' }}>{vikariNamn}</p>
+                                      <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>Ersätter: {grupp.personalNamn}</p>
+                                    </>
+                                  ) : (
+                                    <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</p>
+                                  )}
                                   <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
                                   <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
                                   <div className="mt-2 flex items-center justify-between gap-2">
