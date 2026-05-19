@@ -1013,6 +1013,7 @@ export default function Bemanning() {
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
+  const [bemanningSok, setBemanningSok] = useState('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [döljPasserade, setDöljPasserade] = useState(false);
@@ -1086,7 +1087,31 @@ export default function Bemanning() {
 
   if (laddar) return <LaddaSida />;
 
-  const grupper = grupperaPasser(pass);
+  const bemanningSokTerm = bemanningSok.trim().toLowerCase();
+  const visadePass = bemanningSokTerm
+    ? pass.filter((p) => {
+        const bokadVikarie = p.vikarie_id ? vikarier.find(v => v.id === p.vikarie_id)?.namn : '';
+        const riktadVikarie = p.riktad_till_vikarie_id ? vikarier.find(v => v.id === p.riktad_till_vikarie_id)?.namn : '';
+        const text = [
+          p.personal?.namn,
+          p.personal?.arbetslag?.namn,
+          p.grupp,
+          p.ämne,
+          p.anteckning,
+          p.datum,
+          p.tid_från,
+          p.tid_till,
+          p.status,
+          p.status ? PASS_STATUS_LABELS[p.status] : '',
+          bokadVikarie,
+          riktadVikarie,
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        return text.includes(bemanningSokTerm);
+      })
+    : pass;
+
+  const grupper = grupperaPasser(visadePass);
   const grupperEfterVikarie = vikarieFilter
     ? grupper.filter(grupp => grupp.pass.some(p => p.vikarie_id === vikarieFilter))
     : grupper;
