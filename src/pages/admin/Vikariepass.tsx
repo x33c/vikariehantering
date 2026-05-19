@@ -1120,6 +1120,8 @@ export default function Bemanning() {
     return true;
   }
 
+  const söktaGrupper = grupper.filter(matcharSök);
+
   const filterCounts: Record<SnabbFilter, number> = {
     alla: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'alla')).length,
     atgard: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'atgard')).length,
