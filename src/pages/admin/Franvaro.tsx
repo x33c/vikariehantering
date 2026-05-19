@@ -27,6 +27,40 @@ function kortDatum(datum: string) {
   });
 }
 
+function isoDatum(datum: Date) {
+  return datum.toISOString().slice(0, 10);
+}
+
+function startPåVecka(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  const dagIndex = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dagIndex);
+  return isoDatum(d);
+}
+
+function läggTillDagar(datum: string, dagar: number) {
+  const d = new Date(`${datum}T12:00:00`);
+  d.setDate(d.getDate() + dagar);
+  return isoDatum(d);
+}
+
+function veckonummer(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNr + 3);
+
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstDayNr = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNr + 3);
+
+  return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+}
+
+function frånvaroTäckerDatum(frånvaro: Frånvaro, datum: string) {
+  return frånvaro.datum_från <= datum && frånvaro.datum_till >= datum;
+}
+
 function datumÖverlappar(startA: string, slutA: string, startB: string, slutB: string) {
   return startA <= slutB && slutA >= startB;
 }
@@ -523,6 +557,7 @@ export default function Franvaro() {
   const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
   const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
+  const [kalenderDatum, setKalenderDatum] = useState(datumIdag());
 
   useEffect(() => { ladda(); }, []);
 
@@ -650,6 +685,20 @@ export default function Franvaro() {
     ? frånvaron.filter((f) => f.personal?.namn.toLowerCase().includes(sök.toLowerCase()))
     : frånvaron;
 
+  const veckaStart = startPåVecka(kalenderDatum);
+  const kalenderDagar = useMemo(
+    () => Array.from({ length: 5 }, (_, index) => läggTillDagar(veckaStart, index)),
+    [veckaStart]
+  );
+  const frånvaroPerDag = useMemo(() => {
+    const map = new Map<string, Frånvaro[]>();
+    for (const dag of kalenderDagar) {
+      map.set(dag, filtrerade.filter((frånvaro) => frånvaroTäckerDatum(frånvaro, dag)));
+    }
+    return map;
+  }, [filtrerade, kalenderDagar]);
+  const totaltIKalendern = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag)?.length ?? 0), 0);
+
   if (laddar) return <LaddaSida />;
 
   return (
@@ -678,6 +727,98 @@ export default function Franvaro() {
         onChange={(e) => setSök(e.target.value)}
         className="mb-4 w-full max-w-xs rounded-lg border px-3 py-2 text-sm"
       />
+
+
+      <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Kalender</p>
+            <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              {kortDatum(kalenderDagar[0])} - {kortDatum(kalenderDagar[4])} · {totaltIKalendern} frånvaro
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:flex">
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>Föregående</Button>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(datumIdag())}>Idag</Button>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>Nästa</Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-5">
+          {kalenderDagar.map((dag) => {
+            const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
+            const ärIdag = dag === datumIdag();
+
+            return (
+              <div
+                key={dag}
+                className="min-h-44 rounded-2xl border p-3"
+                style={{
+                  background: 'var(--bg)',
+                  borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
+                  boxShadow: ärIdag ? 'inset 0 0 0 1px var(--accent)' : 'none',
+                }}
+              >
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
+                  </div>
+                  {dagensFrånvaro.some((frånvaro) => aktivaPassFör(frånvaro).length === 0) && (
+                    <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
+                      Åtgärd
+                    </span>
+                  )}
+                </div>
+
+                {dagensFrånvaro.length === 0 ? (
+                  <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed px-3 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
+                    Ingen frånvaro
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {dagensFrånvaro.map((frånvaro) => {
+                      const pass = aktivaPassFör(frånvaro);
+                      const harPass = pass.length > 0;
+
+                      return (
+                        <article key={`${dag}-${frånvaro.id}`} className="rounded-xl border p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{frånvaro.personal?.namn ?? '-'}</p>
+                              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Inget arbetslag'}</p>
+                            </div>
+                            <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{
+                              background: harPass ? 'rgba(34,197,94,0.14)' : 'rgba(249,115,22,0.14)',
+                              color: harPass ? '#22c55e' : '#fb923c',
+                            }}>
+                              {harPass ? `${pass.length} pass` : 'Saknar pass'}
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {frånvaro.hel_dag ? 'Heldag' : `${tid(frånvaro.tid_från)}-${tid(frånvaro.tid_till)}`}
+                            {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
+                          </p>
+
+                          <div className="mt-3">
+                            {harPass ? (
+                              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
+                            ) : (
+                              <Button size="sm" loading={skaparPassId === frånvaro.id} onClick={() => skapaPassFrånFrånvaro(frånvaro)}>Skapa pass</Button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {filtrerade.length === 0 ? (
         <TomtTillstånd text="Ingen frånvaro ännu." åtgärd={
