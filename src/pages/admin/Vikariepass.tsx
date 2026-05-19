@@ -1013,7 +1013,6 @@ export default function Bemanning() {
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
-  const [sök, setSök] = useState('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [döljPasserade, setDöljPasserade] = useState(false);
@@ -1120,8 +1119,6 @@ export default function Bemanning() {
     if (filter === 'ej_publicerade') return info.ejPublicerad;
     return true;
   }
-
-  const söktaGrupper = grupper.filter(matcharSök);
 
   const filterCounts: Record<SnabbFilter, number> = {
     alla: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'alla')).length,
