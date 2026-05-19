@@ -244,6 +244,7 @@ function FrånvaroModal({
   onRegistrerad: () => void;
 }) {
   const [personalId, setPersonalId] = useState(valtPersonalId ?? '');
+  const [egenPersonalNamn, setEgenPersonalNamn] = useState('');
   const [datumFrån, setDatumFrån] = useState(datumIdag());
   const [datumTill, setDatumTill] = useState(datumIdag());
   const [helDag, setHelDag] = useState(true);
@@ -264,6 +265,7 @@ function FrånvaroModal({
   useEffect(() => {
     if (!öppen) return;
     setPersonalId(valtPersonalId ?? '');
+    setEgenPersonalNamn('');
     setDatumFrån(datumIdag());
     setDatumTill(datumIdag());
     setHelDag(true);
@@ -276,25 +278,69 @@ function FrånvaroModal({
   }, [öppen, valtPersonalId]);
 
   async function registreraFrånvaro() {
-    if (!personalId) { setFel('Sök eller välj person.'); return; }
-    if (datumTill < datumFrån) { setFel('Slutdatum kan inte vara före startdatum.'); return; }
+    const egetNamn = egenPersonalNamn.trim();
 
-    const finnsRedan = frånvaron.find((frånvaro) =>
-      frånvaro.personal_id === personalId &&
-      datumÖverlappar(datumFrån, datumTill, frånvaro.datum_från, frånvaro.datum_till)
-    );
+    if (!personalId && !egetNamn) {
+      setFel('Välj person eller skriv ett namn.');
+      return;
+    }
 
-    if (finnsRedan) {
-      const namn = personal.find((p) => p.id === personalId)?.namn ?? 'Personen';
-      setFel(`${namn} har redan frånvaro ${finnsRedan.datum_från} - ${finnsRedan.datum_till}. Ta bort eller ändra den först.`);
+    if (datumTill < datumFrån) {
+      setFel('Slutdatum kan inte vara före startdatum.');
       return;
     }
 
     setLaddar(true);
     setFel('');
 
+    let frånvarandePersonalId = personalId;
+    let frånvarandeNamn = personal.find((p) => p.id === personalId)?.namn ?? egetNamn;
+
+    if (!frånvarandePersonalId && egetNamn) {
+      const befintlig = personal.find((p) => p.namn.trim().toLowerCase() === egetNamn.toLowerCase());
+
+      if (befintlig) {
+        frånvarandePersonalId = befintlig.id;
+        frånvarandeNamn = befintlig.namn;
+        setPersonalId(befintlig.id);
+      } else {
+        const nyPersonal = await personalApi.skapa({
+          arbetslag_id: null,
+          namn: egetNamn,
+          epost: null,
+          telefon: null,
+          signatur: null,
+          skola24_id: null,
+          titel: null,
+          aktiv: true,
+        });
+
+        if (nyPersonal.error || !nyPersonal.data) {
+          setLaddar(false);
+          setFel(nyPersonal.error?.message ?? 'Kunde inte skapa personal.');
+          return;
+        }
+
+        const skapadPersonal = nyPersonal.data as Personal;
+        frånvarandePersonalId = skapadPersonal.id;
+        frånvarandeNamn = skapadPersonal.namn;
+        setPersonalId(skapadPersonal.id);
+      }
+    }
+
+    const finnsRedan = frånvaron.find((frånvaro) =>
+      frånvaro.personal_id === frånvarandePersonalId &&
+      datumÖverlappar(datumFrån, datumTill, frånvaro.datum_från, frånvaro.datum_till)
+    );
+
+    if (finnsRedan) {
+      setLaddar(false);
+      setFel(`${frånvarandeNamn || 'Personen'} har redan frånvaro ${finnsRedan.datum_från} - ${finnsRedan.datum_till}. Ta bort eller ändra den först.`);
+      return;
+    }
+
     const res = await frånvaroApi.skapa({
-      personal_id: personalId,
+      personal_id: frånvarandePersonalId,
       datum_från: datumFrån,
       datum_till: datumTill,
       hel_dag: helDag,
@@ -310,7 +356,11 @@ function FrånvaroModal({
 
     setLaddar(false);
 
-    if (res.error) { setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message); return; }
+    if (res.error) {
+      setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
+      return;
+    }
+
     setSkapadFrånvaro(res.data as Frånvaro);
 
     if (ingenVikarieBehövs) {
@@ -319,7 +369,7 @@ function FrånvaroModal({
       return;
     }
 
-    const sRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(personalId, datumFrån, datumTill);
+    const sRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(frånvarandePersonalId, datumFrån, datumTill);
     const rader = sorteraOchRensaSchemarader((sRes.data ?? []) as Schemarad[]);
     setSchemarader(rader);
     setValda(new Set(rader.map((r) => r.id)));
@@ -376,7 +426,7 @@ function FrånvaroModal({
         const res = await passApi.skapa({
           frånvaro_id: skapadFrånvaro.id,
           schemarad_id: sorterade.length === 1 ? sorterade[0].id : null,
-          personal_id: personalId,
+          personal_id: skapadFrånvaro.personal_id,
           vikarie_id: bokarDirekt ? valdVikarieId : null,
           datum,
           tid_från: första.tid_från!,
@@ -407,7 +457,7 @@ function FrånvaroModal({
       const res = await passApi.skapa({
         frånvaro_id: skapadFrånvaro.id,
         schemarad_id: null,
-        personal_id: personalId,
+        personal_id: skapadFrånvaro.personal_id,
         vikarie_id: bokarDirekt ? valdVikarieId : null,
         datum: datumFrån,
         tid_från: helDag ? '08:00' : tidFrån,
@@ -444,12 +494,30 @@ function FrånvaroModal({
       {steg === 'formulär' ? (
         <div className="space-y-4">
           {fel && <Alert typ="error">{fel}</Alert>}
-          <Select label="Vem är frånvarande? *" value={personalId} onChange={(e) => setPersonalId(e.target.value)}>
-            <option value="">Sök eller välj person</option>
+          <Select
+            label="Vem är frånvarande?"
+            value={personalId}
+            onChange={(e) => {
+              setPersonalId(e.target.value);
+              if (e.target.value) setEgenPersonalNamn('');
+            }}
+          >
+            <option value="">Välj från personal</option>
             {personal.map((p) => (
               <option key={p.id} value={p.id}>{p.namn} {p.arbetslag ? `(${p.arbetslag.namn})` : ''}</option>
             ))}
           </Select>
+
+          <Input
+            label="Eller skriv namn"
+            value={egenPersonalNamn}
+            onChange={(e) => {
+              setEgenPersonalNamn(e.target.value);
+              if (e.target.value.trim()) setPersonalId('');
+            }}
+            placeholder="Person som saknas i listan"
+            hint="Skriv ett namn här om personen inte finns i rullistan. Personen sparas automatiskt."
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Första dag *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
             <Input label="Sista dag *" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
@@ -601,7 +669,7 @@ function RedigeraFrånvaroModal({
     setFel('');
 
     const res = await frånvaroApi.uppdatera(frånvaro.id, {
-      personal_id: personalId,
+      personal_id: skapadFrånvaro.personal_id,
       datum_från: datumFrån,
       datum_till: datumTill,
       hel_dag: helDag,
