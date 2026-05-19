@@ -1100,7 +1100,8 @@ export default function Bemanning() {
     const avbokad = grupp.pass.every(p => p.status === 'avbokat');
     const passerad = ärGruppPasserad(grupp);
     const ejPublicerad = !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
-    const atgard = !passerad && (harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || avbokad);
+    const ledigtPassKräverÅtgärd = publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
+    const atgard = !passerad && (harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || ledigtPassKräverÅtgärd || avbokad);
 
     return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, passerad, ejPublicerad, atgard };
   }
