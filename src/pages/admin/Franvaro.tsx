@@ -861,20 +861,20 @@ export default function Franvaro() {
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,360px)_auto_auto] sm:items-center">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           type="search"
           placeholder="Sök personal, arbetslag eller orsak"
           value={sök}
           onChange={(e) => setSök(e.target.value)}
-          className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm"
+          className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm sm:max-w-sm"
           style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
         />
-        <Button variant="secondary" onClick={() => setVisaLista(!visaLista)}>
+        <Button size="sm" variant="secondary" onClick={() => setVisaLista(!visaLista)}>
           {visaLista ? 'Dölj lista' : 'Visa lista'}
         </Button>
         {sök && (
-          <Button variant="secondary" onClick={() => setSök('')}>Rensa</Button>
+          <Button size="sm" variant="secondary" onClick={() => setSök('')}>Rensa</Button>
         )}
       </div>
 
