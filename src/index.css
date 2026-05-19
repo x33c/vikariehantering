@@ -328,3 +328,18 @@ tbody tr:nth-child(even) {
 .dark tbody tr:nth-child(even) {
   background: transparent;
 }
+
+
+@media (prefers-reduced-motion: no-preference) {
+  html.tema-vaxlar,
+  html.tema-vaxlar * {
+    transition:
+      background 220ms ease,
+      background-color 220ms ease,
+      color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      fill 220ms ease,
+      stroke 220ms ease !important;
+  }
+}

@@ -24,12 +24,32 @@ function useDarkMode() {
 
   function toggla() {
     const nytt = !mörkt;
+    document.documentElement.classList.add('tema-vaxlar');
+    window.setTimeout(() => document.documentElement.classList.remove('tema-vaxlar'), 260);
     setMörkt(nytt);
     document.documentElement.classList.toggle('dark', nytt);
     localStorage.setItem('tema', nytt ? 'dark' : 'light');
   }
 
   return { mörkt, toggla };
+}
+
+
+function TemaIkon({ mörkt }: { mörkt: boolean }) {
+  if (mörkt) {
+    return (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" />
+        <circle cx="12" cy="12" r="4" strokeWidth={2} />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+    </svg>
+  );
 }
 
 export default function AdminLayout() {
@@ -129,11 +149,12 @@ export default function AdminLayout() {
             <AdminNotiser placement="up" />
             <button
               onClick={toggla}
-              className="flex min-h-10 items-center justify-center rounded-xl border px-3 text-sm font-medium"
+              className="flex min-h-10 items-center justify-center rounded-xl border px-3 transition-all hover:opacity-85"
               style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-              aria-label="Växla tema"
+              aria-label={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
+              title={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
             >
-              {mörkt ? 'Mörkt' : 'Ljust'}
+              <TemaIkon mörkt={mörkt} />
             </button>
           </div>
 
@@ -187,18 +208,10 @@ export default function AdminLayout() {
               onClick={toggla}
               className="rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
-              aria-label="Växla tema"
-              title="Växla tema"
+              aria-label={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
+              title={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
             >
-            {mörkt ? (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
-              </svg>
-            )}
+              <TemaIkon mörkt={mörkt} />
             </button>
           </div>
         </header>
