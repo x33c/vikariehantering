@@ -1357,7 +1357,9 @@ export default function Bemanning() {
                                   <p className="mt-1 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
                                   <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>
                                   <div className="mt-2 flex items-center justify-between gap-2">
-                                    <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
+                                    {!vikariNamn && (
+                                      <span className="truncate rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: statusColor, background: 'var(--hover)' }}>{statusText}</span>
+                                    )}
                                     {info.passerad ? (
                                       <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ color: 'var(--text-muted)', background: 'var(--hover)' }}>
                                         Passerat
