@@ -81,7 +81,7 @@ function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: 
   if (specifik) return specifik;
 
   const veckodag = veckodagFörDatum(datum);
-  return poster.find(t => t.veckopass && t.veckodag === veckodag) ?? null;
+  return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
 }
 
 function ärAvbokningsförfrågan(meddelande?: string | null) {
@@ -426,22 +426,51 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   }
 
 
-  useEffect(() => {
-    let aktiv = true;
-
-    Promise.all(
+  const laddaTillgänglighet = useCallback(async () => {
+    const poster = await Promise.all(
       vikarier.map(async (v) => {
         const res = await vikariApi.hämtaTillgänglighet(v.id);
         const rad = hittaTillgänglighetFörDatum((res.data ?? []) as VikarieTillgänglighet[], pass.datum);
         return [v.id, rad] as const;
       })
-    ).then((poster) => {
-      if (!aktiv) return;
-      setTillgMap(Object.fromEntries(poster));
-    });
+    );
 
-    return () => { aktiv = false; };
+    setTillgMap(Object.fromEntries(poster));
   }, [vikarier, pass.datum]);
+
+  useEffect(() => {
+    void laddaTillgänglighet();
+  }, [laddaTillgänglighet]);
+
+  useEffect(() => {
+    function skaUppdatera(vikarieId?: string | null) {
+      return !vikarieId || vikarier.some((v) => v.id === vikarieId);
+    }
+
+    function vidTillgänglighetÄndrad(event: Event) {
+      const detail = (event as CustomEvent<{ vikarieId?: string | null }>).detail;
+      if (skaUppdatera(detail?.vikarieId)) void laddaTillgänglighet();
+    }
+
+    function vidStorage(event: StorageEvent) {
+      if (event.key !== 'passportalen:tillganglighet-andrad' || !event.newValue) return;
+
+      try {
+        const detail = JSON.parse(event.newValue) as { vikarieId?: string | null };
+        if (skaUppdatera(detail.vikarieId)) void laddaTillgänglighet();
+      } catch {
+        void laddaTillgänglighet();
+      }
+    }
+
+    window.addEventListener('passportalen:tillganglighet-andrad', vidTillgänglighetÄndrad);
+    window.addEventListener('storage', vidStorage);
+
+    return () => {
+      window.removeEventListener('passportalen:tillganglighet-andrad', vidTillgänglighetÄndrad);
+      window.removeEventListener('storage', vidStorage);
+    };
+  }, [laddaTillgänglighet, vikarier]);
 
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);

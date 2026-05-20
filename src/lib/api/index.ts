@@ -1,4 +1,17 @@
 import { supabase } from '../supabase';
+
+function signaleraTillgänglighetÄndrad(vikarieId?: string | null) {
+  if (typeof window === 'undefined') return;
+
+  const detail = { vikarieId: vikarieId ?? null, tid: Date.now() };
+  window.dispatchEvent(new CustomEvent('passportalen:tillganglighet-andrad', { detail }));
+
+  try {
+    window.localStorage.setItem('passportalen:tillganglighet-andrad', JSON.stringify(detail));
+  } catch {
+    // Lokal synk är en förbättring, inte ett krav.
+  }
+}
 import type {
   Arbetslag, NyArbetslag, UppdateraArbetslag,
   Personal, NyPersonal, UppdateraPersonal,
@@ -101,10 +114,20 @@ export const vikariApi = {
       .order('created_at', { ascending: false });
   },
   async sättTillgänglighet(data: Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'>) {
-    return supabase.from('vikarie_tillgänglighet').insert(data).select().single();
+    const res = await supabase.from('vikarie_tillgänglighet').insert(data).select().single();
+    if (!res.error) signaleraTillgänglighetÄndrad(data.vikarie_id);
+    return res;
   },
   async raderaTillgänglighet(id: string) {
-    return supabase.from('vikarie_tillgänglighet').delete().eq('id', id);
+    const befintlig = await supabase
+      .from('vikarie_tillgänglighet')
+      .select('vikarie_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    const res = await supabase.from('vikarie_tillgänglighet').delete().eq('id', id);
+    if (!res.error) signaleraTillgänglighetÄndrad(befintlig.data?.vikarie_id ?? null);
+    return res;
   },
   async kopplaProfil(vikarieId: string, profilId: string | null) {
     return supabase.from('vikarier').update({ profil_id: profilId }).eq('id', vikarieId).select().single();
