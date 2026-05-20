@@ -166,16 +166,19 @@ function notisHistorikText(metadata: Record<string, unknown>) {
   const mottagare = typeof metadata.notis_mottagare === 'string' && metadata.notis_mottagare.trim()
     ? ` till ${metadata.notis_mottagare}`
     : '';
+  const meddelande = typeof metadata.notis_meddelande === 'string' && metadata.notis_meddelande.trim()
+    ? `: ${metadata.notis_meddelande}`
+    : '';
 
   if (metadata.notis_skickad === true || metadata.notifiering === 'skickad') {
-    return `Notis skickad${mottagare}`;
+    return `Notis skickad${mottagare}${meddelande}`;
   }
 
   if (metadata.notis_skickad === false || metadata.notifiering === 'misslyckades') {
     const fel = typeof metadata.notis_fel === 'string' && metadata.notis_fel.trim()
       ? ` (${metadata.notis_fel})`
       : '';
-    return `Notis misslyckades${mottagare}${fel}`;
+    return `Notis misslyckades${mottagare}${fel}${meddelande}`;
   }
 
   return null;
@@ -287,11 +290,41 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     if (!målVikarieId || !blirBokat || !ändrarRelevant) return {};
 
     const vikarieNamn = vikarier.find(v => v.id === målVikarieId)?.namn ?? 'vikarien';
-    const nyTid = `${(data.tid_från ?? pass.tid_från).slice(0, 5)}-${(data.tid_till ?? pass.tid_till).slice(0, 5)}`;
     const ärNyBokning = !varBokat || målVikarieId !== pass.vikarie_id;
+    const ändringar: string[] = [];
+
+    if (!ärNyBokning && typeof data.datum === 'string' && data.datum !== pass.datum) {
+      ändringar.push(`Datum ändrat: ${pass.datum} -> ${data.datum}`);
+    }
+
+    const gammalStart = pass.tid_från.slice(0, 5);
+    const gammaltSlut = pass.tid_till.slice(0, 5);
+    const nyStart = (data.tid_från ?? pass.tid_från).slice(0, 5);
+    const nyttSlut = (data.tid_till ?? pass.tid_till).slice(0, 5);
+
+    if (!ärNyBokning && (nyStart !== gammalStart || nyttSlut !== gammaltSlut)) {
+      if (nyStart !== gammalStart && nyttSlut !== gammaltSlut) {
+        ändringar.push(`Tid ändrad: ${gammalStart}-${gammaltSlut} -> ${nyStart}-${nyttSlut}`);
+      } else if (nyStart !== gammalStart) {
+        ändringar.push(`Starttid ändrad: ${gammalStart} -> ${nyStart}`);
+      } else {
+        ändringar.push(`Sluttid ändrad: ${gammaltSlut} -> ${nyttSlut}`);
+      }
+    }
+
+    if (!ärNyBokning && data.status === 'avbokat' && pass.status !== 'avbokat') {
+      ändringar.push('Passet avbokades');
+    }
+
+    if (!ärNyBokning && 'publicerad' in data && data.publicerad !== pass.publicerad) {
+      ändringar.push(data.publicerad ? 'Passet publicerades' : 'Passet doldes');
+    }
+
     const meddelande = ärNyBokning
-      ? `Du har bokats på pass: ${data.datum ?? pass.datum} ${nyTid}.`
-      : `Passet har uppdaterats: ${data.datum ?? pass.datum} ${nyTid}.`;
+      ? 'Du har bokats på passet.'
+      : ändringar.length > 0
+        ? ändringar.join(' · ')
+        : 'Passet har uppdaterats.';
 
     try {
       const { error } = await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', meddelande);
@@ -300,6 +333,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         notifiering: error ? 'misslyckades' : 'skickad',
         notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
         notis_mottagare: vikarieNamn,
+        notis_meddelande: meddelande,
         notis_fel: error?.message ?? null,
       };
     } catch (error) {
@@ -308,10 +342,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         notifiering: 'misslyckades',
         notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
         notis_mottagare: vikarieNamn,
+        notis_meddelande: meddelande,
         notis_fel: error instanceof Error ? error.message : String(error),
       };
     }
   }
+
 
   async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
     setSparar(true);

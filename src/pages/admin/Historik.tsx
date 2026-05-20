@@ -29,14 +29,16 @@ function metadataText(metadata: Record<string, unknown> | null, key: string) {
 function notisDetaljText(metadata: Record<string, unknown> | null) {
   const mottagare = metadataText(metadata, 'notis_mottagare');
   const suffix = mottagare ? ` till ${mottagare}` : '';
+  const meddelande = metadataText(metadata, 'notis_meddelande');
+  const meddelandeSuffix = meddelande ? `: ${meddelande}` : '';
 
   if (metadata?.notis_skickad === true || metadata?.notifiering === 'skickad') {
-    return `Notis skickad${suffix}`;
+    return `Notis skickad${suffix}${meddelandeSuffix}`;
   }
 
   if (metadata?.notis_skickad === false || metadata?.notifiering === 'misslyckades') {
     const fel = metadataText(metadata, 'notis_fel');
-    return `Notis misslyckades${suffix}${fel ? ` (${fel})` : ''}`;
+    return `Notis misslyckades${suffix}${fel ? ` (${fel})` : ''}${meddelandeSuffix}`;
   }
 
   return null;
