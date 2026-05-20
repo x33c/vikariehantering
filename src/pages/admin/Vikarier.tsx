@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { vikariApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { Alert, Modal } from '../../components/ui';
 import type { Vikarie, NyVikarie, VikarieTillgänglighet } from '../../types';
 import { VECKODAG_LABELS } from '../../types';
 
