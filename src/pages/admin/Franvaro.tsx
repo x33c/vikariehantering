@@ -124,11 +124,33 @@ function datumIntervall(start: string, slut: string) {
   return datum;
 }
 
-function anteckningFörPass(frånvaro: Frånvaro) {
+const LOST_FRANVARO_MARKER = '[admin:franvaro-lost]';
+const RADBRYTNING = String.fromCharCode(10);
+
+function synligFrånvaroAnteckning(anteckning?: string | null) {
+  return (anteckning ?? '')
+    .split(RADBRYTNING)
+    .filter(rad => rad.trim() !== LOST_FRANVARO_MARKER)
+    .join(RADBRYTNING)
+    .trim();
+}
+
+function ärLöstFrånvaro(frånvaro: Frånvaro) {
   return (frånvaro.anteckning ?? '')
-    .split('\n')
+    .split(RADBRYTNING)
+    .some(rad => rad.trim() === LOST_FRANVARO_MARKER);
+}
+
+function anteckningMedLöstMarkering(frånvaro: Frånvaro, löst: boolean) {
+  const synlig = synligFrånvaroAnteckning(frånvaro.anteckning);
+  return löst ? [synlig, LOST_FRANVARO_MARKER].filter(Boolean).join(RADBRYTNING) : synlig || null;
+}
+
+function anteckningFörPass(frånvaro: Frånvaro) {
+  return synligFrånvaroAnteckning(frånvaro.anteckning)
+    .split(RADBRYTNING)
     .filter(rad => rad.trim().toLowerCase() !== 'ingen vikarie behövs')
-    .join('\n')
+    .join(RADBRYTNING)
     .trim() || null;
 }
 
@@ -755,6 +777,7 @@ export default function Franvaro() {
   const [modal, setModal] = useState<{ öppen: boolean; personalId?: string }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
+  const [löserFrånvaroId, setLöserFrånvaroId] = useState<string | null>(null);
   const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
   const [visaLista, setVisaLista] = useState(false);
@@ -779,6 +802,24 @@ export default function Franvaro() {
 
   function aktivaPassFör(frånvaro: Frånvaro) {
     return vikariepass.filter((pass) => pass.frånvaro_id === frånvaro.id && pass.status !== 'avbokat');
+  }
+
+  async function växlaLöstFrånvaro(frånvaro: Frånvaro) {
+    const nästaLöst = !ärLöstFrånvaro(frånvaro);
+    const anteckning = anteckningMedLöstMarkering(frånvaro, nästaLöst);
+
+    setLöserFrånvaroId(frånvaro.id);
+    setSidFel('');
+
+    const res = await frånvaroApi.uppdatera(frånvaro.id, { anteckning } as any);
+
+    if (res.error) {
+      setSidFel(res.error.message);
+    } else {
+      setFrånvaron(prev => prev.map(f => f.id === frånvaro.id ? { ...f, anteckning } : f));
+    }
+
+    setLöserFrånvaroId(null);
   }
 
   async function skapaPassFrånFrånvaro(frånvaro: Frånvaro) {
@@ -907,7 +948,7 @@ export default function Franvaro() {
     return map;
   }, [filtrerade, kalenderDagar]);
   const totaltIKalendern = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag)?.length ?? 0), 0);
-  const antalSaknarPass = filtrerade.filter((frånvaro) => aktivaPassFör(frånvaro).length === 0).length;
+  const antalSaknarPass = filtrerade.filter((frånvaro) => !ärLöstFrånvaro(frånvaro) && aktivaPassFör(frånvaro).length === 0).length;
 
   if (laddar) return <LaddaSida />;
 
@@ -1009,7 +1050,7 @@ export default function Franvaro() {
                     <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
                   </div>
-                  {dagensFrånvaro.some((frånvaro) => aktivaPassFör(frånvaro).length === 0) && (
+                  {dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro) && aktivaPassFör(frånvaro).length === 0) && (
                     <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
                       Åtgärd
                     </span>
@@ -1025,6 +1066,8 @@ export default function Franvaro() {
                     {dagensFrånvaro.map((frånvaro) => {
                       const pass = aktivaPassFör(frånvaro);
                       const harPass = pass.length > 0;
+                      const löst = ärLöstFrånvaro(frånvaro);
+                      const behöverÅtgärd = !löst && !harPass;
 
                       return (
                         <article
@@ -1032,7 +1075,7 @@ export default function Franvaro() {
                           className="rounded-xl border p-3"
                           style={{
                             background: 'var(--bg-card)',
-                            borderColor: harPass ? 'var(--border)' : '#f97316',
+                            borderColor: löst ? '#22c55e' : behöverÅtgärd ? '#f97316' : 'var(--border)',
                           }}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -1041,10 +1084,10 @@ export default function Franvaro() {
                               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Inget arbetslag'}</p>
                             </div>
                             <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{
-                              background: harPass ? 'rgba(34,197,94,0.14)' : 'rgba(249,115,22,0.14)',
-                              color: harPass ? '#22c55e' : '#fb923c',
+                              background: löst ? 'rgba(34,197,94,0.14)' : harPass ? 'rgba(34,197,94,0.14)' : 'rgba(249,115,22,0.14)',
+                              color: löst ? '#22c55e' : harPass ? '#22c55e' : '#fb923c',
                             }}>
-                              {harPass ? `${pass.length} pass` : 'Saknar pass'}
+                              {löst ? 'Löst' : harPass ? `${pass.length} pass` : 'Saknar pass'}
                             </span>
                           </div>
 
@@ -1054,6 +1097,14 @@ export default function Franvaro() {
                           </p>
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              loading={löserFrånvaroId === frånvaro.id}
+                              onClick={() => växlaLöstFrånvaro(frånvaro)}
+                            >
+                              {löst ? 'Ångra löst' : 'Markera löst'}
+                            </Button>
                             <button
                               type="button"
                               onClick={() => setRedigeraFrånvaro(frånvaro)}
@@ -1134,6 +1185,9 @@ export default function Franvaro() {
                   )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" loading={löserFrånvaroId === f.id} onClick={() => växlaLöstFrånvaro(f)}>
+                    {ärLöstFrånvaro(f) ? 'Ångra löst' : 'Markera löst'}
+                  </Button>
                   <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                   {aktivaPassFör(f).length > 0 ? (
                     <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
@@ -1169,6 +1223,9 @@ export default function Franvaro() {
                     <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" loading={löserFrånvaroId === f.id} onClick={() => växlaLöstFrånvaro(f)}>
+                          {ärLöstFrånvaro(f) ? 'Ångra löst' : 'Markera löst'}
+                        </Button>
                         <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                         {aktivaPassFör(f).length > 0 ? (
                           <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
