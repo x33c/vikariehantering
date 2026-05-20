@@ -26,10 +26,27 @@ function metadataText(metadata: Record<string, unknown> | null, key: string) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function notisDetaljText(metadata: Record<string, unknown> | null) {
+  const mottagare = metadataText(metadata, 'notis_mottagare');
+  const suffix = mottagare ? ` till ${mottagare}` : '';
+
+  if (metadata?.notis_skickad === true || metadata?.notifiering === 'skickad') {
+    return `Notis skickad${suffix}`;
+  }
+
+  if (metadata?.notis_skickad === false || metadata?.notifiering === 'misslyckades') {
+    const fel = metadataText(metadata, 'notis_fel');
+    return `Notis misslyckades${suffix}${fel ? ` (${fel})` : ''}`;
+  }
+
+  return null;
+}
+
 function händelseRubrik(händelse: HändelsTyp, metadata: Record<string, unknown> | null) {
   if (händelse === 'vikarie_borttagen' && metadata?.svar === 'nej') return 'Vikarie tackade nej';
   if (händelse === 'vikarie_bokat' && metadata?.svar === 'ja') return 'Vikarie tackade ja';
   if (händelse === 'vikarie_notifierat') return 'Förfrågan skickad';
+  if (händelse === 'pass_uppdaterat' && notisDetaljText(metadata)) return 'Pass uppdaterat med notis';
   return HÄNDELSE_LABELS[händelse];
 }
 
@@ -71,6 +88,9 @@ function MetadataDetalj({ händelse, metadata, vikariepass, utfördAvNamn, vikar
   } else if (vikariepass?.vikarie?.namn && händelse === 'vikarie_bokat') {
     delar.push(`Vikarie: ${vikariepass.vikarie.namn}`);
   }
+
+  const notisDetalj = notisDetaljText(metadata);
+  if (notisDetalj) delar.push(notisDetalj);
 
   if (metadata?.svar === 'ja') delar.push('Svar: ja');
   if (metadata?.svar === 'nej') delar.push('Svar: nej');

@@ -162,6 +162,25 @@ function meddelandeAvsandareNamn(m: Passmeddelande, fallbackVikarie?: string | n
   return m.avsandare_roll === 'admin' ? 'Admin' : fallbackVikarie ?? 'Vikarie';
 }
 
+function notisHistorikText(metadata: Record<string, unknown>) {
+  const mottagare = typeof metadata.notis_mottagare === 'string' && metadata.notis_mottagare.trim()
+    ? ` till ${metadata.notis_mottagare}`
+    : '';
+
+  if (metadata.notis_skickad === true || metadata.notifiering === 'skickad') {
+    return `Notis skickad${mottagare}`;
+  }
+
+  if (metadata.notis_skickad === false || metadata.notifiering === 'misslyckades') {
+    const fel = typeof metadata.notis_fel === 'string' && metadata.notis_fel.trim()
+      ? ` (${metadata.notis_fel})`
+      : '';
+    return `Notis misslyckades${mottagare}${fel}`;
+  }
+
+  return null;
+}
+
 function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
   const metadata = h.metadata ?? {};
   const vikarieId = typeof metadata.vikarie_id === 'string' ? metadata.vikarie_id : null;
@@ -184,7 +203,9 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     return tillfrågad ? `Förfrågan skickad till ${tillfrågad}` : 'Förfrågan skickad';
   }
 
-  return HÄNDELSE_LABELS[h.händelse] ?? h.händelse.replace(/_/g, ' ');
+  const bastext = HÄNDELSE_LABELS[h.händelse] ?? h.händelse.replace(/_/g, ' ');
+  const notisText = notisHistorikText(metadata);
+  return notisText ? `${bastext} · ${notisText}` : bastext;
 }
 
 function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
@@ -244,6 +265,27 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
     laddaBokade();
   }, [pass.datum, pass.id, pass.tid_från, pass.tid_till]);
+
+  async function notifieraBokadVikarieOmPassÄndrats(data: Partial<Bemanning>) {
+    const harBokadVikarie = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
+    const ändrarBokatPass = 'datum' in data || 'tid_från' in data || 'tid_till' in data || 'status' in data || 'publicerad' in data;
+
+    if (!harBokadVikarie || !ändrarBokatPass) return {};
+
+    const vikarieNamn = vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'vikarien';
+    const nyTid = `${(data.tid_från ?? pass.tid_från).slice(0, 5)}-${(data.tid_till ?? pass.tid_till).slice(0, 5)}`;
+    const meddelande = `Passet har uppdaterats: ${data.datum ?? pass.datum} ${nyTid}.`;
+
+    const { error } = await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', meddelande);
+
+    return {
+      notis_skickad: !error,
+      notifiering: error ? 'misslyckades' : 'skickad',
+      notis_typ: 'pass_uppdaterat',
+      notis_mottagare: vikarieNamn,
+      notis_fel: error?.message ?? null,
+    };
+  }
 
   async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
     setSparar(true);
