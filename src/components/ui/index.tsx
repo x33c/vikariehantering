@@ -235,24 +235,16 @@ export function LaddaSida() {
 
   return (
     <div className="flex h-64 items-center justify-center">
-      <div className="relative flex h-16 w-16 items-center justify-center">
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-            boxShadow: '0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent)',
-          }}
-        />
-        <img
-          src={logo}
-          alt=""
-          className="h-14 w-14 animate-spin object-contain"
-          style={{ animationDuration: '1.4s' }}
-        />
-      </div>
+      <img
+        src={logo}
+        alt=""
+        className="h-10 w-10 animate-spin object-contain"
+        style={{ animationDuration: '1.4s' }}
+      />
     </div>
   );
 }
+
 
 
 type AlertTyp = 'info' | 'success' | 'warning' | 'error';
