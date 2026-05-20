@@ -89,6 +89,14 @@ function ärAvbokningsförfrågan(meddelande?: string | null) {
   return text.includes('avboka') || text.includes('avbokning');
 }
 
+function notisFelText(error: unknown) {
+  if (!error) return 'Okänt fel.';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message);
+  return String(error);
+}
+
 
 interface Passgrupp {
   personal_id: string;
@@ -300,9 +308,10 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     );
 
     if (ok && skaNotifiera) {
-      void notisApi.skickaLedigtPass(pass.id).then(({ error }) => {
-        if (error) console.error('Kunde inte skicka notis om ledigt pass', error);
-      });
+      const { error } = await notisApi.skickaLedigtPass(pass.id);
+      if (error) {
+        setFel(`Passet publicerades, men notisen kunde inte skickas: ${notisFelText(error)}`);
+      }
     }
   }
 
