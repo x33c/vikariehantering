@@ -267,21 +267,33 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   }, [pass.datum, pass.id, pass.tid_från, pass.tid_till]);
 
   async function notifieraBokadVikarieOmPassÄndrats(data: Partial<Bemanning>) {
-    const harBokadVikarie = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
-    const ändrarBokatPass = 'datum' in data || 'tid_från' in data || 'tid_till' in data || 'status' in data || 'publicerad' in data;
+    const målVikarieId = typeof data.vikarie_id === 'string' ? data.vikarie_id : pass.vikarie_id;
+    const målStatus = (data.status ?? pass.status) as PassStatus;
+    const blirBokat = målStatus === 'bokat' || målStatus === 'bekräftat';
+    const varBokat = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
+    const ändrarRelevant =
+      'datum' in data ||
+      'tid_från' in data ||
+      'tid_till' in data ||
+      'status' in data ||
+      'publicerad' in data ||
+      'vikarie_id' in data;
 
-    if (!harBokadVikarie || !ändrarBokatPass) return {};
+    if (!målVikarieId || !blirBokat || !ändrarRelevant) return {};
 
-    const vikarieNamn = vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'vikarien';
+    const vikarieNamn = vikarier.find(v => v.id === målVikarieId)?.namn ?? 'vikarien';
     const nyTid = `${(data.tid_från ?? pass.tid_från).slice(0, 5)}-${(data.tid_till ?? pass.tid_till).slice(0, 5)}`;
-    const meddelande = `Passet har uppdaterats: ${data.datum ?? pass.datum} ${nyTid}.`;
+    const ärNyBokning = !varBokat || målVikarieId !== pass.vikarie_id;
+    const meddelande = ärNyBokning
+      ? `Du har bokats på pass: ${data.datum ?? pass.datum} ${nyTid}.`
+      : `Passet har uppdaterats: ${data.datum ?? pass.datum} ${nyTid}.`;
 
     const { error } = await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', meddelande);
 
     return {
       notis_skickad: !error,
       notifiering: error ? 'misslyckades' : 'skickad',
-      notis_typ: 'pass_uppdaterat',
+      notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
       notis_mottagare: vikarieNamn,
       notis_fel: error?.message ?? null,
     };
