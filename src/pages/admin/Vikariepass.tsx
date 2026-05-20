@@ -98,6 +98,36 @@ interface Passgrupp {
   pass: Bemanning[];
 }
 
+function arbetslagSortIndex(value?: string | null) {
+  const text = (value ?? '').toLowerCase().replace(/\s+/g, '');
+
+  if (!text) return 99;
+  if (text.includes('fsk') || text.includes('förskole') || text.includes('forskole')) return 0;
+
+  const match = text.match(/(?:åk\.?|ak\.?)?([1-6])/) ?? text.match(/^([1-6])/);
+  return match ? Number(match[1]) : 99;
+}
+
+function passgruppSortIndex(grupp: Passgrupp) {
+  const kandidater = [
+    grupp.arbetslagNamn,
+    ...grupp.pass.flatMap((p) => [p.grupp, p.personal?.arbetslag?.namn]),
+  ];
+
+  return kandidater.reduce((bäst, värde) => Math.min(bäst, arbetslagSortIndex(värde)), 99);
+}
+
+function sorteraPassgrupper(a: Passgrupp, b: Passgrupp, fallandeDatum = false) {
+  const datumSort = fallandeDatum ? b.datum.localeCompare(a.datum) : a.datum.localeCompare(b.datum);
+  if (datumSort !== 0) return datumSort;
+
+  return (
+    passgruppSortIndex(a) - passgruppSortIndex(b) ||
+    a.personalNamn.localeCompare(b.personalNamn, 'sv') ||
+    minuter(a.pass[0]?.tid_från) - minuter(b.pass[0]?.tid_från)
+  );
+}
+
 function grupperaPasser(pass: Bemanning[]): Passgrupp[] {
   const grupper = new Map<string, Passgrupp>();
   for (const p of pass) {
@@ -1156,12 +1186,7 @@ export default function Bemanning() {
 
   const filtreradeGrupper = grupperEfterVikarie
     .filter(grupp => matcharSnabbFilter(grupp, snabbFilter))
-    .sort((a, b) => {
-      if (snabbFilter === 'arkiv') {
-        return b.datum.localeCompare(a.datum) || b.pass[0].tid_från.localeCompare(a.pass[0].tid_från);
-      }
-      return a.datum.localeCompare(b.datum) || a.pass[0].tid_från.localeCompare(b.pass[0].tid_från);
-    });
+    .sort((a, b) => sorteraPassgrupper(a, b, snabbFilter === 'arkiv'));
   const veckodagar = Array.from({ length: 5 }, (_, index) => läggTillDagarIso(veckaStart, index));
   const kalenderGrupper = snabbFilter === 'arkiv'
     ? filtreradeGrupper
