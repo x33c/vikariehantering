@@ -931,6 +931,8 @@ export default function Vikarier() {
                     <div className="flex justify-end gap-1">
                       <button onClick={() => setKontoModal({ öppen: true, rad: v })}
                         className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50">Konto</button>
+                      <button onClick={() => setTillgModal({ öppen: true, rad: v })}
+                        className="rounded px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50">Tillgänglighet</button>
                       <button onClick={() => setModal({ öppen: true, rad: v })}
                         className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">Redigera</button>
                       <button onClick={() => setRaderaId(v.id)}
