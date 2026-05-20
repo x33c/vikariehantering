@@ -1,6 +1,6 @@
 {
-  "name": "Vikariehantering",
-  "short_name": "Vikarier",
+  "name": "Passportalen",
+  "short_name": "Passportalen",
   "description": "Hantera vikariepass och förfrågningar.",
   "start_url": "/",
   "scope": "/",

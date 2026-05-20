@@ -3,10 +3,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (_) {
-    data = { title: 'Vikariehantering', body: event.data ? event.data.text() : '' };
+    data = { title: 'Passportalen', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'Vikariehantering';
+  const title = data.title || 'Passportalen';
   const options = {
     body: data.body || 'Du har en ny notifiering.',
     icon: '/sundbyberg-halm.png',
