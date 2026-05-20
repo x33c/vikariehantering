@@ -357,6 +357,20 @@ function veckodagFörDatum(datum: string) {
   return new Date(`${datum}T12:00:00`).getDay();
 }
 
+function datumIntervall(start: string, slut: string) {
+  const rader: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    rader.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 1);
+  }
+
+  return rader;
+}
+
+
 function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: string) {
   const specifik = poster.find(t => t.datum === datum);
   if (specifik) return specifik;
@@ -383,6 +397,7 @@ function tomTillgänglighetsForm(rad?: VikarieTillgänglighet) {
   return {
     typ: rad?.återkommande ? 'återkommande' : 'datum',
     datum: rad?.datum ?? new Date().toISOString().slice(0, 10),
+    datum_till: rad?.datum ?? new Date().toISOString().slice(0, 10),
     veckodag: String(rad?.veckodag ?? 1),
     tid_från: rad?.tid_från?.slice(0, 5) ?? '',
     tid_till: rad?.tid_till?.slice(0, 5) ?? '',
@@ -456,6 +471,11 @@ function TillgänglighetModal({
       return;
     }
 
+    if (form.typ === 'datum' && form.datum_till && form.datum_till < form.datum) {
+      setFel('T.o.m. datum måste vara samma dag eller senare.');
+      return;
+    }
+
     if (form.tid_från && form.tid_till && form.tid_från >= form.tid_till) {
       setFel('Ange en giltig start- och sluttid.');
       return;
@@ -464,30 +484,44 @@ function TillgänglighetModal({
     setSparar(true);
     setFel('');
 
-    const data: Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'> = {
+    const basdata = {
       vikarie_id: vikarie.id,
-      datum: form.typ === 'datum' ? form.datum : null,
-      veckodag: form.typ === 'återkommande' ? Number(form.veckodag) : null,
       tillgänglig: form.tillgänglig,
       tid_från: form.tid_från || null,
       tid_till: form.tid_till || null,
-      återkommande: form.typ === 'återkommande',
       anteckning: form.anteckning || null,
     };
 
-    const res = await vikariApi.sättTillgänglighet(data);
-    if (res.error) {
-      setFel(res.error.message);
-      setSparar(false);
-      return;
+    const raderAttSkapa: Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'>[] = form.typ === 'datum'
+      ? datumIntervall(form.datum, form.datum_till || form.datum).map(datum => ({
+          ...basdata,
+          datum,
+          veckodag: null,
+          återkommande: false,
+        }))
+      : [{
+          ...basdata,
+          datum: null,
+          veckodag: Number(form.veckodag),
+          återkommande: true,
+        }];
+
+    const skapade: VikarieTillgänglighet[] = [];
+    for (const data of raderAttSkapa) {
+      const res = await vikariApi.sättTillgänglighet(data);
+      if (res.error) {
+        setFel(res.error.message);
+        setSparar(false);
+        return;
+      }
+      skapade.push(res.data as VikarieTillgänglighet);
     }
 
     if (redigerar) {
       await vikariApi.raderaTillgänglighet(redigerar.id);
     }
 
-    const nyRad = res.data as VikarieTillgänglighet;
-    setRader((prev) => [nyRad, ...prev.filter((rad) => rad.id !== redigerar?.id)]);
+    setRader((prev) => [...skapade, ...prev.filter((rad) => rad.id !== redigerar?.id)]);
     setSparar(false);
     rensaForm();
   }
@@ -532,17 +566,29 @@ function TillgänglighetModal({
           </div>
 
           {form.typ === 'datum' ? (
-            <label className="mb-3 block text-sm font-medium" style={{ color: 'var(--text)' }}>
-              Datum
-              <input
-                type="date"
-                value={form.datum}
-                onChange={(e) => setForm({ ...form, datum: e.target.value })}
-                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-              />
-            </label>
-          ) : (
+              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block min-w-0 text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  Från datum
+                  <input
+                    type="date"
+                    value={form.datum}
+                    onChange={(e) => setForm({ ...form, datum: e.target.value, datum_till: form.datum_till || e.target.value })}
+                    className="mt-1 w-full min-w-0 rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                  />
+                </label>
+                <label className="block min-w-0 text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  T.o.m. datum
+                  <input
+                    type="date"
+                    value={form.datum_till}
+                    onChange={(e) => setForm({ ...form, datum_till: e.target.value })}
+                    className="mt-1 w-full min-w-0 rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                  />
+                </label>
+              </div>
+            ) : (
             <label className="mb-3 block text-sm font-medium" style={{ color: 'var(--text)' }}>
               Veckodag
               <select
