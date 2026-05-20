@@ -230,12 +230,30 @@ export function Spinner({ storlek = 'md' }: { storlek?: 'sm' | 'md' | 'lg' }) {
 }
 
 export function LaddaSida() {
+  const mörkt = document.documentElement.classList.contains('dark');
+  const logo = mörkt ? '/sundbyberg-silver.png' : '/sundbyberg-halm.png';
+
   return (
     <div className="flex h-64 items-center justify-center">
-      <Spinner storlek="lg" />
+      <div className="relative flex h-16 w-16 items-center justify-center">
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+            boxShadow: '0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent)',
+          }}
+        />
+        <img
+          src={logo}
+          alt=""
+          className="h-14 w-14 animate-spin object-contain"
+          style={{ animationDuration: '1.4s' }}
+        />
+      </div>
     </div>
   );
 }
+
 
 type AlertTyp = 'info' | 'success' | 'warning' | 'error';
 
