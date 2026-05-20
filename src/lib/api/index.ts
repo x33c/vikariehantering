@@ -293,6 +293,16 @@ export const notisApi = {
       body: { pass_id: passId, vikarie_ids: vikariIds },
     });
   },
+  async skickaLedigtPass(passId: string) {
+    return supabase.functions.invoke('skicka-epost', {
+      body: { typ: 'ledigt_pass_publicerat', pass_id: passId },
+    });
+  },
+  async skickaPassAndrat(passId: string, vikarieId: string) {
+    return supabase.functions.invoke('skicka-epost', {
+      body: { typ: 'bokat_pass_andrat', pass_id: passId, vikarie_id: vikarieId },
+    });
+  },
   async skapaAdminBokning(passId: string, vikarieId: string, vikarieNamn?: string) {
     const namn = vikarieNamn?.trim() || 'Vikarien';
     return supabase.from('notiser').insert({

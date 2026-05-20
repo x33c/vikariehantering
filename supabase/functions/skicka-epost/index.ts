@@ -282,6 +282,118 @@ serve(async (req) => {
     });
   }
 
+  if (typ === 'ledigt_pass_publicerat' || typ === 'bokat_pass_andrat') {
+    if (!pass_id) {
+      return new Response(JSON.stringify({ error: 'pass_id krävs.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: pass, error: passError } = await supabase
+      .from('vikariepass')
+      .select('*, personal(namn, arbetslag(namn))')
+      .eq('id', pass_id)
+      .single();
+
+    if (passError || !pass) {
+      return new Response(JSON.stringify({ error: 'Passet hittades inte.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
+    const passNamn = kortNamn(pass.personal?.namn) ?? 'Fristående pass';
+    const klass = arskurs(pass.grupp);
+    const bodyText = `${passNamn} · ${klass} · ${pass.datum} ${tid}`;
+
+    if (typ === 'bokat_pass_andrat') {
+      if (!vikarie_id) {
+        return new Response(JSON.stringify({ error: 'vikarie_id krävs.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: vikarie } = await supabase
+        .from('vikarier')
+        .select('id, namn, epost, profil_id')
+        .eq('id', vikarie_id)
+        .maybeSingle();
+
+      if (!vikarie) {
+        return new Response(JSON.stringify({ error: 'Vikarien hittades inte.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
+      const pushCount = await raknaPushPrenumerationer(supabase, profilId);
+      const title = 'Bokat pass ändrat';
+
+      await supabase.from('notiser').insert({
+        pass_id,
+        vikarie_id: vikarie.id,
+        kanal: 'push',
+        status: pushCount > 0 ? 'skickat' : 'misslyckat',
+        mottagare: vikarie.epost ?? 'push',
+        ämne: title,
+        innehåll: bodyText,
+        skickat_kl: new Date().toISOString(),
+        felmeddelande: pushCount > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
+      });
+
+      if (pushCount > 0) {
+        await skickaPush(supabase, profilId, title, bodyText, '/vikarie/mina-pass');
+      }
+
+      return new Response(JSON.stringify({ ok: true, push_prenumerationer: pushCount }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: vikarier, error } = await supabase
+      .from('vikarier')
+      .select('id, namn, epost, profil_id')
+      .eq('aktiv', true);
+
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let skickadePush = 0;
+    let utanPush = 0;
+    const title = 'Nytt ledigt pass';
+
+    for (const vikarie of vikarier ?? []) {
+      const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
+      const pushCount = await raknaPushPrenumerationer(supabase, profilId);
+
+      await supabase.from('notiser').insert({
+        pass_id,
+        vikarie_id: vikarie.id,
+        kanal: 'push',
+        status: pushCount > 0 ? 'skickat' : 'misslyckat',
+        mottagare: vikarie.epost ?? 'push',
+        ämne: title,
+        innehåll: bodyText,
+        skickat_kl: new Date().toISOString(),
+        felmeddelande: pushCount > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
+      });
+
+      if (pushCount > 0) {
+        await skickaPush(supabase, profilId, title, bodyText, '/vikarie');
+        skickadePush += 1;
+      } else {
+        utanPush += 1;
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, skickade_push: skickadePush, utan_push: utanPush }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (typ === 'test_push') {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return new Response(JSON.stringify({ error: 'VAPID-nycklar saknas i Edge Function.' }), {

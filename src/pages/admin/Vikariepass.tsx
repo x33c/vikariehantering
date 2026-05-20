@@ -250,6 +250,26 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     }
 
     await historikApi.skapa(pass.id, 'pass_uppdaterat', historik);
+
+    const påverkarBokatPass = [
+      'datum',
+      'tid_från',
+      'tid_till',
+      'typ',
+      'ämne',
+      'grupp',
+      'sal',
+      'anteckning',
+      'status',
+      'vikarie_id',
+    ].some((key) => key in data);
+
+    if (pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat') && påverkarBokatPass) {
+      void notisApi.skickaPassAndrat(pass.id, pass.vikarie_id).then(({ error }) => {
+        if (error) console.error('Kunde inte skicka ändringsnotis', error);
+      });
+    }
+
     onUppdaterad({ ...pass, ...data });
     return true;
   }
@@ -267,7 +287,9 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   }
 
   async function publiceraLedigt() {
-    await uppdateraPass(
+    const skaNotifiera = !pass.publicerad;
+
+    const ok = await uppdateraPass(
       {
         status: 'obokat',
         publicerad: true,
@@ -276,6 +298,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       } as Partial<Bemanning>,
       { åtgärd: 'publicerade_ledigt' }
     );
+
+    if (ok && skaNotifiera) {
+      void notisApi.skickaLedigtPass(pass.id).then(({ error }) => {
+        if (error) console.error('Kunde inte skicka notis om ledigt pass', error);
+      });
+    }
   }
 
   async function avpublicera() {
