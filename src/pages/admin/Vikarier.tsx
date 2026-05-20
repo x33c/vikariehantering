@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { vikariApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import type { Vikarie, NyVikarie } from '../../types';
+import type { Vikarie, NyVikarie, VikarieTillgänglighet } from '../../types';
+import { VECKODAG_LABELS } from '../../types';
 
 async function anropaHanteraAnvandare(payload: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('hantera-anvandare', {
@@ -376,11 +377,330 @@ function tillgänglighetText(rad: VikarieTillgänglighet | null | undefined) {
 }
 
 
+
+function tomTillgänglighetsForm(rad?: VikarieTillgänglighet) {
+  return {
+    typ: rad?.återkommande ? 'återkommande' : 'datum',
+    datum: rad?.datum ?? new Date().toISOString().slice(0, 10),
+    veckodag: String(rad?.veckodag ?? 1),
+    tid_från: rad?.tid_från?.slice(0, 5) ?? '',
+    tid_till: rad?.tid_till?.slice(0, 5) ?? '',
+    tillgänglig: rad?.tillgänglig ?? true,
+    anteckning: rad?.anteckning ?? '',
+  };
+}
+
+function tillgänglighetsRadText(rad: VikarieTillgänglighet) {
+  const dag = rad.återkommande
+    ? VECKODAG_LABELS[rad.veckodag ?? 0] ?? 'Veckodag'
+    : rad.datum ?? 'Datum';
+  const tid = rad.tid_från && rad.tid_till
+    ? `${rad.tid_från.slice(0, 5)}-${rad.tid_till.slice(0, 5)}`
+    : 'Heldag';
+
+  return `${dag} · ${tid}`;
+}
+
+function TillgänglighetModal({
+  öppen,
+  vikarie,
+  onStäng,
+}: {
+  öppen: boolean;
+  vikarie: Vikarie;
+  onStäng: () => void;
+}) {
+  const [rader, setRader] = useState<VikarieTillgänglighet[]>([]);
+  const [laddar, setLaddar] = useState(true);
+  const [sparar, setSparar] = useState(false);
+  const [fel, setFel] = useState('');
+  const [redigerar, setRedigerar] = useState<VikarieTillgänglighet | null>(null);
+  const [form, setForm] = useState(tomTillgänglighetsForm());
+
+  useEffect(() => {
+    if (!öppen) return;
+
+    let aktiv = true;
+    setLaddar(true);
+    setFel('');
+    setRedigerar(null);
+    setForm(tomTillgänglighetsForm());
+
+    vikariApi.hämtaTillgänglighet(vikarie.id).then((res) => {
+      if (!aktiv) return;
+      setRader((res.data ?? []) as VikarieTillgänglighet[]);
+      setLaddar(false);
+    });
+
+    return () => {
+      aktiv = false;
+    };
+  }, [öppen, vikarie.id]);
+
+  function börjaRedigera(rad: VikarieTillgänglighet) {
+    setRedigerar(rad);
+    setForm(tomTillgänglighetsForm(rad));
+    setFel('');
+  }
+
+  function rensaForm() {
+    setRedigerar(null);
+    setForm(tomTillgänglighetsForm());
+    setFel('');
+  }
+
+  async function sparaTillgänglighet() {
+    if (form.typ === 'datum' && !form.datum) {
+      setFel('Välj datum.');
+      return;
+    }
+
+    if (form.tid_från && form.tid_till && form.tid_från >= form.tid_till) {
+      setFel('Ange en giltig start- och sluttid.');
+      return;
+    }
+
+    setSparar(true);
+    setFel('');
+
+    const data: Omit<VikarieTillgänglighet, 'id' | 'created_at' | 'updated_at'> = {
+      vikarie_id: vikarie.id,
+      datum: form.typ === 'datum' ? form.datum : null,
+      veckodag: form.typ === 'återkommande' ? Number(form.veckodag) : null,
+      tillgänglig: form.tillgänglig,
+      tid_från: form.tid_från || null,
+      tid_till: form.tid_till || null,
+      återkommande: form.typ === 'återkommande',
+      anteckning: form.anteckning || null,
+    };
+
+    const res = await vikariApi.sättTillgänglighet(data);
+    if (res.error) {
+      setFel(res.error.message);
+      setSparar(false);
+      return;
+    }
+
+    if (redigerar) {
+      await vikariApi.raderaTillgänglighet(redigerar.id);
+    }
+
+    const nyRad = res.data as VikarieTillgänglighet;
+    setRader((prev) => [nyRad, ...prev.filter((rad) => rad.id !== redigerar?.id)]);
+    setSparar(false);
+    rensaForm();
+  }
+
+  async function taBortTillgänglighet(rad: VikarieTillgänglighet) {
+    if (!window.confirm('Ta bort tillgängligheten?')) return;
+
+    const res = await vikariApi.raderaTillgänglighet(rad.id);
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    setRader((prev) => prev.filter((item) => item.id !== rad.id));
+    if (redigerar?.id === rad.id) rensaForm();
+  }
+
+  return (
+    <Modal öppen={öppen} onStäng={onStäng} titel={`Tillgänglighet: ${vikarie.namn}`} bredd="lg">
+      <div className="space-y-4">
+        {fel && <Alert typ="error">{fel}</Alert>}
+
+        <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3 flex rounded-lg border p-1" style={{ borderColor: 'var(--border)' }}>
+            {(['datum', 'återkommande'] as const).map((typ) => {
+              const aktiv = form.typ === typ;
+              return (
+                <button
+                  key={typ}
+                  type="button"
+                  onClick={() => setForm({ ...form, typ })}
+                  className="flex-1 rounded-md px-3 py-2 text-sm font-semibold transition"
+                  style={{
+                    background: aktiv ? 'var(--blue)' : 'transparent',
+                    color: aktiv ? '#fff' : 'var(--text)',
+                  }}
+                >
+                  {typ === 'datum' ? 'Datum' : 'Veckodag'}
+                </button>
+              );
+            })}
+          </div>
+
+          {form.typ === 'datum' ? (
+            <label className="mb-3 block text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Datum
+              <input
+                type="date"
+                value={form.datum}
+                onChange={(e) => setForm({ ...form, datum: e.target.value })}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+            </label>
+          ) : (
+            <label className="mb-3 block text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Veckodag
+              <select
+                value={form.veckodag}
+                onChange={(e) => setForm({ ...form, veckodag: e.target.value })}
+                className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              >
+                {VECKODAG_LABELS.slice(1, 6).map((dag, index) => (
+                  <option key={index + 1} value={index + 1}>{dag}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <label className="block text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Från
+              <input
+                type="time"
+                value={form.tid_från}
+                onChange={(e) => setForm({ ...form, tid_från: e.target.value })}
+                className="mt-1 w-full min-w-0 rounded-md border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+            </label>
+            <label className="block text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Till
+              <input
+                type="time"
+                value={form.tid_till}
+                onChange={(e) => setForm({ ...form, tid_till: e.target.value })}
+                className="mt-1 w-full min-w-0 rounded-md border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+            </label>
+          </div>
+
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, tillgänglig: true })}
+              className="rounded-md border px-3 py-2 text-sm font-semibold"
+              style={{
+                borderColor: form.tillgänglig ? '#22c55e' : 'var(--border)',
+                color: form.tillgänglig ? '#22c55e' : 'var(--text-muted)',
+              }}
+            >
+              Tillgänglig
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, tillgänglig: false })}
+              className="rounded-md border px-3 py-2 text-sm font-semibold"
+              style={{
+                borderColor: !form.tillgänglig ? '#ef4444' : 'var(--border)',
+                color: !form.tillgänglig ? '#ef4444' : 'var(--text-muted)',
+              }}
+            >
+              Inte tillgänglig
+            </button>
+          </div>
+
+          <input
+            value={form.anteckning}
+            onChange={(e) => setForm({ ...form, anteckning: e.target.value })}
+            placeholder="Anteckning"
+            className="mb-3 w-full rounded-md border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          />
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={rensaForm}
+              className="rounded-md border px-4 py-2 text-sm font-semibold"
+              style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+            >
+              Rensa
+            </button>
+            <button
+              type="button"
+              onClick={sparaTillgänglighet}
+              disabled={sparar}
+              className="rounded-md px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              style={{ background: 'var(--blue)' }}
+            >
+              {sparar ? 'Sparar...' : redigerar ? 'Spara ändring' : 'Lägg till'}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+            Registrerad tillgänglighet
+          </p>
+
+          {laddar ? (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Laddar...</p>
+          ) : rader.length === 0 ? (
+            <p className="rounded-lg border px-3 py-4 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              Ingen tillgänglighet registrerad.
+            </p>
+          ) : (
+            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+              {rader.map((rad) => (
+                <div
+                  key={rad.id}
+                  className="rounded-lg border px-3 py-3"
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                        {tillgänglighetsRadText(rad)}
+                      </p>
+                      <p className="text-xs font-semibold" style={{ color: rad.tillgänglig ? '#22c55e' : '#ef4444' }}>
+                        {rad.tillgänglig ? 'Tillgänglig' : 'Inte tillgänglig'}
+                      </p>
+                      {rad.anteckning && (
+                        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{rad.anteckning}</p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => börjaRedigera(rad)}
+                        className="rounded px-2 py-1 text-xs font-semibold"
+                        style={{ color: 'var(--blue)', background: 'color-mix(in srgb, var(--blue) 12%, transparent)' }}
+                      >
+                        Ändra
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => taBortTillgänglighet(rad)}
+                        className="rounded px-2 py-1 text-xs font-semibold"
+                        style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.10)' }}
+                      >
+                        Ta bort
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+
 export default function Vikarier() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
   const [modal, setModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [kontoModal, setKontoModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
+  const [tillgModal, setTillgModal] = useState<{ öppen: boolean; vikarie?: Vikarie }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [markeradeIds, setMarkeradeIds] = useState<Set<string>>(new Set());
   const [massModal, setMassModal] = useState(false);
@@ -635,6 +955,14 @@ export default function Vikarier() {
           onUppdaterad={laddaVikarier}
         />
       )}
+
+        {tillgModal.öppen && tillgModal.vikarie && (
+          <TillgänglighetModal
+            öppen={tillgModal.öppen}
+            vikarie={tillgModal.vikarie}
+            onStäng={() => setTillgModal({ öppen: false })}
+          />
+        )}
 
       {massModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
