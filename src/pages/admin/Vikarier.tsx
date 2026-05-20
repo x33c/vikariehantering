@@ -931,8 +931,17 @@ export default function Vikarier() {
                     <div className="flex justify-end gap-1">
                       <button onClick={() => setKontoModal({ öppen: true, rad: v })}
                         className="rounded px-2 py-1 text-xs text-blue-600 hover:bg-blue-50">Konto</button>
-                      <button onClick={() => setTillgModal({ öppen: true, rad: v })}
-                        className="rounded px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50">Tillgänglighet</button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setTillgModal({ öppen: true, rad: v });
+                        }}
+                        className="rounded px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50"
+                      >
+                        Tillgänglighet
+                      </button>
                       <button onClick={() => setModal({ öppen: true, rad: v })}
                         className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100">Redigera</button>
                       <button onClick={() => setRaderaId(v.id)}
@@ -948,6 +957,15 @@ export default function Vikarier() {
 
       <VikarieModal öppen={modal.öppen} onStäng={() => setModal({ öppen: false })} vikarie={modal.rad}
         onSparad={v => { setVikarier(prev => modal.rad ? prev.map(x => x.id === v.id ? v : x) : [...prev, v]); setModal({ öppen: false }); }} />
+
+      {tillgModal.öppen && tillgModal.rad && (
+        <TillgänglighetModal
+          öppen={tillgModal.öppen}
+          vikarie={tillgModal.rad}
+          onStäng={() => setTillgModal({ öppen: false })}
+        />
+      )}
+
 
       {kontoModal.öppen && kontoModal.rad && (
         <KontoModal
