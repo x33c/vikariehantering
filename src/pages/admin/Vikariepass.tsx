@@ -236,6 +236,11 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setValdVikarieId(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
   }, [pass.id, pass.tid_från, pass.tid_till, pass.vikarie_id, pass.riktad_till_vikarie_id]);
 
+  async function laddaHistorikFörPass() {
+    const res = await historikApi.listaFörPass(pass.id);
+    setHistorik((res.data ?? []) as Passhistorik[]);
+  }
+
   useEffect(() => {
     async function laddaPassdata() {
       const [historikRes, meddelandeRes] = await Promise.all([
@@ -288,15 +293,24 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       ? `Du har bokats på pass: ${data.datum ?? pass.datum} ${nyTid}.`
       : `Passet har uppdaterats: ${data.datum ?? pass.datum} ${nyTid}.`;
 
-    const { error } = await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', meddelande);
-
-    return {
-      notis_skickad: !error,
-      notifiering: error ? 'misslyckades' : 'skickad',
-      notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
-      notis_mottagare: vikarieNamn,
-      notis_fel: error?.message ?? null,
-    };
+    try {
+      const { error } = await notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', meddelande);
+      return {
+        notis_skickad: !error,
+        notifiering: error ? 'misslyckades' : 'skickad',
+        notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
+        notis_mottagare: vikarieNamn,
+        notis_fel: error?.message ?? null,
+      };
+    } catch (error) {
+      return {
+        notis_skickad: false,
+        notifiering: 'misslyckades',
+        notis_typ: ärNyBokning ? 'ny_bokning' : 'pass_uppdaterat',
+        notis_mottagare: vikarieNamn,
+        notis_fel: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   async function uppdateraPass(data: Partial<Bemanning>, historik: Record<string, unknown>) {
@@ -304,34 +318,18 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setFel('');
 
     const res = await passApi.uppdatera(pass.id, data as any);
-    setSparar(false);
 
     if (res.error) {
+      setSparar(false);
       setFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad') ? 'Vikarien är redan bokad på ett pass som överlappar denna tid.' : res.error.message);
       return false;
     }
 
-    await historikApi.skapa(pass.id, 'pass_uppdaterat', historik);
+    const notisMetadata = await notifieraBokadVikarieOmPassÄndrats(data);
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', { ...historik, ...notisMetadata });
+    await laddaHistorikFörPass();
 
-    const påverkarBokatPass = [
-      'datum',
-      'tid_från',
-      'tid_till',
-      'typ',
-      'ämne',
-      'grupp',
-      'sal',
-      'anteckning',
-      'status',
-      'vikarie_id',
-    ].some((key) => key in data);
-
-    if (pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat') && påverkarBokatPass) {
-      void notisApi.skickaPassAndrat(pass.id, pass.vikarie_id).then(({ error }) => {
-        if (error) console.error('Kunde inte skicka ändringsnotis', error);
-      });
-    }
-
+    setSparar(false);
     onUppdaterad({ ...pass, ...data });
     return true;
   }
@@ -398,7 +396,32 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       return;
     }
 
-    await historikApi.skapa(pass.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId, tillfrågad_vikarie_namn: valdVikarie?.namn });
+    let notisMetadata: Record<string, unknown>;
+    try {
+      const { error } = await notisApi.skickaNotiser(pass.id, [valdVikarieId]);
+      notisMetadata = {
+        notis_skickad: !error,
+        notifiering: error ? 'misslyckades' : 'skickad',
+        notis_typ: 'förfrågan',
+        notis_mottagare: valdVikarie?.namn ?? 'vikarien',
+        notis_fel: error?.message ?? null,
+      };
+    } catch (error) {
+      notisMetadata = {
+        notis_skickad: false,
+        notifiering: 'misslyckades',
+        notis_typ: 'förfrågan',
+        notis_mottagare: valdVikarie?.namn ?? 'vikarien',
+        notis_fel: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    await historikApi.skapa(pass.id, 'vikarie_notifierat', {
+      vikarie_id: valdVikarieId,
+      tillfrågad_vikarie_namn: valdVikarie?.namn,
+      ...notisMetadata,
+    });
+    await laddaHistorikFörPass();
 
     setSparar(false);
     onUppdaterad({
@@ -407,10 +430,6 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       publicerad: false,
       vikarie_id: null,
       riktad_till_vikarie_id: valdVikarieId,
-    });
-
-    void notisApi.skickaNotiser(pass.id, [valdVikarieId]).then(({ error }) => {
-      if (error) console.error('Kunde inte skicka notifiering', error);
     });
   }
 
