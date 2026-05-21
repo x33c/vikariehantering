@@ -199,12 +199,26 @@ export const passApi = {
       .eq('pass_id', passId);
 
     if (radera.error) return radera;
-    if (rader.length === 0) return { data: [] as VikariepassExkludering[], error: null };
 
-    return supabase
+    const röraPasset = async () => {
+      await supabase
+        .from('vikariepass')
+        .update({ updated_at: new Date().toISOString() } as any)
+        .eq('id', passId);
+    };
+
+    if (rader.length === 0) {
+      await röraPasset();
+      return { data: [] as VikariepassExkludering[], error: null };
+    }
+
+    const res = await supabase
       .from('vikariepass_exkluderingar')
       .insert(rader)
       .select('*, vikarie:vikarier(*)');
+
+    if (!res.error) await röraPasset();
+    return res;
   },
   async skapa(data: NyttVikariepass) {
     const payload = {

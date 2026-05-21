@@ -258,6 +258,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [exkluderadeVikarieIds, setExkluderadeVikarieIds] = useState<Set<string>>(new Set());
   const [exkluderingSök, setExkluderingSök] = useState('');
   const [spararExkluderingar, setSpararExkluderingar] = useState(false);
+  const [visaExkluderingar, setVisaExkluderingar] = useState(false);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -401,6 +402,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     }
 
     const notisMetadata = await notifieraBokadVikarieOmPassÄndrats(data);
+    setExkluderadeVikarieIds(new Set(ids));
+
     await historikApi.skapa(pass.id, 'pass_uppdaterat', { ...historik, ...notisMetadata });
     await laddaHistorikFörPass();
 
@@ -733,7 +736,19 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setSpararExkluderingar(true);
     setFel('');
 
-    const ids = [...exkluderadeVikarieIds];
+    const ids = [...new Set([...exkluderadeVikarieIds].flatMap((id) => {
+      const vald = vikarier.find(v => v.id === id);
+      const epost = vald?.epost?.trim().toLowerCase();
+      const profilId = vald?.profil_id;
+
+      return vikarier
+        .filter(v =>
+          v.id === id ||
+          (!!profilId && v.profil_id === profilId) ||
+          (!!epost && v.epost?.trim().toLowerCase() === epost)
+        )
+        .map(v => v.id);
+    }))];
     const res = await passApi.sparaExkluderingar(pass.id, ids);
     setSpararExkluderingar(false);
 
@@ -758,7 +773,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const exkluderadeVikarier = vikarier.filter(v => exkluderadeVikarieIds.has(v.id));
   const exkluderingSökText = exkluderingSök.trim().toLowerCase();
   const filtreradeExkluderingVikarier = exkluderingSökText
-    ? vikarier.filter(v => v.namn.toLowerCase().includes(exkluderingSökText))
+    ? vikarier.filter(v => `${v.namn} ${v.epost ?? ''}`.toLowerCase().includes(exkluderingSökText))
     : vikarier;
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
@@ -850,9 +865,54 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               </Button>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setVisaExkluderingar(v => !v)}
+            className="mt-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm font-semibold"
+            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
+          >
+            <span>{exkluderadeVikarier.length ? `Dolt för ${exkluderadeVikarier.length} vikarier` : 'Dölj för vikarier'}</span>
+            <span>{visaExkluderingar ? '▲' : '▼'}</span>
+          </button>
+
+          {visaExkluderingar && (
+            <div className="mt-2 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {exkluderadeVikarier.length ? exkluderadeVikarier.map(v => v.namn).join(', ') : 'Alla vikarier kan se passet.'}
+                </p>
+                <Button size="sm" variant="secondary" onClick={sparaExkluderingar} loading={spararExkluderingar}>
+                  Spara
+                </Button>
+              </div>
+              <input
+                value={exkluderingSök}
+                onChange={e => setExkluderingSök(e.target.value)}
+                placeholder="Sök vikarie att dölja för..."
+                className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+              />
+              <div className="grid max-h-44 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                {filtreradeExkluderingVikarier.map(v => {
+                  const vald = exkluderadeVikarieIds.has(v.id);
+                  return (
+                    <button key={v.id} type="button" onClick={() => växlaExkluderadVikarie(v.id)}
+                      className="rounded-lg border px-3 py-2 text-left text-sm font-semibold transition"
+                      style={{ borderColor: vald ? '#f97316' : 'var(--border)', background: vald ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-card)', color: vald ? '#fb923c' : 'var(--text)' }}>
+                      <span className="block">{v.namn}{vald && <span className="ml-2 text-xs">Dold</span>}</span>
+                      <span className="block truncate text-xs font-normal" style={{ color: vald ? '#fdba74' : 'var(--text-muted)' }}>
+                        {v.epost ?? (v.profil_id ? 'Konto kopplat' : 'Inget konto')}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
-        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+        <section className="rounded-xl border p-3 hidden" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
