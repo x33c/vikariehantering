@@ -404,6 +404,35 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     );
   }
 
+  async function sparaPassÄndringar() {
+    if (!tidFrån || !tidTill || tidFrån >= tidTill) {
+      setFel('Ange en giltig start- och sluttid.');
+      return;
+    }
+
+    if (!harPassÄndringar) return;
+
+    const data: Partial<Bemanning> = {};
+    const historik: Record<string, unknown> = {
+      åtgärd: gruppÄndrad && tiderÄndrade ? 'ändrade_passdetaljer' : gruppÄndrad ? 'ändrade_grupp' : 'ändrade_tider',
+    };
+
+    if (gruppÄndrad) {
+      data.grupp = normaliseradGrupp || null;
+      historik.grupp = normaliseradGrupp || null;
+      historik.gammal_grupp = pass.grupp ?? null;
+    }
+
+    if (tiderÄndrade) {
+      data.tid_från = tidFrån;
+      data.tid_till = tidTill;
+      historik.tid_från = tidFrån;
+      historik.tid_till = tidTill;
+    }
+
+    await uppdateraPass(data, historik);
+  }
+
   async function sparaGrupp() {
     const nyGrupp = grupp.trim() || null;
     const gammalGrupp = pass.grupp ?? null;
@@ -623,6 +652,10 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
   const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
+  const normaliseradGrupp = grupp.trim();
+  const gruppÄndrad = normaliseradGrupp !== (pass.grupp ?? '');
+  const tiderÄndrade = tidFrån !== pass.tid_från.slice(0, 5) || tidTill !== pass.tid_till.slice(0, 5);
+  const harPassÄndringar = gruppÄndrad || tiderÄndrade;
   const rekommenderadeVikarier = [...vikarier]
     .map(v => {
       const tillg = tillgMap[v.id];
@@ -726,7 +759,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
                 <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Grupp</p>
-          <div className="grid grid-cols-[1fr_auto] gap-2">
+          <div className="grid gap-2">
             <input
               value={grupp}
               onChange={e => setGrupp(e.target.value)}
@@ -734,15 +767,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               className="rounded-md border px-3 py-2 text-sm"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
             />
-            <Button size="sm" onClick={sparaGrupp} loading={sparar} disabled={(grupp.trim() || '') === (pass.grupp ?? '')}>
-              Spara
-            </Button>
           </div>
         </section>
 
 <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tid</p>
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <input
               type="time"
               value={tidFrån}
@@ -757,9 +787,11 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               className="rounded-md border px-2 py-2 text-sm"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
             />
-            <Button size="sm" onClick={sparaTider} loading={sparar} disabled={tidFrån === pass.tid_från.slice(0, 5) && tidTill === pass.tid_till.slice(0, 5)}>
-              Spara
-            </Button>
+            <div className="sm:col-span-2">
+              <Button size="sm" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar}>
+                Spara ändringar
+              </Button>
+            </div>
           </div>
         </section>
 
