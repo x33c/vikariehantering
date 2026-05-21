@@ -490,21 +490,6 @@ export default function Utskick() {
         </div>
       </details>
 
-      <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>Skriv: Namn på länk | https://adress.se</p>
-        </section>
-
-        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Kontaktuppgifter</label>
-          <textarea
-            value={textFörExtra('kontakt')}
-            onChange={(e) => uppdateraExtra('kontakt', e.target.value)}
-            placeholder={'Exempel:\nNamn: 08 - 000 00 00\nNamn: 08 - 000 00 00'}
-            className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          />
-        </section>
-      </div>
-
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         Skicka mail kopierar den formaterade tabellen. Klistra in i mejlet med Ctrl+V för tabellformat.
       </p>
