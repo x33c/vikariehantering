@@ -153,17 +153,15 @@ function htmlLänkRad(rad: string) {
     label = trimmed.replace(url, '').replace(/[-–|:]+$/g, '').trim() || url;
   }
 
-  if (!url) {
-    return `<div style="margin:0 0 2px 0;color:#ffffff;line-height:1.25;">${esc(trimmed)}</div>`;
-  }
+  if (!url) return `<div style="margin:0 0 2px 0;color:#ffffff;">${esc(trimmed)}</div>`;
 
-  return `<div style="margin:0 0 2px 0;line-height:1.25;"><a href="${esc(url)}" style="color:#7fb4c7;text-decoration:underline;">${esc(label)}</a></div>`;
+  return `<div style="margin:0 0 2px 0;"><a href="${esc(url)}" style="color:#8fc7da;text-decoration:underline;">${esc(label)}</a></div>`;
 }
 
 function htmlKontaktRad(rad: string) {
   const trimmed = rad.trim();
   if (!trimmed) return '';
-  return `<div style="margin:0 0 2px 0;color:#ffffff;line-height:1.25;">${esc(trimmed)}</div>`;
+  return `<div style="margin:0 0 2px 0;color:#ffffff;">${esc(trimmed)}</div>`;
 }
 
 function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt') {
@@ -175,15 +173,10 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
     : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-    <table width="930" cellpadding="0" cellspacing="0" bgcolor="#262626" style="border-collapse:collapse;background-color:#262626;color:#ffffff;margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;">
-      <tr>
-        <td bgcolor="#262626" style="padding:0;background-color:#262626;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
-          <div style="margin:0 0 5px 0;color:#ffffff;font-weight:700;">${esc(rubrik)}:</div>
-          ${innehåll}
-        </td>
-      </tr>
-    </table>
-  `;
+  <div style="width:1160px;margin-top:18px;background-color:#262626;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;">
+    <div style="font-weight:700;margin:0 0 5px 0;color:#ffffff;">${esc(rubrik)}:</div>
+    ${innehåll}
+  </div>`;
 }
 
 function byggHtml({
@@ -195,22 +188,22 @@ function byggHtml({
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
 }) {
-  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
+  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;';
   const cell = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
-  const head = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:8px;text-align:center;font-weight:700;${font}`;
+  const head = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:7px;text-align:center;font-weight:700;${font}`;
   const label = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:left;vertical-align:middle;font-weight:700;${font}`;
 
   const rows = [
-    `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:170px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
-    `<tr><th style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
-    `<tr><th style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
-    `<tr><th style="${label};height:220px;">Vikarie</th>${dagar.map((dag) => `<td style="${cell};height:220px;">${htmlCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
-    `<tr><th style="${label};height:150px;">Övrigt</th>${dagar.map((dag) => `<td style="${cell};height:150px;">${htmlCell(cellText(iso(dag), 'ovrigt'))}</td>`).join('')}</tr>`,
+    `<tr><th bgcolor="#333333" style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th bgcolor="#333333" style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
+    `<tr><th bgcolor="#333333" style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th bgcolor="#333333" style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
+    `<tr><th bgcolor="#333333" style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
+    `<tr><th bgcolor="#333333" style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:230px;">${htmlCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
+    `<tr><th bgcolor="#333333" style="${label};height:170px;">Övrigt</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:170px;">${htmlCell(cellText(iso(dag), 'ovrigt'))}</td>`).join('')}</tr>`,
   ].join('');
 
   return `
-<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;color:#ffffff;background-color:#262626;">
-  <table width="930" cellpadding="0" cellspacing="0" bgcolor="#333333" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;color:#ffffff;background-color:#262626;">
+  <table width="1160" cellpadding="0" cellspacing="0" bgcolor="#333333" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
   ${htmlExtraBlock('Länkar', extraText('lankar'), 'lankar')}
@@ -464,17 +457,40 @@ export default function Utskick() {
         </table>
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Länkar</label>
-          <textarea
-            value={textFörExtra('lankar')}
-            onChange={(e) => uppdateraExtra('lankar', e.target.value)}
-            placeholder={'En rad per länk. Exempel:\nAnmälan - kränkning | https://...\nSchema | https://...'}
-            className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          />
-          <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>Skriv: Namn på länk | https://adress.se</p>
+      <details className="mt-3 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <summary className="cursor-pointer text-sm font-semibold" style={{ color: 'var(--text)' }}>
+          Fasta uppgifter i utskick
+        </summary>
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Länkar och kontaktuppgifter sparas globalt och följer med oavsett vecka.
+        </p>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <section>
+            <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Länkar</label>
+            <textarea
+              value={textFörExtra('lankar')}
+              onChange={(e) => uppdateraExtra('lankar', e.target.value)}
+              placeholder={'En rad per länk. Exempel:\nAnmälan - kränkning | https://...\nSchema | https://...'}
+              className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+          </section>
+
+          <section>
+            <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Kontaktuppgifter</label>
+            <textarea
+              value={textFörExtra('kontakt')}
+              onChange={(e) => uppdateraExtra('kontakt', e.target.value)}
+              placeholder={'Exempel:\nNamn: 08 - 000 00 00\nNamn: 08 - 000 00 00'}
+              className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+          </section>
+        </div>
+      </details>
+
+      <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>Skriv: Namn på länk | https://adress.se</p>
         </section>
 
         <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
@@ -490,7 +506,7 @@ export default function Utskick() {
       </div>
 
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Skicka mail kopierar den formaterade tabellen, inklusive länkar och kontaktuppgifter. Klistra in i mejlet med Ctrl+V för tabellformat.
+        Skicka mail kopierar den formaterade tabellen. Klistra in i mejlet med Ctrl+V för tabellformat.
       </p>
     </div>
   );
