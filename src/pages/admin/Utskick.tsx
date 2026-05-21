@@ -153,15 +153,17 @@ function htmlLänkRad(rad: string) {
     label = trimmed.replace(url, '').replace(/[-–|:]+$/g, '').trim() || url;
   }
 
-  if (!url) return `<div style="margin:0 0 2px 0;color:#ffffff;">${esc(trimmed)}</div>`;
+  if (!url) {
+    return `<div style="margin:0 0 2px 0;line-height:1.25;">${esc(trimmed)}</div>`;
+  }
 
-  return `<div style="margin:0 0 2px 0;"><a href="${esc(url)}" style="color:#8fc7da;text-decoration:underline;">${esc(label)}</a></div>`;
+  return `<div style="margin:0 0 2px 0;line-height:1.25;"><a href="${esc(url)}" style="color:#8fc7da;text-decoration:underline;">${esc(label)}</a></div>`;
 }
 
 function htmlKontaktRad(rad: string) {
   const trimmed = rad.trim();
   if (!trimmed) return '';
-  return `<div style="margin:0 0 2px 0;color:#ffffff;">${esc(trimmed)}</div>`;
+  return `<div style="margin:0 0 2px 0;line-height:1.25;">${esc(trimmed)}</div>`;
 }
 
 function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt') {
@@ -173,8 +175,8 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
     : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-  <div style="width:1160px;margin-top:18px;background-color:#262626;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;">
-    <div style="font-weight:700;margin:0 0 5px 0;color:#ffffff;">${esc(rubrik)}:</div>
+  <div style="margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+    <div style="font-weight:700;margin:0 0 5px 0;">${esc(rubrik)}:</div>
     ${innehåll}
   </div>`;
 }
@@ -188,22 +190,22 @@ function byggHtml({
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
 }) {
-  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;';
-  const cell = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
-  const head = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:7px;text-align:center;font-weight:700;${font}`;
-  const label = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:left;vertical-align:middle;font-weight:700;${font}`;
+  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
+  const cell = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
+  const head = `border:1px solid #666666;padding:7px;text-align:center;font-weight:700;${font}`;
+  const label = `border:1px solid #666666;padding:10px;text-align:left;vertical-align:middle;font-weight:700;${font}`;
 
   const rows = [
-    `<tr><th bgcolor="#333333" style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th bgcolor="#333333" style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
-    `<tr><th bgcolor="#333333" style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th bgcolor="#333333" style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
-    `<tr><th bgcolor="#333333" style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
-    `<tr><th bgcolor="#333333" style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:230px;">${htmlCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
-    `<tr><th bgcolor="#333333" style="${label};height:170px;">Övrigt</th>${dagar.map((dag) => `<td bgcolor="#333333" style="${cell};height:170px;">${htmlCell(cellText(iso(dag), 'ovrigt'))}</td>`).join('')}</tr>`,
+    `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
+    `<tr><th style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
+    `<tr><th style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
+    `<tr><th style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td style="${cell};height:230px;">${htmlCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
+    `<tr><th style="${label};height:170px;">Övrigt</th>${dagar.map((dag) => `<td style="${cell};height:170px;">${htmlCell(cellText(iso(dag), 'ovrigt'))}</td>`).join('')}</tr>`,
   ].join('');
 
   return `
-<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.22;color:#ffffff;background-color:#262626;">
-  <table width="1160" cellpadding="0" cellspacing="0" bgcolor="#333333" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+  <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
   ${htmlExtraBlock('Länkar', extraText('lankar'), 'lankar')}
