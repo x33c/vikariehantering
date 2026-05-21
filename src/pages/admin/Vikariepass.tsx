@@ -866,150 +866,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setVisaExkluderingar(v => !v)}
-            className="mt-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm font-semibold"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
-          >
-            <span>{exkluderadeVikarier.length ? `Dolt för ${exkluderadeVikarier.length} vikarier` : 'Dölj för vikarier'}</span>
-            <span>{visaExkluderingar ? '▲' : '▼'}</span>
-          </button>
-
-          {visaExkluderingar && (
-            <div className="mt-2 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {exkluderadeVikarier.length ? exkluderadeVikarier.map(v => v.namn).join(', ') : 'Alla vikarier kan se passet.'}
-                </p>
-                <Button size="sm" variant="secondary" onClick={sparaExkluderingar} loading={spararExkluderingar}>
-                  Spara
-                </Button>
-              </div>
-              <input
-                value={exkluderingSök}
-                onChange={e => setExkluderingSök(e.target.value)}
-                placeholder="Sök vikarie att dölja för..."
-                className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
-                style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-              />
-              <div className="grid max-h-44 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                {filtreradeExkluderingVikarier.map(v => {
-                  const vald = exkluderadeVikarieIds.has(v.id);
-                  return (
-                    <button key={v.id} type="button" onClick={() => växlaExkluderadVikarie(v.id)}
-                      className="rounded-lg border px-3 py-2 text-left text-sm font-semibold transition"
-                      style={{ borderColor: vald ? '#f97316' : 'var(--border)', background: vald ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-card)', color: vald ? '#fb923c' : 'var(--text)' }}>
-                      <span className="block">{v.namn}{vald && <span className="ml-2 text-xs">Dold</span>}</span>
-                      <span className="block truncate text-xs font-normal" style={{ color: vald ? '#fdba74' : 'var(--text-muted)' }}>
-                        {v.epost ?? (v.profil_id ? 'Konto kopplat' : 'Inget konto')}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          
         </section>
-
-        <section className="rounded-xl border p-3 hidden" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                {valdVikarie ? valdVikarie.namn : 'Välj vikarie'}
-              </p>
-            </div>
-          </div>
-
-          {rekommenderadeSynliga.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-2 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Rekommenderade vikarier</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {rekommenderadeSynliga.map(({ vikarie, status, detalj }) => {
-                  const vald = vikarie.id === valdVikarieId;
-                  const ärBokad = status === 'bokad';
-                  const färg = vikarieStatusFärg(status);
-
-                  return (
-                    <button
-                      key={vikarie.id}
-                      type="button"
-                      onClick={() => setValdVikarieId(vikarie.id)}
-                      disabled={ärBokad}
-                      className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
-                      style={{
-                        borderColor: vald ? 'var(--blue)' : 'var(--border)',
-                        background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
-                      }}
-                    >
-                      <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                      <span className="block text-xs" style={{ color: färg }}>{detalj}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="relative z-20 mb-3 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-            <button
-              type="button"
-              onClick={() => setVisaAllaVikarier(v => !v)}
-              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm"
-              style={{ color: 'var(--text)' }}
-            >
-              <span className="min-w-0">
-                <span className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Alla vikarier</span>
-                <span className="block truncate font-semibold">{valdVikarie ? valdVikarie.namn : 'Välj från hela listan'}</span>
-              </span>
-              <span className="shrink-0 text-xs font-semibold" style={{ color: 'var(--blue)' }}>
-                {visaAllaVikarier ? 'Stäng' : 'Visa'}
-              </span>
-            </button>
-
-            {visaAllaVikarier && (
-              <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-xl border p-2 shadow-xl" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-                <input value={vikarieSök} onChange={e => setVikarieSök(e.target.value)} placeholder="Sök vikarie..."
-                  className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
-                  style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }} />
-                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
-                  {filtreradeVikarier.map(({ vikarie, status, detalj }) => {
-                    const vald = vikarie.id === valdVikarieId;
-                    const ärBokad = status === 'bokad';
-                    return (
-                      <button key={vikarie.id} type="button" onClick={() => väljVikarie(vikarie.id)} disabled={ärBokad}
-                        className="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
-                        style={{ borderColor: vald ? 'var(--blue)' : 'transparent', background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'transparent' }}>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                          <span className="block truncate text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
-                        </span>
-                        {vald && <span className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>Vald</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
-              Skicka förfrågan
-            </Button>
-            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
-              Boka direkt
-            </Button>
-          </div>
-
-          {valdVikarieId && bokadeVikarier[valdVikarieId] && (
-            <p className="mt-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: '#ef4444', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.10)' }}>
-              Den valda vikarien är redan bokad {bokadeVikarier[valdVikarieId].tid_från.slice(0, 5)}-{bokadeVikarier[valdVikarieId].tid_till.slice(0, 5)}.
-            </p>
-          )}
-        </section>
-
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Synlighet</p>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1020,54 +878,78 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
               Dölj
             </Button>
           </div>
+
+          <div className="mt-2 rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+            <button
+              type="button"
+              onClick={() => setVisaExkluderingar(v => !v)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+              style={{ color: 'var(--text)' }}
+            >
+              <span className="min-w-0">
+                <span className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Dölj för vikarier</span>
+                <span className="block truncate text-sm font-semibold">
+                  {exkluderadeVikarier.length === 0 ? 'Ingen vikarie dold' : `Dolt för ${exkluderadeVikarier.length}`}
+                </span>
+              </span>
+              <span className="shrink-0 text-lg leading-none" style={{ color: 'var(--text-muted)' }}>
+                {visaExkluderingar ? '▲' : '▼'}
+              </span>
+            </button>
+
+            {visaExkluderingar && (
+              <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
+                {exkluderadeVikarier.length > 0 && (
+                  <p className="mb-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {exkluderadeVikarier.map(v => v.namn).join(', ')}
+                  </p>
+                )}
+
+                <input
+                  value={exkluderingSök}
+                  onChange={e => setExkluderingSök(e.target.value)}
+                  placeholder="Sök vikarie att dölja för..."
+                  className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                />
+
+                <div className="grid max-h-44 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                  {filtreradeExkluderingVikarier.map(v => {
+                    const vald = exkluderadeVikarieIds.has(v.id);
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => växlaExkluderadVikarie(v.id)}
+                        className="rounded-lg border px-3 py-2 text-left text-sm font-semibold transition"
+                        style={{
+                          borderColor: vald ? '#f97316' : 'var(--border)',
+                          background: vald ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-card)',
+                          color: vald ? '#fb923c' : 'var(--text)',
+                        }}
+                      >
+                        <span className="block">
+                          {v.namn}
+                          {vald && <span className="ml-2 text-xs">Dold</span>}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs font-normal" style={{ color: vald ? '#fdba74' : 'var(--text-muted)' }}>
+                          {v.epost ?? (v.profil_id ? 'Konto kopplat' : 'Inget konto')}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" variant="secondary" onClick={sparaExkluderingar} loading={spararExkluderingar}>
+                    Spara dolda vikarier
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
 
-        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Dölj för vikarier</p>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text)' }}>
-                {exkluderadeVikarier.length === 0 ? 'Alla vikarier kan se passet när det är ledigt.' : `Dolt för ${exkluderadeVikarier.length} vikarier`}
-              </p>
-              {exkluderadeVikarier.length > 0 && (
-                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {exkluderadeVikarier.map(v => v.namn).join(', ')}
-                </p>
-              )}
-            </div>
-            <Button size="sm" variant="secondary" onClick={sparaExkluderingar} loading={spararExkluderingar}>
-              Spara
-            </Button>
-          </div>
-          <input
-            value={exkluderingSök}
-            onChange={e => setExkluderingSök(e.target.value)}
-            placeholder="Sök vikarie att dölja för..."
-            className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          />
-          <div className="grid max-h-44 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-            {filtreradeExkluderingVikarier.map(v => {
-              const vald = exkluderadeVikarieIds.has(v.id);
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => växlaExkluderadVikarie(v.id)}
-                  className="rounded-lg border px-3 py-2 text-left text-sm font-semibold transition"
-                  style={{
-                    borderColor: vald ? '#f97316' : 'var(--border)',
-                    background: vald ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-card)',
-                    color: vald ? '#fb923c' : 'var(--text)',
-                  }}
-                >
-                  {v.namn}
-                  {vald && <span className="ml-2 text-xs">Dold</span>}
-                </button>
-              );
-            })}
-          </div>
-        </section>
 
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Meddelanden</p>
