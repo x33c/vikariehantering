@@ -5,8 +5,12 @@ import type { Frånvaro, Vikariepass, Vikarie } from '../../types';
 import { Button, LaddaSida } from '../../components/ui';
 
 type CellTyp = 'franvaro' | 'vikarie' | 'ovrigt';
+type ExtraTyp = 'lankar' | 'kontakt';
+type UtskickTyp = CellTyp | ExtraTyp;
 
 const cellTyper: CellTyp[] = ['franvaro', 'vikarie', 'ovrigt'];
+const extraTyper: ExtraTyp[] = ['lankar', 'kontakt'];
+const GLOBAL_CELL_DATE = '1970-01-01';
 
 function iso(datum: Date) {
   return datum.toISOString().slice(0, 10);
@@ -50,7 +54,7 @@ function esc(text: string) {
     .replaceAll('"', '&quot;');
 }
 
-function cellKey(datum: string, typ: CellTyp) {
+function cellKey(datum: string, typ: UtskickTyp) {
   return `${datum}:${typ}`;
 }
 
@@ -132,19 +136,56 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
 
 function htmlCell(text: string) {
   const trimmed = text.trim();
-  return trimmed ? esc(trimmed).replaceAll('\n', '<br>') : '-';
+  return trimmed ? esc(trimmed).replaceAll('\n', '<br>') : '&nbsp;';
+}
+
+function htmlLänkRad(rad: string) {
+  const trimmed = rad.trim();
+  if (!trimmed) return '';
+
+  const delar = trimmed.split('|').map((del) => del.trim());
+  let label = delar[0];
+  let url = delar[1];
+
+  const urlMatch = trimmed.match(/https?:\/\/\S+/);
+  if (!url && urlMatch) {
+    url = urlMatch[0];
+    label = trimmed.replace(url, '').replace(/[-–|:]+$/g, '').trim() || url;
+  }
+
+  if (!url) return `<div style="margin:0 0 3px 0;color:#111111;">${esc(trimmed)}</div>`;
+
+  return `<div style="margin:0 0 3px 0;"><a href="${esc(url)}" style="color:#256f82;text-decoration:underline;">${esc(label)}</a></div>`;
+}
+
+function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt') {
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+
+  const innehåll = typ === 'lankar'
+    ? trimmed.split('\n').map(htmlLänkRad).join('')
+    : esc(trimmed).replaceAll('\n', '<br>');
+
+  return `
+    <div style="margin-top:18px;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;color:#111111;">
+      <p style="margin:0 0 6px 0;font-weight:bold;">${esc(rubrik)}:</p>
+      ${innehåll}
+    </div>
+  `;
 }
 
 function byggHtml({
   dagar,
   cellText,
+  extraText,
 }: {
   dagar: Date[];
   cellText: (datum: string, typ: CellTyp) => string;
+  extraText: (typ: ExtraTyp) => string;
 }) {
-  const cell = 'border:1px solid #666;background-color:#333;color:#fff;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;white-space:normal;';
-  const head = 'border:1px solid #666;background-color:#3a3a3a;color:#fff;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
-  const label = 'border:1px solid #666;background-color:#333;color:#fff;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const cell = 'border:1px solid #c9c9c9;background-color:#f2f2f2;color:#111111;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;white-space:normal;';
+  const head = 'border:1px solid #c9c9c9;background-color:#f7f7f7;color:#000000;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const label = 'border:1px solid #c9c9c9;background-color:#eeeeee;color:#000000;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
 
   const rows = [
     `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:170px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
@@ -155,12 +196,14 @@ function byggHtml({
   ].join('');
 
   return `
-<div style="font-family:Arial,sans-serif;font-size:13px;color:#111;background-color:#fff;">
-  <p style="margin:0 0 10px 0;">God morgon,<br>här är frånvaron.</p>
-  <p style="margin:0 0 16px 0;">Vi påminner om rutinen för frånvaroanmälan och återkoppling inför kommande tjänstgöring.</p>
-  <table width="930" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#333;color:#fff;">
+<div style="font-family:Arial,sans-serif;font-size:13px;color:#111111;background-color:#ffffff;">
+  <p style="margin:0 0 10px 0;color:#111111;">God morgon,<br>här är frånvaron.</p>
+  <p style="margin:0 0 16px 0;color:#111111;">Vi påminner om rutinen för frånvaroanmälan och återkoppling inför kommande tjänstgöring.</p>
+  <table width="930" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#f2f2f2;color:#111111;">
     ${rows}
   </table>
+  ${htmlExtraBlock('Länkar', extraText('lankar'), 'lankar')}
+  ${htmlExtraBlock('Kontaktuppgifter', extraText('kontakt'), 'kontakt')}
 </div>`.trim();
 }
 
@@ -187,11 +230,12 @@ export default function Utskick() {
       setLaddar(true);
       setFel('');
 
-      const [fRes, pRes, vRes, cRes] = await Promise.all([
+      const [fRes, pRes, vRes, cRes, eRes] = await Promise.all([
         frånvaroApi.lista(startIso, slutIso),
         passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
         vikariApi.lista(),
         supabase.from('utskick_celler').select('*').gte('datum', startIso).lte('datum', slutIso),
+        supabase.from('utskick_celler').select('*').eq('datum', GLOBAL_CELL_DATE).in('typ', extraTyper),
       ]);
 
       const frånvaroData = (fRes.data ?? []) as Frånvaro[];
@@ -202,12 +246,13 @@ export default function Utskick() {
       setPass(passData);
       setVikarier(vikarieData);
 
-      if (cRes.error) {
+      if (cRes.error || eRes.error) {
         setFel('Redigering kan inte sparas förrän databasmigrationen är körd.');
         setCeller({});
       } else {
         const map: Record<string, string> = {};
         for (const rad of cRes.data ?? []) map[cellKey(rad.datum, rad.typ as CellTyp)] = rad.text ?? '';
+        for (const rad of eRes.data ?? []) map[cellKey(GLOBAL_CELL_DATE, rad.typ as ExtraTyp)] = rad.text ?? '';
         setCeller(map);
       }
 
@@ -243,6 +288,14 @@ export default function Utskick() {
     setCeller((prev) => ({ ...prev, [cellKey(datum, typ)]: text }));
   }
 
+  function textFörExtra(typ: ExtraTyp) {
+    return celler[cellKey(GLOBAL_CELL_DATE, typ)] ?? '';
+  }
+
+  function uppdateraExtra(typ: ExtraTyp, text: string) {
+    setCeller((prev) => ({ ...prev, [cellKey(GLOBAL_CELL_DATE, typ)]: text }));
+  }
+
   function bytVecka(steg: number) {
     setVeckaStart(iso(startPåVecka(läggTillDagar(start, steg * 7))));
   }
@@ -260,7 +313,13 @@ export default function Utskick() {
       }));
     });
 
-    const res = await supabase.from('utskick_celler').upsert(rader, { onConflict: 'datum,typ' });
+    const extraRader = extraTyper.map((typ) => ({
+      datum: GLOBAL_CELL_DATE,
+      typ,
+      text: textFörExtra(typ),
+    }));
+
+    const res = await supabase.from('utskick_celler').upsert([...rader, ...extraRader], { onConflict: 'datum,typ' });
     setSparar(false);
 
     if (res.error) {
@@ -274,7 +333,7 @@ export default function Utskick() {
   async function skickaMail() {
     await sparaCeller();
 
-    const html = byggHtml({ dagar, cellText: textFörCell });
+    const html = byggHtml({ dagar, cellText: textFörCell, extraText: textFörExtra });
     const plain = [
       'God morgon,',
       '',
@@ -394,8 +453,33 @@ export default function Utskick() {
         </table>
       </div>
 
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Länkar</label>
+          <textarea
+            value={textFörExtra('lankar')}
+            onChange={(e) => uppdateraExtra('lankar', e.target.value)}
+            placeholder={'En rad per länk. Exempel:\nAnmälan - kränkning | https://...\nSchema | https://...'}
+            className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          />
+          <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>Skriv: Namn på länk | https://adress.se</p>
+        </section>
+
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Kontaktuppgifter</label>
+          <textarea
+            value={textFörExtra('kontakt')}
+            onChange={(e) => uppdateraExtra('kontakt', e.target.value)}
+            placeholder={'Exempel:\nNamn: 08 - 000 00 00\nNamn: 08 - 000 00 00'}
+            className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          />
+        </section>
+      </div>
+
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Skicka mail öppnar mejl med vanlig text och kopierar samtidigt den formaterade tabellen. Klistra in i mejlet om du vill behålla tabellformatet.
+        Skicka mail kopierar den formaterade tabellen, inklusive länkar och kontaktuppgifter. Klistra in i mejlet med Ctrl+V för tabellformat.
       </p>
     </div>
   );
