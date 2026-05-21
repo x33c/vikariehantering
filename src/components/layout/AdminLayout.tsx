@@ -8,6 +8,7 @@ const huvudNavItems = [
   { to: '/admin', label: 'Start', end: true },
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
+  { to: '/admin/utskick', label: 'Utskick' },
 ];
 
 const registerNavItems = [

@@ -1,24 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { frånvaroApi, passApi } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import type { Frånvaro, Vikariepass } from '../../types';
 import { Button, LaddaSida } from '../../components/ui';
 
 const länkar = [
-  { label: 'Anmälan - kränkning', url: 'https://journal.prorenata.se/contactform/sundbybergs-s/anmalan_krankning/' },
-  { label: 'Rutin vid kränkning', url: 'https://sundbybergsstad.sharepoint.com/:b:/r/sites/ORG-LoB-Ursvikskolan/Delade%20dokument/Allm%C3%A4nt/Rutiner/Kr%C3%A4nkningsanm%C3%A4lan.pdf?csf=1&web=1&e=lhtHDW' },
-  { label: 'Schemavisare', url: 'https://web.skola24.se/timetable/timetable-viewer/sundbyberg.skola24.se/Ursvikskolan/' },
-  { label: 'Anmälan EHT', url: 'https://journal.prorenata.se/contactform/sundbybergs-s/anmalan_eht/' },
-  { label: 'Ramtider - Fritids', url: 'https://sundbybergsstad-my.sharepoint.com/:x:/r/personal/nima_wasell_sundbyberg_se/Documents/Ramtider%2025-26.xlsx?d=wd4c9d41ed320400a9bbade700b408fdc&csf=1&web=1&e=HnNs0G' },
-  { label: 'Felanmälan', url: 'https://forms.office.com/e/kDZnwE1f2H' },
-  { label: 'Schema - Ursviks IP', url: 'https://sundbyberg.actorsmartbook.se/ResourceBookingRequest.aspx' },
+  { label: 'Schemavisare', url: 'https://web.skola24.se/timetable/timetable-viewer/' },
+  { label: 'Felanmälan', url: 'https://forms.office.com/' },
 ];
 
 const kontakter = [
-  'Emelie: 08 - 706 82 73',
-  'Åsa: 08 - 706 88 45',
-  'Benny: 08 - 706 66 89',
-  'Jakob: 08 - 706 85 96',
-  'Nima + sjukanmälan: 08 - 706 67 41',
+  'Administrationen',
+  'Sjukanmälan',
 ];
 
 function iso(datum: Date) {
@@ -59,14 +53,6 @@ function tid(t?: string | null) {
   return t?.slice(0, 5) ?? '';
 }
 
-function frånvaroFörDag(frånvaro: Frånvaro[], dag: string) {
-  return frånvaro.filter((f) => f.datum_från <= dag && f.datum_till >= dag);
-}
-
-function passFörDag(pass: Vikariepass[], dag: string) {
-  return pass.filter((p) => p.datum === dag && p.status !== 'avbokat');
-}
-
 function esc(text: string) {
   return text
     .replaceAll('&', '&amp;')
@@ -75,12 +61,42 @@ function esc(text: string) {
     .replaceAll('"', '&quot;');
 }
 
+function frånvaroFörDag(frånvaro: Frånvaro[], dag: string) {
+  return frånvaro.filter((f) => f.datum_från <= dag && f.datum_till >= dag);
+}
+
+function passFörDag(pass: Vikariepass[], dag: string) {
+  return pass.filter((p) => p.datum === dag && p.status !== 'avbokat');
+}
+
+function arbetslagSortIndex(value?: string | null) {
+  const text = (value ?? '').toLowerCase().replace(/\s+/g, '');
+  if (!text) return 99;
+  if (text.includes('fsk') || text.includes('förskole') || text.includes('forskole')) return 0;
+
+  const match = text.match(/(?:åk\.?|ak\.?)?([1-6])/) ?? text.match(/^([1-6])/);
+  if (match) return Number(match[1]);
+
+  if (text.includes('prest')) return 7;
+  return 99;
+}
+
+function sorteraPass(a: Vikariepass, b: Vikariepass) {
+  return (
+    arbetslagSortIndex(a.grupp ?? a.personal?.arbetslag?.namn) -
+      arbetslagSortIndex(b.grupp ?? b.personal?.arbetslag?.namn) ||
+    (a.vikarie?.namn ?? a.personal?.namn ?? '').localeCompare(b.vikarie?.namn ?? b.personal?.namn ?? '', 'sv') ||
+    tid(a.tid_från).localeCompare(tid(b.tid_från))
+  );
+}
+
 type NamnFormatter = (namn?: string | null, fallback?: string) => string;
 
 function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[]): NamnFormatter {
   const namn = [
     ...frånvaro.map((f) => f.personal?.namn),
     ...pass.map((p) => p.vikarie?.namn),
+    ...pass.map((p) => p.personal?.namn),
   ].filter(Boolean) as string[];
 
   const antalFörnamn = new Map<string, number>();
@@ -107,13 +123,15 @@ function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
   return `${formatNamn(f.personal?.namn)}${tidText}`;
 }
 
+function vikarieNamn(pass: Vikariepass, formatNamn: NamnFormatter) {
+  if (pass.vikarie?.namn) return formatNamn(pass.vikarie.namn);
+  if (pass.status === 'obokat') return 'Ej tillsatt';
+  return 'Vikarie saknas';
+}
+
 function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter) {
-  const vikarie = pass.vikarie?.namn
-    ? formatNamn(pass.vikarie.namn)
-    : (pass.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas');
   const grupp = pass.grupp ? ` - ${pass.grupp}` : '';
-  const ämne = pass.ämne ? ` (${pass.ämne})` : '';
-  return `${vikarie}${grupp}${ämne}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
+  return `${vikarieNamn(pass, formatNamn)}${grupp}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }
 
 function byggHtml({
@@ -121,43 +139,45 @@ function byggHtml({
   dagar,
   frånvaro,
   pass,
+  övrigt,
 }: {
   datumText: string;
   dagar: Date[];
   frånvaro: Frånvaro[];
   pass: Vikariepass[];
+  övrigt: Record<string, string>;
 }) {
   const formatNamn = skapaNamnFormatter(frånvaro, pass);
-
-  const darkCell = 'border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;';
-  const darkHead = 'border:1px solid #666666;background-color:#3a3a3a;color:#ffffff;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
-  const darkLabel = 'border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const cell = 'border:1px solid #666;background-color:#333;color:#fff;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;';
+  const head = 'border:1px solid #666;background-color:#3a3a3a;color:#fff;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const label = 'border:1px solid #666;background-color:#333;color:#fff;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
 
   const tableRows = [
-    `<tr><th style="${darkLabel};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${darkHead};width:145px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
-    `<tr><th style="${darkHead}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${darkHead}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
-    `<tr><th style="${darkLabel};height:120px;">Frånvaro</th>${dagar.map((dag) => {
+    `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:170px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
+    `<tr><th style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
+    `<tr><th style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => {
       const rader = frånvaroFörDag(frånvaro, iso(dag));
-      return `<td style="${darkCell};height:120px;">${rader.length ? rader.map((f) => esc(frånvaroText(f, formatNamn))).join('<br>') : '-'}</td>`;
+      return `<td style="${cell};height:110px;">${rader.length ? rader.map((f) => esc(frånvaroText(f, formatNamn))).join('<br>') : '-'}</td>`;
     }).join('')}</tr>`,
-    `<tr><th style="${darkLabel};height:170px;">Vikarie</th>${dagar.map((dag) => {
-      const rader = passFörDag(pass, iso(dag));
-      return `<td style="${darkCell};height:170px;">${rader.length ? rader.map((p) => esc(vikarieText(p, formatNamn)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
+    `<tr><th style="${label};height:210px;">Vikarie</th>${dagar.map((dag) => {
+      const rader = passFörDag(pass, iso(dag)).sort(sorteraPass);
+      return `<td style="${cell};height:210px;">${rader.length ? rader.map((p) => esc(vikarieText(p, formatNamn)).replaceAll('\\n', '<br>')).join('<br><br>') : '-'}</td>`;
     }).join('')}</tr>`,
-    `<tr><th style="${darkLabel};height:110px;">Övrigt</th>${dagar.map(() => `<td style="${darkCell};height:110px;">-</td>`).join('')}</tr>`,
+    `<tr><th style="${label};height:150px;">Övrigt</th>${dagar.map((dag) => {
+      const text = övrigt[iso(dag)]?.trim();
+      return `<td style="${cell};height:150px;">${text ? esc(text).replaceAll('\\n', '<br>') : '-'}</td>`;
+    }).join('')}</tr>`,
   ].join('');
 
   return `
-<div style="font-family:Arial,sans-serif;font-size:13px;color:#111111;background-color:#ffffff;">
+<div style="font-family:Arial,sans-serif;font-size:13px;color:#111;background-color:#fff;">
   <p style="margin:0 0 10px 0;">God morgon,<br>här är frånvaron för ${esc(datumText)}</p>
-  <p style="margin:0 0 16px 0;">Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.</p>
-  <table width="805" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;">
+  <p style="margin:0 0 16px 0;">Vi påminner om rutinen för frånvaroanmälan och återkoppling inför kommande tjänstgöring.</p>
+  <table width="930" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#333;color:#fff;">
     ${tableRows}
   </table>
-  <p style="margin:22px 0 4px 0;"><strong>Länkar:</strong></p>
-  <p style="margin:0;">
-    ${länkar.map((l) => `<a href="${esc(l.url)}" style="color:#0969da;text-decoration:underline;">${esc(l.label)}</a>`).join('<br>')}
-  </p>
+  <p style="margin:18px 0 4px 0;"><strong>Länkar:</strong></p>
+  <p style="margin:0;">${länkar.map((l) => `<a href="${esc(l.url)}" style="color:#0969da;text-decoration:underline;">${esc(l.label)}</a>`).join('<br>')}</p>
   <p style="margin:18px 0 4px 0;"><strong>Kontaktuppgifter:</strong></p>
   <p style="margin:0;">${kontakter.map(esc).join('<br>')}</p>
 </div>`.trim();
@@ -167,12 +187,16 @@ export default function Utskick() {
   const [veckaStart, setVeckaStart] = useState(() => iso(startPåVecka(new Date())));
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
+  const [övrigt, setÖvrigt] = useState<Record<string, string>>({});
   const [laddar, setLaddar] = useState(true);
+  const [sparar, setSparar] = useState(false);
   const [kopierat, setKopierat] = useState(false);
+  const [fel, setFel] = useState('');
 
-  const start = useMemo(() => startPåVecka(new Date(veckaStart)), [veckaStart]);
+  const start = useMemo(() => startPåVecka(new Date(`${veckaStart}T12:00:00`)), [veckaStart]);
   const dagar = useMemo(() => [0, 1, 2, 3, 4].map((i) => läggTillDagar(start, i)), [start]);
-  const slut = iso(dagar[4]);
+  const startIso = iso(dagar[0]);
+  const slutIso = iso(dagar[4]);
   const datumText = långDatum(new Date());
   const ämne = `Frånvarolista - ${datumText}`;
   const formatNamn = useMemo(() => skapaNamnFormatter(frånvaro, pass), [frånvaro, pass]);
@@ -180,41 +204,67 @@ export default function Utskick() {
   useEffect(() => {
     async function ladda() {
       setLaddar(true);
-      const [fRes, pRes] = await Promise.all([
-        frånvaroApi.lista(iso(start), slut),
-        passApi.lista({ datumFrån: iso(start), datumTill: slut }),
+      setFel('');
+
+      const [fRes, pRes, öRes] = await Promise.all([
+        frånvaroApi.lista(startIso, slutIso),
+        passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
+        supabase.from('utskick_ovrigt').select('*').gte('datum', startIso).lte('datum', slutIso),
       ]);
+
       setFrånvaro((fRes.data ?? []) as Frånvaro[]);
       setPass((pRes.data ?? []) as Vikariepass[]);
+
+      if (öRes.error) {
+        setFel('Övrigt-raden kan inte sparas förrän databasmigrationen är körd.');
+        setÖvrigt({});
+      } else {
+        const map: Record<string, string> = {};
+        for (const rad of öRes.data ?? []) map[rad.datum] = rad.text ?? '';
+        setÖvrigt(map);
+      }
+
       setLaddar(false);
     }
+
     ladda();
-  }, [veckaStart]);
+  }, [startIso, slutIso]);
 
-  const intro = `God morgon,
+  function uppdateraÖvrigt(datum: string, text: string) {
+    setÖvrigt((prev) => ({ ...prev, [datum]: text }));
+  }
 
-här är frånvaron för ${datumText}.
+  async function sparaÖvrigt() {
+    setSparar(true);
+    setFel('');
 
-Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.`;
+    const rader = dagar.map((dag) => ({
+      datum: iso(dag),
+      text: övrigt[iso(dag)] ?? '',
+    }));
 
-  async function kopieraHtmlMejl() {
-    const html = byggHtml({ datumText, dagar, frånvaro, pass });
+    const res = await supabase.from('utskick_ovrigt').upsert(rader, { onConflict: 'datum' });
+    setSparar(false);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+  }
+
+  async function skickaMail() {
+    const html = byggHtml({ datumText, dagar, frånvaro, pass, övrigt });
     const plain = [
-      intro,
+      `God morgon,\n\nhär är frånvaron för ${datumText}.`,
       '',
       ...dagar.map((dag) => {
         const nyckel = iso(dag);
         const frånvaroRader = frånvaroFörDag(frånvaro, nyckel).map((f) => frånvaroText(f, formatNamn)).join(', ') || '-';
-        const vikarieRader = passFörDag(pass, nyckel).map((p) => vikarieText(p, formatNamn)).join('; ') || '-';
-        return `${dag.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'numeric' })}\nFrånvaro: ${frånvaroRader}\nVikarie: ${vikarieRader}`;
+        const vikarieRader = passFörDag(pass, nyckel).sort(sorteraPass).map((p) => vikarieText(p, formatNamn)).join('; ') || '-';
+        const övrigtText = övrigt[nyckel]?.trim() || '-';
+        return `${dag.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'numeric' })}\nFrånvaro: ${frånvaroRader}\nVikarie: ${vikarieRader}\nÖvrigt: ${övrigtText}`;
       }),
-      '',
-      'Länkar:',
-      ...länkar.map((l) => `${l.label}: ${l.url}`),
-      '',
-      'Kontaktuppgifter:',
-      ...kontakter,
-    ].join('\n');
+    ].join('\n\n');
 
     const ClipboardItemCtor = (window as any).ClipboardItem;
     if (ClipboardItemCtor && navigator.clipboard.write) {
@@ -229,93 +279,83 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
     }
 
     setKopierat(true);
-    setTimeout(() => setKopierat(false), 2000);
+    setTimeout(() => setKopierat(false), 2500);
+    window.open(`mailto:?subject=${encodeURIComponent(ämne)}`, '_blank');
   }
-
 
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex h-full flex-col overflow-hidden p-3 sm:p-4">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-            Kommunikation
+            Beta
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>
             Utskick
           </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Veckosammanställning av frånvaro och vikariepass som Outlook-klart mejl.
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Excel-lik veckovy för frånvaro, bemanning och egen övrigt-text.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:flex sm:items-center">
           <input
             type="date"
             value={veckaStart}
-            onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(e.target.value))))}
-            className="rounded-lg border px-3 py-2 text-sm"
+            onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(`${e.target.value}T12:00:00`))))}
+            className="rounded-xl border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           />
-          <Button onClick={kopieraHtmlMejl}>{kopierat ? 'Kopierat' : 'Kopiera utskick'}</Button>
+          <Button variant="secondary" onClick={() => setVeckaStart(iso(startPåVecka(läggTillDagar(start, -7))))}>Föregående</Button>
+          <Button variant="secondary" onClick={() => setVeckaStart(iso(startPåVecka(new Date())))}>Idag</Button>
+          <Button variant="secondary" onClick={() => setVeckaStart(iso(startPåVecka(läggTillDagar(start, 7))))}>Nästa</Button>
+          <Button variant="secondary" onClick={sparaÖvrigt} loading={sparar}>Spara övrigt</Button>
+          <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-lg border p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--text)' }}>Mejltext</p>
-        <div className="whitespace-pre-line text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-          {intro}
+      {fel && (
+        <div className="mb-3 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#f97316', background: 'rgba(249,115,22,0.12)', color: '#fb923c' }}>
+          {fel}
         </div>
-      </div>
+      )}
 
-      <div className="overflow-x-auto rounded-lg border" style={{ background: '#30302f', borderColor: '#5a5a56' }}>
-        <table className="min-w-[960px] w-full border-collapse text-sm text-white">
+      <div className="flex-1 overflow-auto rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <table className="min-w-[1180px] w-full border-collapse text-sm" style={{ color: 'var(--text)' }}>
           <thead>
             <tr>
-              <th className="w-24 border px-3 py-3 text-left" style={{ borderColor: '#5a5a56' }}>Vecka</th>
+              <th className="w-24 border px-3 py-3 text-left" style={{ borderColor: 'var(--border)' }}>Vecka</th>
               {dagar.map((dag) => (
-                <th key={iso(dag)} className="border px-3 py-3 text-center" style={{ borderColor: '#5a5a56' }}>
+                <th key={iso(dag)} className="border px-3 py-3 text-center" style={{ borderColor: 'var(--border)' }}>
                   {dag.toLocaleDateString('sv-SE', { weekday: 'long' })}
                 </th>
               ))}
             </tr>
             <tr>
-              <th className="border px-3 py-3 text-center" style={{ borderColor: '#5a5a56' }}>{veckaNummer(start)}</th>
+              <th className="border px-3 py-3 text-center text-lg" style={{ borderColor: 'var(--border)' }}>{veckaNummer(start)}</th>
               {dagar.map((dag) => (
-                <th key={iso(dag)} className="border px-3 py-3 text-center" style={{ borderColor: '#5a5a56' }}>
+                <th key={iso(dag)} className="border px-3 py-3 text-center text-base" style={{ borderColor: 'var(--border)' }}>
                   {kortDatum(dag)}
                 </th>
               ))}
             </tr>
           </thead>
+
           <tbody>
             <tr>
-              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: '#5a5a56' }}>Frånvaro</th>
+              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: 'var(--border)' }}>Frånvaro</th>
               {dagar.map((dag) => {
                 const rader = frånvaroFörDag(frånvaro, iso(dag));
                 return (
-                  <td key={iso(dag)} className="h-36 border px-3 py-4 text-center align-middle" style={{ borderColor: '#5a5a56' }}>
-                    {rader.length === 0 ? <span className="text-white/35">-</span> : (
-                      <div className="space-y-1">{rader.map((f) => <div key={f.id}>{frånvaroText(f, formatNamn)}</div>)}</div>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-            <tr>
-              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: '#5a5a56' }}>Vikarie</th>
-              {dagar.map((dag) => {
-                const rader = passFörDag(pass, iso(dag));
-                return (
-                  <td key={iso(dag)} className="h-48 border px-3 py-4 text-center align-middle" style={{ borderColor: '#5a5a56' }}>
-                    {rader.length === 0 ? <span className="text-white/35">-</span> : (
-                      <div className="space-y-3">
-                        {rader.map((p) => (
-                          <div key={p.id}>
-                            <div className="font-semibold">{p.vikarie?.namn ? formatNamn(p.vikarie.namn) : (p.status === 'obokat' ? 'Ej tillsatt' : 'Vikarie saknas')}</div>
-                            <div>{p.grupp}{p.ämne ? ` · ${p.ämne}` : ''}</div>
-                            <div className="text-xs text-white/80">({tid(p.tid_från)}-{tid(p.tid_till)})</div>
-                          </div>
+                  <td key={iso(dag)} className="h-36 border px-3 py-4 text-center align-middle" style={{ borderColor: 'var(--border)' }}>
+                    {rader.length === 0 ? <span style={{ color: 'var(--text-subtle)' }}>-</span> : (
+                      <div className="space-y-1">
+                        {rader.map((f) => (
+                          <Link key={f.id} to="/admin/franvaro" className="block hover:underline">
+                            {frånvaroText(f, formatNamn)}
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -323,36 +363,47 @@ Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom g
                 );
               })}
             </tr>
+
             <tr>
-              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: '#5a5a56' }}>Övrigt</th>
-              {dagar.map((dag) => (
-                <td key={iso(dag)} className="h-28 border px-3 py-4 text-center align-middle text-white/45" style={{ borderColor: '#5a5a56' }}>
-                  -
-                </td>
-              ))}
+              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: 'var(--border)' }}>Vikarie</th>
+              {dagar.map((dag) => {
+                const rader = passFörDag(pass, iso(dag)).sort(sorteraPass);
+                return (
+                  <td key={iso(dag)} className="h-64 border px-3 py-4 text-center align-middle" style={{ borderColor: 'var(--border)' }}>
+                    {rader.length === 0 ? <span style={{ color: 'var(--text-subtle)' }}>-</span> : (
+                      <div className="space-y-3">
+                        {rader.map((p) => (
+                          <Link key={p.id} to={`/admin/vikariepass?pass=${p.id}`} className="block rounded-lg px-2 py-1 hover:bg-black/5 dark:hover:bg-white/5">
+                            <div className="font-semibold">{vikarieNamn(p, formatNamn)}{p.grupp ? ` - ${p.grupp}` : ''}</div>
+                            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>({tid(p.tid_från)}-{tid(p.tid_till)})</div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+
+            <tr>
+              <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: 'var(--border)' }}>Övrigt</th>
+              {dagar.map((dag) => {
+                const nyckel = iso(dag);
+                return (
+                  <td key={nyckel} className="h-44 border p-2 align-top" style={{ borderColor: 'var(--border)' }}>
+                    <textarea
+                      value={övrigt[nyckel] ?? ''}
+                      onChange={(e) => uppdateraÖvrigt(nyckel, e.target.value)}
+                      placeholder="Skriv egen text..."
+                      className="h-full min-h-36 w-full resize-none rounded-lg border px-3 py-2 text-sm"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                    />
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-          <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--text)' }}>Länkar</p>
-          <div className="space-y-1 text-sm">
-            {länkar.map((länk) => (
-              <a key={länk.label} href={länk.url} target="_blank" rel="noreferrer" className="block underline" style={{ color: 'var(--accent)' }}>
-                {länk.label}
-              </a>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-lg border p-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-          <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--text)' }}>Kontaktuppgifter</p>
-          <div className="space-y-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {kontakter.map((kontakt) => <p key={kontakt}>{kontakt}</p>)}
-          </div>
-        </div>
       </div>
     </div>
   );
