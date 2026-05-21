@@ -121,6 +121,30 @@ function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
   return `${formatNamn(f.personal?.namn)}${tidText}`;
 }
 
+function utskickGruppText(grupp?: string | null) {
+  const text = (grupp ?? '').trim();
+  if (!text) return '';
+
+  const kompakt = text.toLowerCase().replace(/\s+/g, '');
+
+  if (kompakt.includes('fsk') || kompakt.includes('förskole') || kompakt.includes('forskole')) return 'FSK';
+  if (kompakt.includes('prest')) return 'PREST';
+
+  const delar = text.split(/[,/]+/).map((del) => del.trim()).filter(Boolean);
+  const årskurser = delar
+    .map((del) => del.match(/(?:åk\.?|ak\.?)?\s*([1-6])\s*[a-zåäö]?/i)?.[1])
+    .filter(Boolean);
+
+  if (årskurser.length > 0 && årskurser.length === delar.length && new Set(årskurser).size === 1) {
+    return `Åk.${årskurser[0]}`;
+  }
+
+  const ensam = text.match(/^(?:åk\.?|ak\.?)?\s*([1-6])\s*[a-zåäö]?$/i)?.[1];
+  if (ensam) return `Åk.${ensam}`;
+
+  return text;
+}
+
 function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById: Map<string, Vikarie>) {
   const bokadVikarie = pass.vikarie_id ? vikarierById.get(pass.vikarie_id)?.namn ?? pass.vikarie?.namn : null;
   const riktadVikarie = pass.riktad_till_vikarie_id ? vikarierById.get(pass.riktad_till_vikarie_id)?.namn : null;
@@ -131,7 +155,7 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
       : 'Vikarie saknas';
 
   const grupp = pass.grupp ? ` - ${pass.grupp}` : '';
-  return `${namn}${grupp}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
+  return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }
 
 function htmlCell(text: string) {
