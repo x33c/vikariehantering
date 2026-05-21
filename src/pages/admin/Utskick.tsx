@@ -153,9 +153,17 @@ function htmlLänkRad(rad: string) {
     label = trimmed.replace(url, '').replace(/[-–|:]+$/g, '').trim() || url;
   }
 
-  if (!url) return `<div style="margin:0 0 3px 0;color:#111111;">${esc(trimmed)}</div>`;
+  if (!url) {
+    return `<div style="margin:0 0 5px 0;color:#111111;line-height:1.4;">${esc(trimmed)}</div>`;
+  }
 
-  return `<div style="margin:0 0 3px 0;"><a href="${esc(url)}" style="color:#256f82;text-decoration:underline;">${esc(label)}</a></div>`;
+  return `<div style="margin:0 0 5px 0;line-height:1.4;"><a href="${esc(url)}" style="color:#256f82;text-decoration:underline;">${esc(label)}</a></div>`;
+}
+
+function htmlKontaktRad(rad: string) {
+  const trimmed = rad.trim();
+  if (!trimmed) return '';
+  return `<div style="margin:0 0 4px 0;color:#111111;line-height:1.4;">${esc(trimmed)}</div>`;
 }
 
 function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt') {
@@ -164,13 +172,17 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
 
   const innehåll = typ === 'lankar'
     ? trimmed.split('\n').map(htmlLänkRad).join('')
-    : esc(trimmed).replaceAll('\n', '<br>');
+    : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-    <div style="margin-top:18px;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;color:#111111;">
-      <p style="margin:0 0 6px 0;font-weight:bold;">${esc(rubrik)}:</p>
-      ${innehåll}
-    </div>
+    <table width="930" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;background-color:#ffffff;color:#111111;margin-top:16px;">
+      <tr>
+        <td bgcolor="#ffffff" style="padding:0 0 2px 0;background-color:#ffffff;color:#111111;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;">
+          <div style="margin:0 0 6px 0;color:#111111;font-weight:bold;">${esc(rubrik)}:</div>
+          ${innehåll}
+        </td>
+      </tr>
+    </table>
   `;
 }
 
