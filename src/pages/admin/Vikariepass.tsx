@@ -980,8 +980,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     </div>
   );
 }
-function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
-  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void;
+function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: {
+  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void; förvaltDatum?: string;
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
@@ -993,6 +993,12 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad }: {
   const [schemaInfo, setSchemaInfo] = useState('');
   const [veckopassTider, setVeckopassTider] = useState<Record<string, { aktiv: boolean; tid_från: string; tid_till: string }>>({});
   const [fel, setFel] = useState('');
+
+  useEffect(() => {
+    if (!öppen || !förvaltDatum) return;
+    setForm(prev => ({ ...prev, datum: förvaltDatum }));
+    setVeckopassTider({});
+  }, [öppen, förvaltDatum]);
 
   const veckopassDatum = form.veckopass && form.datum ? veckodagarFörVecka(form.datum) : [];
 
@@ -1302,6 +1308,7 @@ export default function Bemanning() {
   const [laddar, setLaddar] = useState(true);
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
+  const [skapaDatum, setSkapaDatum] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
@@ -1479,6 +1486,11 @@ export default function Bemanning() {
     setSenastMarkeradIndex(index);
   }
 
+  function öppnaSkapaPass(datum?: string) {
+    setSkapaDatum(datum);
+    setSkapaModal(true);
+  }
+
   function växlaAllaSynliga() {
     if (allaSynligaMarkerade) {
       setValda(new Set());
@@ -1509,7 +1521,6 @@ export default function Bemanning() {
                 Ta bort ({valda.size})
               </Button>
             )}
-            <Button onClick={() => setSkapaModal(true)}>+ Skapa pass</Button>
           </div>
         </div>
 
@@ -1629,9 +1640,19 @@ export default function Bemanning() {
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
                       </div>
-                      {grupper.some(grupp => gruppInfo(grupp).atgard) && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: '#f97316', background: 'rgba(249, 115, 22, 0.12)' }}>Åtgärd</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {grupper.some(grupp => gruppInfo(grupp).atgard) && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ color: '#f97316', background: 'rgba(249, 115, 22, 0.12)' }}>Åtgärd</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => öppnaSkapaPass(datum)}
+                          className="rounded-full border px-2.5 py-1 text-[11px] font-semibold opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                          style={{ borderColor: 'var(--blue)', background: 'var(--blue)', color: '#fff' }}
+                        >
+                          + Pass
+                        </button>
+                      </div>
                     </div>
 
                     {grupper.length === 0 ? (
@@ -1718,7 +1739,7 @@ export default function Bemanning() {
         </Modal>
       )}
 
-      <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} />
+      <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} förvaltDatum={skapaDatum} />
 
       <Confirm
         öppen={raderaValda}
