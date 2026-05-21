@@ -18,7 +18,7 @@ import type {
   Vikarie, NyVikarie, UppdateraVikarie,
   VikarieTillgänglighet,
   Frånvaro, NyFrånvaro,
-  Vikariepass, NyttVikariepass, UppdateraVikariepass,
+  Vikariepass, NyttVikariepass, UppdateraVikariepass, VikariepassExkludering,
   PassStatus, HändelsTyp, Passmeddelande,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
@@ -175,6 +175,37 @@ export const passApi = {
       .select('*, personal(*, arbetslag(*)), frånvaro(*)')
       .eq('id', id).single();
   },
+  async listaExkluderingar(passId: string) {
+    return supabase
+      .from('vikariepass_exkluderingar')
+      .select('*, vikarie:vikarier(*)')
+      .eq('pass_id', passId)
+      .order('created_at', { ascending: true });
+  },
+  async listaMinaExkluderingar(vikarieId: string) {
+    return supabase
+      .from('vikariepass_exkluderingar')
+      .select('pass_id')
+      .eq('vikarie_id', vikarieId);
+  },
+  async sparaExkluderingar(passId: string, vikarieIds: string[]) {
+    const rader = [...new Set(vikarieIds)]
+      .filter(Boolean)
+      .map((vikarie_id) => ({ pass_id: passId, vikarie_id }));
+
+    const radera = await supabase
+      .from('vikariepass_exkluderingar')
+      .delete()
+      .eq('pass_id', passId);
+
+    if (radera.error) return radera;
+    if (rader.length === 0) return { data: [] as VikariepassExkludering[], error: null };
+
+    return supabase
+      .from('vikariepass_exkluderingar')
+      .insert(rader)
+      .select('*, vikarie:vikarier(*)');
+  },
   async skapa(data: NyttVikariepass) {
     const payload = {
       ...data,
@@ -224,6 +255,7 @@ export const passApi = {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
   },
   async radera(id: string) {
+    await supabase.from('vikariepass_exkluderingar').delete().eq('pass_id', id);
     await supabase.from('notiser').delete().eq('pass_id', id);
     await supabase.from('passhistorik').delete().eq('pass_id', id);
     return supabase.from('vikariepass').delete().eq('id', id);

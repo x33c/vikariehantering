@@ -213,6 +213,13 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     return tillfrågad ? `Förfrågan skickad till ${tillfrågad}` : 'Förfrågan skickad';
   }
 
+  if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'ändrade_exkluderingar') {
+    const namn = typeof metadata.exkluderade_vikarier === 'string' && metadata.exkluderade_vikarier.trim()
+      ? metadata.exkluderade_vikarier
+      : 'inga vikarier';
+    return `Synlighet ändrad: dolt för ${namn}`;
+  }
+
   if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'ändrade_grupp') {
     const tidigare = typeof metadata.tidigare_grupp === 'string' && metadata.tidigare_grupp.trim() ? metadata.tidigare_grupp : 'Ingen grupp';
     const ny = typeof metadata.grupp === 'string' && metadata.grupp.trim() ? metadata.grupp : 'Ingen grupp';
@@ -248,6 +255,9 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [visaHistorik, setVisaHistorik] = useState(false);
   const [visaAllaVikarier, setVisaAllaVikarier] = useState(false);
   const [vikarieSök, setVikarieSök] = useState('');
+  const [exkluderadeVikarieIds, setExkluderadeVikarieIds] = useState<Set<string>>(new Set());
+  const [exkluderingSök, setExkluderingSök] = useState('');
+  const [spararExkluderingar, setSpararExkluderingar] = useState(false);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -261,6 +271,12 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setHistorik((res.data ?? []) as Passhistorik[]);
   }
 
+  async function laddaExkluderingar() {
+    const res = await passApi.listaExkluderingar(pass.id);
+    const ids = (res.data ?? []).map((rad: { vikarie_id: string }) => rad.vikarie_id);
+    setExkluderadeVikarieIds(new Set(ids));
+  }
+
   useEffect(() => {
     async function laddaPassdata() {
       const [historikRes, meddelandeRes] = await Promise.all([
@@ -269,6 +285,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       ]);
       setHistorik((historikRes.data ?? []) as Passhistorik[]);
       setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+      await laddaExkluderingar();
       setLaddar(false);
     }
     laddaPassdata();
@@ -703,6 +720,46 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setVikarieSök('');
   }
 
+  function växlaExkluderadVikarie(id: string) {
+    setExkluderadeVikarieIds(prev => {
+      const nästa = new Set(prev);
+      if (nästa.has(id)) nästa.delete(id);
+      else nästa.add(id);
+      return nästa;
+    });
+  }
+
+  async function sparaExkluderingar() {
+    setSpararExkluderingar(true);
+    setFel('');
+
+    const ids = [...exkluderadeVikarieIds];
+    const res = await passApi.sparaExkluderingar(pass.id, ids);
+    setSpararExkluderingar(false);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    const namn = ids
+      .map(id => vikarier.find(v => v.id === id)?.namn)
+      .filter(Boolean)
+      .join(', ');
+
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', {
+      åtgärd: 'ändrade_exkluderingar',
+      exkluderade_vikarie_ids: ids,
+      exkluderade_vikarier: namn || null,
+    });
+    await laddaHistorikFörPass();
+  }
+
+  const exkluderadeVikarier = vikarier.filter(v => exkluderadeVikarieIds.has(v.id));
+  const exkluderingSökText = exkluderingSök.trim().toLowerCase();
+  const filtreradeExkluderingVikarier = exkluderingSökText
+    ? vikarier.filter(v => v.namn.toLowerCase().includes(exkluderingSökText))
+    : vikarier;
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
 
@@ -902,6 +959,53 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
             <Button size="sm" variant="secondary" onClick={avpublicera} loading={sparar} disabled={!pass.publicerad}>
               Dölj
             </Button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Dölj för vikarier</p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text)' }}>
+                {exkluderadeVikarier.length === 0 ? 'Alla vikarier kan se passet när det är ledigt.' : `Dolt för ${exkluderadeVikarier.length} vikarier`}
+              </p>
+              {exkluderadeVikarier.length > 0 && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {exkluderadeVikarier.map(v => v.namn).join(', ')}
+                </p>
+              )}
+            </div>
+            <Button size="sm" variant="secondary" onClick={sparaExkluderingar} loading={spararExkluderingar}>
+              Spara
+            </Button>
+          </div>
+          <input
+            value={exkluderingSök}
+            onChange={e => setExkluderingSök(e.target.value)}
+            placeholder="Sök vikarie att dölja för..."
+            className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+          />
+          <div className="grid max-h-44 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+            {filtreradeExkluderingVikarier.map(v => {
+              const vald = exkluderadeVikarieIds.has(v.id);
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => växlaExkluderadVikarie(v.id)}
+                  className="rounded-lg border px-3 py-2 text-left text-sm font-semibold transition"
+                  style={{
+                    borderColor: vald ? '#f97316' : 'var(--border)',
+                    background: vald ? 'rgba(249, 115, 22, 0.12)' : 'var(--bg-card)',
+                    color: vald ? '#fb923c' : 'var(--text)',
+                  }}
+                >
+                  {v.namn}
+                  {vald && <span className="ml-2 text-xs">Dold</span>}
+                </button>
+              );
+            })}
           </div>
         </section>
 

@@ -163,6 +163,14 @@ anteckning: string | null;
   frånvaro?: Frånvaro;
 }
 
+export interface VikariepassExkludering {
+  id: string;
+  pass_id: string;
+  vikarie_id: string;
+  created_at: string;
+  vikarie?: Vikarie;
+}
+
 export interface Passhistorik {
   id: string;
   pass_id: string;

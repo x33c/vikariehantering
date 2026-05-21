@@ -355,6 +355,13 @@ serve(async (req) => {
       .select('id, namn, epost, profil_id')
       .eq('aktiv', true);
 
+    const { data: exkluderingar } = await supabase
+      .from('vikariepass_exkluderingar')
+      .select('vikarie_id')
+      .eq('pass_id', pass_id);
+
+    const exkluderadeVikarieIds = new Set((exkluderingar ?? []).map((rad: { vikarie_id: string }) => rad.vikarie_id));
+
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -365,7 +372,7 @@ serve(async (req) => {
     let utanPush = 0;
     const title = 'Nytt ledigt pass';
 
-    for (const vikarie of vikarier ?? []) {
+    for (const vikarie of (vikarier ?? []).filter((v: { id: string }) => !exkluderadeVikarieIds.has(v.id))) {
       const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
       const pushCount = await raknaPushPrenumerationer(supabase, profilId);
 
@@ -389,7 +396,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, skickade_push: skickadePush, utan_push: utanPush }), {
+    return new Response(JSON.stringify({ ok: true, skickade_push: skickadePush, utan_push: utanPush, exkluderade: exkluderadeVikarieIds.size }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

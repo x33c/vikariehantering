@@ -212,9 +212,13 @@ export default function LedigaPass() {
       return;
     }
 
-    const pRes = await passApi.lista({ status: ['obokat', 'notifierat'] });
+    const [pRes, exkluderingRes] = await Promise.all([
+      passApi.lista({ status: ['obokat', 'notifierat'] }),
+      passApi.listaMinaExkluderingar(vikarie.id),
+    ]);
+    const doldaPassIds = new Set((exkluderingRes.data ?? []).map((rad: { pass_id: string }) => rad.pass_id));
     const alla = (pRes.data ?? []) as Vikariepass[];
-    const aktiva = alla.filter((p) => !ärPassPasserat(p));
+    const aktiva = alla.filter((p) => !ärPassPasserat(p) && !doldaPassIds.has(p.id));
 
     setFörfrågningar(
       aktiva.filter((p) => p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
