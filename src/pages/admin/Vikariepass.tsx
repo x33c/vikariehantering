@@ -1647,7 +1647,7 @@ export default function Bemanning() {
                         <button
                           type="button"
                           onClick={() => öppnaSkapaPass(datum)}
-                          className="rounded-full border px-2.5 py-1 text-[11px] font-semibold opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                          className="rounded-full border px-2.5 py-1 text-[11px] font-semibold opacity-70 transition hover:opacity-100 sm:opacity-55 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                           style={{ borderColor: 'var(--blue)', background: 'var(--blue)', color: '#fff' }}
                         >
                           + Pass
