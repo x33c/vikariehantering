@@ -868,6 +868,111 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
           
         </section>
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3">
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemanning</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              {valdVikarie ? valdVikarie.namn : 'Välj vikarie'}
+            </p>
+          </div>
+
+          {rekommenderadeSynliga.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Rekommenderade vikarier</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {rekommenderadeSynliga.map(({ vikarie, status, detalj }) => {
+                  const vald = vikarie.id === valdVikarieId;
+                  const ärBokad = status === 'bokad';
+
+                  return (
+                    <button
+                      key={vikarie.id}
+                      type="button"
+                      onClick={() => väljVikarie(vikarie.id)}
+                      disabled={ärBokad}
+                      className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                      style={{
+                        borderColor: vald ? 'var(--blue)' : 'var(--border)',
+                        background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
+                      }}
+                    >
+                      <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                      <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-3 rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <button
+              type="button"
+              onClick={() => setVisaAllaVikarier(v => !v)}
+              className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
+              style={{ color: 'var(--text)' }}
+            >
+              <span>
+                <span className="block text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Alla vikarier</span>
+                <span className="block text-sm font-semibold">{valdVikarie?.namn ?? 'Ingen vald'}</span>
+              </span>
+              <span className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>
+                {visaAllaVikarier ? 'Dölj' : 'Visa'}
+              </span>
+            </button>
+
+            {visaAllaVikarier && (
+              <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}>
+                <input
+                  value={vikarieSök}
+                  onChange={e => setVikarieSök(e.target.value)}
+                  placeholder="Sök vikarie..."
+                  className="mb-2 w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                />
+                <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
+                  {filtreradeVikarier.map(({ vikarie, status, detalj }) => {
+                    const vald = vikarie.id === valdVikarieId;
+                    const ärBokad = status === 'bokad';
+
+                    return (
+                      <button
+                        key={vikarie.id}
+                        type="button"
+                        onClick={() => väljVikarie(vikarie.id)}
+                        disabled={ärBokad}
+                        className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                        style={{
+                          borderColor: vald ? 'var(--blue)' : 'var(--border)',
+                          background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
+                        }}
+                      >
+                        <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                        <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
+              Skicka förfrågan
+            </Button>
+            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
+              Boka direkt
+            </Button>
+          </div>
+
+          {valdVikarieId && bokadeVikarier[valdVikarieId] && (
+            <p className="mt-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: '#ef4444', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.10)' }}>
+              Den valda vikarien är redan bokad {bokadeVikarier[valdVikarieId].tid_från.slice(0, 5)}-{bokadeVikarier[valdVikarieId].tid_till.slice(0, 5)}.
+            </p>
+          )}
+        </section>
+
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Synlighet</p>
           <div className="grid gap-2 sm:grid-cols-2">
