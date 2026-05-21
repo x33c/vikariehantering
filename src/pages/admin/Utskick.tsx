@@ -154,16 +154,16 @@ function htmlLänkRad(rad: string) {
   }
 
   if (!url) {
-    return `<div style="margin:0 0 5px 0;color:#111111;line-height:1.4;">${esc(trimmed)}</div>`;
+    return `<div style="margin:0 0 2px 0;color:#ffffff;line-height:1.25;">${esc(trimmed)}</div>`;
   }
 
-  return `<div style="margin:0 0 5px 0;line-height:1.4;"><a href="${esc(url)}" style="color:#256f82;text-decoration:underline;">${esc(label)}</a></div>`;
+  return `<div style="margin:0 0 2px 0;line-height:1.25;"><a href="${esc(url)}" style="color:#7fb4c7;text-decoration:underline;">${esc(label)}</a></div>`;
 }
 
 function htmlKontaktRad(rad: string) {
   const trimmed = rad.trim();
   if (!trimmed) return '';
-  return `<div style="margin:0 0 4px 0;color:#111111;line-height:1.4;">${esc(trimmed)}</div>`;
+  return `<div style="margin:0 0 2px 0;color:#ffffff;line-height:1.25;">${esc(trimmed)}</div>`;
 }
 
 function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt') {
@@ -175,10 +175,10 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
     : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-    <table width="930" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;background-color:#ffffff;color:#111111;margin-top:16px;">
+    <table width="930" cellpadding="0" cellspacing="0" bgcolor="#262626" style="border-collapse:collapse;background-color:#262626;color:#ffffff;margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;">
       <tr>
-        <td bgcolor="#ffffff" style="padding:0 0 2px 0;background-color:#ffffff;color:#111111;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;">
-          <div style="margin:0 0 6px 0;color:#111111;font-weight:bold;">${esc(rubrik)}:</div>
+        <td bgcolor="#262626" style="padding:0;background-color:#262626;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+          <div style="margin:0 0 5px 0;color:#ffffff;font-weight:700;">${esc(rubrik)}:</div>
           ${innehåll}
         </td>
       </tr>
@@ -195,9 +195,10 @@ function byggHtml({
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
 }) {
-  const cell = 'border:1px solid #c9c9c9;background-color:#f2f2f2;color:#111111;padding:10px;text-align:center;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;line-height:1.35;white-space:normal;';
-  const head = 'border:1px solid #c9c9c9;background-color:#f7f7f7;color:#000000;padding:8px;text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
-  const label = 'border:1px solid #c9c9c9;background-color:#eeeeee;color:#000000;padding:10px;text-align:left;vertical-align:middle;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;';
+  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
+  const cell = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
+  const head = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:8px;text-align:center;font-weight:700;${font}`;
+  const label = `border:1px solid #666666;background-color:#333333;color:#ffffff;padding:10px;text-align:left;vertical-align:middle;font-weight:700;${font}`;
 
   const rows = [
     `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:170px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
@@ -208,10 +209,8 @@ function byggHtml({
   ].join('');
 
   return `
-<div style="font-family:Arial,sans-serif;font-size:13px;color:#111111;background-color:#ffffff;">
-  <p style="margin:0 0 10px 0;color:#111111;">God morgon,<br>här är frånvaron.</p>
-  <p style="margin:0 0 16px 0;color:#111111;">Vi påminner om rutinen för frånvaroanmälan och återkoppling inför kommande tjänstgöring.</p>
-  <table width="930" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;background-color:#f2f2f2;color:#111111;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;color:#ffffff;background-color:#262626;">
+  <table width="930" cellpadding="0" cellspacing="0" bgcolor="#333333" style="border-collapse:collapse;table-layout:fixed;background-color:#333333;color:#ffffff;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
   ${htmlExtraBlock('Länkar', extraText('lankar'), 'lankar')}
