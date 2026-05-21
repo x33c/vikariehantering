@@ -374,7 +374,8 @@ export default function Utskick() {
     setKopierat(true);
     setTimeout(() => setKopierat(false), 2500);
 
-    const ämne = `Frånvarolista vecka ${veckaNummer(start)}`;
+    const idagText = new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const ämne = `Frånvarolista - ${idagText}`;
     window.location.href = `mailto:?subject=${encodeURIComponent(ämne)}`;
   }
 
