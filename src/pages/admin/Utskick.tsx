@@ -139,6 +139,22 @@ function htmlCell(text: string) {
   return trimmed ? esc(trimmed).replaceAll('\n', '<br>') : '&nbsp;';
 }
 
+function htmlVikarieCell(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return '&nbsp;';
+
+  return trimmed
+    .split('\n')
+    .map((rad) => {
+      const clean = rad.trim();
+      if (!clean) return '<br>';
+      const ärTid = /^\(?\d{1,2}[:.]\d{2}/.test(clean);
+      const innehåll = esc(clean);
+      return ärTid ? innehåll : `<strong>${innehåll}</strong>`;
+    })
+    .join('<br>');
+}
+
 function htmlLänkRad(rad: string) {
   const trimmed = rad.trim();
   if (!trimmed) return '';
@@ -199,7 +215,7 @@ function byggHtml({
     `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
     `<tr><th style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
     `<tr><th style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
-    `<tr><th style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td style="${cell};height:230px;">${htmlCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
+    `<tr><th style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td style="${cell};height:230px;">${htmlVikarieCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
     `<tr><th style="${label};height:170px;">Övrigt</th>${dagar.map((dag) => `<td style="${cell};height:170px;">${htmlCell(cellText(iso(dag), 'ovrigt'))}</td>`).join('')}</tr>`,
   ].join('');
 
