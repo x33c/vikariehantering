@@ -208,7 +208,9 @@ function byggHtml({
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
+  ${extraText('lankar').trim() ? '<br><br>' : ''}
   ${htmlExtraBlock('Länkar', extraText('lankar'), 'lankar')}
+  ${extraText('kontakt').trim() ? '<br>' : ''}
   ${htmlExtraBlock('Kontaktuppgifter', extraText('kontakt'), 'kontakt')}
 </div>`.trim();
 }
@@ -337,7 +339,8 @@ export default function Utskick() {
   }
 
   async function skickaMail() {
-    await sparaCeller();
+    const sparat = await sparaCeller();
+    if (!sparat) return;
 
     const html = byggHtml({ dagar, cellText: textFörCell, extraText: textFörExtra });
     const plain = [
@@ -372,7 +375,7 @@ export default function Utskick() {
     setTimeout(() => setKopierat(false), 2500);
 
     const ämne = `Frånvarolista vecka ${veckaNummer(start)}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(ämne)}&body=${encodeURIComponent(plain)}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(ämne)}`;
   }
 
   if (laddar) return <LaddaSida />;
@@ -493,7 +496,7 @@ export default function Utskick() {
       </details>
 
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Skicka mail kopierar den formaterade tabellen. Klistra in i mejlet med Ctrl+V för tabellformat.
+        Skicka mail kopierar tabellen och öppnar ett tomt mejl med ämnesrad. Klistra in direkt med Ctrl+V.
       </p>
     </div>
   );
