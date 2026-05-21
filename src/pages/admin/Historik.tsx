@@ -94,6 +94,12 @@ function MetadataDetalj({ händelse, metadata, vikariepass, utfördAvNamn, vikar
   const notisDetalj = notisDetaljText(metadata);
   if (notisDetalj) delar.push(notisDetalj);
 
+  if (metadata?.['åtgärd'] === 'ändrade_grupp') {
+    const tidigare = typeof metadata.tidigare_grupp === 'string' && metadata.tidigare_grupp.trim() ? metadata.tidigare_grupp : 'Ingen grupp';
+    const ny = typeof metadata.grupp === 'string' && metadata.grupp.trim() ? metadata.grupp : 'Ingen grupp';
+    delar.push(`Grupp: ${tidigare} -> ${ny}`);
+  }
+
   if (metadata?.svar === 'ja') delar.push('Svar: ja');
   if (metadata?.svar === 'nej') delar.push('Svar: nej');
   if (metadata?.ny_status) delar.push(`→ ${metadata.ny_status}`);

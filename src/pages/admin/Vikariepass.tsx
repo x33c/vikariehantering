@@ -213,6 +213,14 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     return tillfrågad ? `Förfrågan skickad till ${tillfrågad}` : 'Förfrågan skickad';
   }
 
+  if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'ändrade_grupp') {
+    const tidigare = typeof metadata.tidigare_grupp === 'string' && metadata.tidigare_grupp.trim() ? metadata.tidigare_grupp : 'Ingen grupp';
+    const ny = typeof metadata.grupp === 'string' && metadata.grupp.trim() ? metadata.grupp : 'Ingen grupp';
+    const notisText = notisHistorikText(metadata);
+    const text = `Grupp ändrad: ${tidigare} -> ${ny}`;
+    return notisText ? `${text} · ${notisText}` : text;
+  }
+
   const bastext = HÄNDELSE_LABELS[h.händelse] ?? h.händelse.replace(/_/g, ' ');
   const notisText = notisHistorikText(metadata);
   return notisText ? `${bastext} · ${notisText}` : bastext;
@@ -228,6 +236,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [valdVikarieId, setValdVikarieId] = useState(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
   const [tidFrån, setTidFrån] = useState(pass.tid_från.slice(0, 5));
   const [tidTill, setTidTill] = useState(pass.tid_till.slice(0, 5));
+  const [grupp, setGrupp] = useState(pass.grupp ?? '');
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
@@ -243,8 +252,9 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
     setTidTill(pass.tid_till.slice(0, 5));
+    setGrupp(pass.grupp ?? '');
     setValdVikarieId(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
-  }, [pass.id, pass.tid_från, pass.tid_till, pass.vikarie_id, pass.riktad_till_vikarie_id]);
+  }, [pass.id, pass.tid_från, pass.tid_till, pass.grupp, pass.vikarie_id, pass.riktad_till_vikarie_id]);
 
   async function laddaHistorikFörPass() {
     const res = await historikApi.listaFörPass(pass.id);
@@ -292,6 +302,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       'tid_till' in data ||
       'status' in data ||
       'publicerad' in data ||
+      'grupp' in data ||
       'vikarie_id' in data;
 
     if (!målVikarieId || !blirBokat || !ändrarRelevant) return {};
@@ -299,6 +310,10 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     const vikarieNamn = vikarier.find(v => v.id === målVikarieId)?.namn ?? 'vikarien';
     const ärNyBokning = !varBokat || målVikarieId !== pass.vikarie_id;
     const ändringar: string[] = [];
+
+    if (!ärNyBokning && 'grupp' in data && (data.grupp ?? '') !== (pass.grupp ?? '')) {
+      ändringar.push(`Grupp ändrad: ${pass.grupp || 'Ingen grupp'} -> ${data.grupp || 'Ingen grupp'}`);
+    }
 
     if (!ärNyBokning && typeof data.datum === 'string' && data.datum !== pass.datum) {
       ändringar.push(`Datum ändrat: ${pass.datum} -> ${data.datum}`);
@@ -388,6 +403,23 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       { åtgärd: 'ändrade_tider', tid_från: tidFrån, tid_till: tidTill }
     );
   }
+
+  async function sparaGrupp() {
+    const nyGrupp = grupp.trim() || null;
+    const gammalGrupp = pass.grupp ?? null;
+
+    if ((nyGrupp ?? '') === (gammalGrupp ?? '')) return;
+
+    await uppdateraPass(
+      { grupp: nyGrupp } as Partial<Bemanning>,
+      {
+        åtgärd: 'ändrade_grupp',
+        tidigare_grupp: gammalGrupp,
+        grupp: nyGrupp,
+      }
+    );
+  }
+
 
   async function publiceraLedigt() {
     const skaNotifiera = !pass.publicerad;
@@ -692,7 +724,23 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
           </div>
         </section>
 
-        <section>
+                <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Grupp</p>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              value={grupp}
+              onChange={e => setGrupp(e.target.value)}
+              placeholder="Exempel: Åk.5, FSK eller PREST"
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <Button size="sm" onClick={sparaGrupp} loading={sparar} disabled={(grupp.trim() || '') === (pass.grupp ?? '')}>
+              Spara
+            </Button>
+          </div>
+        </section>
+
+<section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tid</p>
           <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
             <input
