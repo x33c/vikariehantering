@@ -111,19 +111,25 @@ function arbetslagSortIndex(value?: string | null) {
 
   if (!text) return 99;
   if (text.includes('fsk') || text.includes('förskole') || text.includes('forskole')) return 0;
-  if (text.includes('prest') || text.includes('präst')) return 7;
+  if (text.includes('prest') || text.includes('PREST')) return 7;
 
   const match = text.match(/(?:åk\.?|ak\.?)?([1-6])/) ?? text.match(/^([1-6])/);
   return match ? Number(match[1]) : 99;
 }
 
 function passgruppSortIndex(grupp: Passgrupp) {
-  const kandidater = [
-    grupp.arbetslagNamn,
-    ...grupp.pass.flatMap((p) => [p.grupp, p.personal?.arbetslag?.namn]),
-  ];
+  const passGruppIndex = grupp.pass
+    .map((p) => arbetslagSortIndex(p.grupp))
+    .reduce((bäst, index) => Math.min(bäst, index), 99);
 
-  return kandidater.reduce((bäst, värde) => Math.min(bäst, arbetslagSortIndex(värde)), 99);
+  if (passGruppIndex !== 99) return passGruppIndex;
+
+  const fallbackIndex = [
+    grupp.arbetslagNamn,
+    ...grupp.pass.map((p) => p.personal?.arbetslag?.namn),
+  ].reduce((bäst, värde) => Math.min(bäst, arbetslagSortIndex(värde)), 99);
+
+  return fallbackIndex;
 }
 
 function sorteraPassgrupper(a: Passgrupp, b: Passgrupp, fallandeDatum = false) {
