@@ -111,6 +111,7 @@ function arbetslagSortIndex(value?: string | null) {
 
   if (!text) return 99;
   if (text.includes('fsk') || text.includes('förskole') || text.includes('forskole')) return 0;
+  if (text.includes('prest') || text.includes('präst')) return 7;
 
   const match = text.match(/(?:åk\.?|ak\.?)?([1-6])/) ?? text.match(/^([1-6])/);
   return match ? Number(match[1]) : 99;
