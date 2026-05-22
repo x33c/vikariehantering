@@ -428,7 +428,7 @@ export default function Utskick() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden p-3 sm:p-4">
+    <div className="flex min-h-full flex-col overflow-hidden p-2 pb-24 sm:p-4">
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Beta</p>
@@ -438,12 +438,12 @@ export default function Utskick() {
           </p>
         </div>
 
-        <div className="grid gap-2 sm:flex sm:items-center">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <input
             type="date"
             value={veckaStart}
             onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(`${e.target.value}T12:00:00`))))}
-            className="rounded-xl border px-3 py-2 text-sm"
+            className="col-span-2 rounded-xl border px-3 py-2 text-sm sm:col-span-1"
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           />
           <Button variant="secondary" onClick={() => bytVecka(-1)}>Föregående</Button>
@@ -460,7 +460,7 @@ export default function Utskick() {
         </div>
       )}
 
-      <div className="flex-1 overflow-auto rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <div className="hidden flex-1 overflow-auto rounded-xl border md:block" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <table className="min-w-[1180px] w-full border-collapse text-sm" style={{ color: 'var(--text)' }}>
           <thead>
             <tr>
@@ -509,7 +509,53 @@ export default function Utskick() {
         </table>
       </div>
 
-      <details className="mt-3 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <div className="flex flex-1 snap-x gap-3 overflow-x-auto pb-3 md:hidden">
+        {dagar.map((dag) => {
+          const datum = iso(dag);
+
+          return (
+            <section
+              key={datum}
+              className="w-[86vw] shrink-0 snap-start rounded-xl border p-3"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+            >
+              <div className="mb-3">
+                <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>
+                  {dag.toLocaleDateString('sv-SE', { weekday: 'long' })}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {kortDatum(dag)} · vecka {veckaNummer(start)}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {cellTyper.map((typ) => {
+                  const label = typ === 'franvaro' ? 'Frånvaro' : typ === 'vikarie' ? 'Vikarie' : 'Övrigt';
+                  const minH = typ === 'vikarie' ? 'min-h-56' : typ === 'ovrigt' ? 'min-h-36' : 'min-h-32';
+
+                  return (
+                    <label key={typ} className="block">
+                      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                        {label}
+                      </span>
+                      <textarea
+                        value={textFörCell(datum, typ)}
+                        onChange={(e) => uppdateraCell(datum, typ, e.target.value)}
+                        placeholder="Skriv egen text..."
+                        className={`${minH} w-full resize-none rounded-lg border px-3 py-2 text-center text-sm leading-6`}
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+
+      <details className="mt-3 rounded-xl border p-3 md:mt-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <summary className="cursor-pointer text-sm font-semibold" style={{ color: 'var(--text)' }}>
           Fasta uppgifter i utskick
         </summary>

@@ -1653,7 +1653,7 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full">
-      <div className={`flex flex-col flex-1 p-2 sm:p-3 lg:p-4 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+      <div className={`flex flex-col flex-1 p-2 pb-24 sm:p-3 lg:p-4 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
@@ -1783,9 +1783,9 @@ export default function Bemanning() {
             </div>
 
             <div className="pb-2">
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+              <div className="-mx-2 flex snap-x gap-2 overflow-x-auto px-2 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-5">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[180px] rounded-xl border p-2 transition xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
+                  <section key={datum} className="min-h-[70dvh] w-[86vw] shrink-0 snap-start rounded-xl border p-2 transition md:min-h-[240px] md:w-auto md:shrink xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
@@ -1826,7 +1826,7 @@ export default function Bemanning() {
                           const statusColor = info.passerad ? 'var(--text-muted)' : vikariNamn ? '#22c55e' : info.atgard ? '#f97316' : info.publicerad ? 'var(--blue)' : 'var(--text-muted)';
 
                           return (
-                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="min-h-[112px] rounded-xl border p-3" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
+                            <div key={`${grupp.personal_id}_${grupp.datum}`} className="min-h-[116px] rounded-xl border p-3" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
                               <div className="flex items-start gap-3">
                                 <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px]" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
                                 <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">

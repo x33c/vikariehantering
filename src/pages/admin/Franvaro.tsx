@@ -953,7 +953,7 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-4 py-5 sm:px-6 lg:px-8">
+    <div className="px-2 pb-24 pt-3 sm:px-6 sm:py-5 lg:px-8">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
@@ -966,7 +966,7 @@ export default function Franvaro() {
             Se veckan, sök personal och skapa pass direkt från frånvaron.
           </p>
         </div>
-        <Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
+        <div className="sm:self-auto"><Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button></div>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
@@ -1014,7 +1014,7 @@ export default function Franvaro() {
       </div>
 
 
-      <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <section className="mb-6 rounded-2xl border p-2 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Kalender</p>
@@ -1030,7 +1030,7 @@ export default function Franvaro() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="-mx-2 flex snap-x gap-3 overflow-x-auto px-2 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-5">
           {kalenderDagar.map((dag) => {
             const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
             const ärIdag = dag === datumIdag();
@@ -1038,7 +1038,7 @@ export default function Franvaro() {
             return (
               <div
                 key={dag}
-                className="rounded-2xl border p-3"
+                className="min-h-[70dvh] w-[86vw] shrink-0 snap-start rounded-2xl border p-3 md:min-h-[240px] md:w-auto md:shrink"
                 style={{
                   background: 'var(--bg)',
                   borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
