@@ -39,7 +39,6 @@ export default function Schema() {
       </div>
 
       <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-        Om schemat inte visas här blockerar schematjänsten inbäddning. Använd då knappen ovan.
       </p>
     </div>
   );
