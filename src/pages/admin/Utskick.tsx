@@ -203,7 +203,7 @@ function htmlLänkRad(rad: string) {
     return `<div style="margin:0 0 2px 0;line-height:1.25;">${esc(trimmed)}</div>`;
   }
 
-  return `<div style="margin:0 0 2px 0;line-height:1.25;"><a href="${esc(url)}" style="color:#8fc7da;text-decoration:underline;font-weight:700;">${esc(label)}</a></div>`;
+  return `<div style="margin:0 0 2px 0;line-height:1.25;"><a href="${esc(url)}" style="color:#8fc7da;text-decoration:underline;">${esc(label)}</a></div>`;
 }
 
 function htmlKontaktRad(rad: string) {
