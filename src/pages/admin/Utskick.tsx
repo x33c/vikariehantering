@@ -271,6 +271,7 @@ export default function Utskick() {
   const [sparar, setSparar] = useState(false);
   const [kopierat, setKopierat] = useState(false);
   const [fel, setFel] = useState('');
+  const [rutaStorlek, setRutaStorlek] = useState<'normal' | 'stor' | 'max'>('normal');
 
   const start = useMemo(() => startPåVecka(new Date(`${veckaStart}T12:00:00`)), [veckaStart]);
   const dagar = useMemo(() => [0, 1, 2, 3, 4].map((i) => läggTillDagar(start, i)), [start]);
@@ -278,6 +279,13 @@ export default function Utskick() {
   const slutIso = iso(dagar[4]);
   const formatNamn = useMemo(() => skapaNamnFormatter(frånvaro, pass, vikarier), [frånvaro, pass, vikarier]);
   const vikarierById = useMemo(() => new Map(vikarier.map((v) => [v.id, v])), [vikarier]);
+
+  const rutaStorlekKlasser = {
+    normal: { franvaro: 'min-h-32', vikarie: 'min-h-64', ovrigt: 'min-h-36' },
+    stor: { franvaro: 'min-h-48', vikarie: 'min-h-96', ovrigt: 'min-h-56' },
+    max: { franvaro: 'min-h-64', vikarie: 'min-h-[34rem]', ovrigt: 'min-h-72' },
+  } as const;
+  const aktuellRutaStorlek = rutaStorlekKlasser[rutaStorlek];
 
   useEffect(() => {
     async function ladda() {
@@ -439,6 +447,27 @@ export default function Utskick() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <div className="col-span-2 flex items-center gap-1 rounded-xl border p-1 sm:col-span-1" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            {(['normal', 'stor', 'max'] as const).map((storlek) => {
+              const aktiv = rutaStorlek === storlek;
+              const label = storlek === 'normal' ? 'Normal' : storlek === 'stor' ? 'Stor' : 'Max';
+
+              return (
+                <button
+                  key={storlek}
+                  type="button"
+                  onClick={() => setRutaStorlek(storlek)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                  style={{
+                    background: aktiv ? 'var(--accent)' : 'transparent',
+                    color: aktiv ? '#fff' : 'var(--text-muted)',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <input
             type="date"
             value={veckaStart}
@@ -483,9 +512,9 @@ export default function Utskick() {
 
           <tbody>
             {[
-              { typ: 'franvaro' as const, label: 'Frånvaro', minH: 'min-h-32' },
-              { typ: 'vikarie' as const, label: 'Vikarie', minH: 'min-h-64' },
-              { typ: 'ovrigt' as const, label: 'Övrigt', minH: 'min-h-36' },
+              { typ: 'franvaro' as const, label: 'Frånvaro', minH: aktuellRutaStorlek.franvaro },
+              { typ: 'vikarie' as const, label: 'Vikarie', minH: aktuellRutaStorlek.vikarie },
+              { typ: 'ovrigt' as const, label: 'Övrigt', minH: aktuellRutaStorlek.ovrigt },
             ].map((rad) => (
               <tr key={rad.typ}>
                 <th className="border px-3 py-4 text-left align-middle" style={{ borderColor: 'var(--border)' }}>{rad.label}</th>
@@ -497,7 +526,7 @@ export default function Utskick() {
                         value={textFörCell(datum, rad.typ)}
                         onChange={(e) => uppdateraCell(datum, rad.typ, e.target.value)}
                         placeholder="Skriv egen text..."
-                        className={`${rad.minH} w-full resize-none rounded-lg border px-3 py-2 text-center text-sm leading-6`}
+                        className={`${rad.minH} w-full resize-y rounded-lg border px-3 py-2 text-center text-sm leading-6`}
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </td>
@@ -531,7 +560,7 @@ export default function Utskick() {
               <div className="space-y-3">
                 {cellTyper.map((typ) => {
                   const label = typ === 'franvaro' ? 'Frånvaro' : typ === 'vikarie' ? 'Vikarie' : 'Övrigt';
-                  const minH = typ === 'vikarie' ? 'min-h-56' : typ === 'ovrigt' ? 'min-h-36' : 'min-h-32';
+                  const minH = aktuellRutaStorlek[typ];
 
                   return (
                     <label key={typ} className="block">
@@ -542,7 +571,7 @@ export default function Utskick() {
                         value={textFörCell(datum, typ)}
                         onChange={(e) => uppdateraCell(datum, typ, e.target.value)}
                         placeholder="Skriv egen text..."
-                        className={`${minH} w-full resize-none rounded-lg border px-3 py-2 text-center text-sm leading-6`}
+                        className={`${minH} w-full resize-y rounded-lg border px-3 py-2 text-center text-sm leading-6`}
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                       />
                     </label>
