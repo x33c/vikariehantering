@@ -116,9 +116,14 @@ function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarie
   };
 }
 
-function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
+function baraFörnamn(namn?: string | null, fallback = 'Okänd') {
+  const text = namn?.trim();
+  return text ? text.split(/\s+/)[0] : fallback;
+}
+
+function frånvaroText(f: Frånvaro, _formatNamn: NamnFormatter) {
   const tidText = f.hel_dag ? '' : ` (${tid(f.tid_från)}-${tid(f.tid_till)})`;
-  return `${formatNamn(f.personal?.namn)}${tidText}`;
+  return `${baraFörnamn(f.personal?.namn)}${tidText}`;
 }
 
 function utskickGruppText(grupp?: string | null) {
@@ -154,7 +159,8 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
       ? `Tillfrågad: ${formatNamn(riktadVikarie)}`
       : 'Vikarie saknas';
 
-  const grupp = pass.grupp ? ` - ${pass.grupp}` : '';
+  const grupp = utskickGruppText(pass.grupp);
+  const gruppText = grupp ? ` - ${grupp}` : '';
   return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }
 
