@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notisApi } from '../lib/api';
 import type { Notis } from '../types';
@@ -15,6 +15,7 @@ type AdminNotis = Notis & {
 };
 
 const STORAGE_KEY = 'admin_notiser_lasta_v1';
+const DISMISSED_KEY = 'admin_notiser_dolda_v1';
 
 function hamtaLasta() {
   try {
@@ -26,6 +27,18 @@ function hamtaLasta() {
 
 function sparaLasta(ids: Set<string>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+}
+
+function hamtaDolda() {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]'));
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function sparaDolda(ids: Set<string>) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
 }
 
 function datumText(notis: AdminNotis) {
@@ -55,8 +68,10 @@ function notisTone(notis: AdminNotis) {
 
 export default function AdminNotiser({ placement = 'down' }: { placement?: 'down' | 'up' }) {
   const navigate = useNavigate();
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [notiser, setNotiser] = useState<AdminNotis[]>([]);
   const [lasta, setLasta] = useState<Set<string>>(() => hamtaLasta());
+  const [dolda, setDolda] = useState<Set<string>>(() => hamtaDolda());
   const [oppen, setOppen] = useState(false);
 
   const ladda = useCallback(async () => {
@@ -70,8 +85,28 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
 
   useRealtimeRefresh(true, ladda, ['notiser', 'passmeddelanden'], 6000);
 
-  const olasta = useMemo(() => notiser.filter(n => !lasta.has(n.id)), [notiser, lasta]);
-  const synliga = notiser.slice(0, 10);
+  useEffect(() => {
+    if (!oppen) return;
+
+    function stangVidKlickUtanfor(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node | null;
+      if (target && rootRef.current && !rootRef.current.contains(target)) {
+        setOppen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', stangVidKlickUtanfor);
+    document.addEventListener('touchstart', stangVidKlickUtanfor);
+
+    return () => {
+      document.removeEventListener('mousedown', stangVidKlickUtanfor);
+      document.removeEventListener('touchstart', stangVidKlickUtanfor);
+    };
+  }, [oppen]);
+
+  const synligaNotiser = useMemo(() => notiser.filter(n => !dolda.has(n.id)), [notiser, dolda]);
+  const olasta = useMemo(() => synligaNotiser.filter(n => !lasta.has(n.id)), [synligaNotiser, lasta]);
+  const synliga = synligaNotiser.slice(0, 10);
 
   function markeraSomLast(id: string) {
     setLasta(prev => {
@@ -83,9 +118,16 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
   }
 
   function markeraAlla() {
-    const ny = new Set([...lasta, ...notiser.map(n => n.id)]);
+    const ny = new Set([...lasta, ...synligaNotiser.map(n => n.id)]);
     setLasta(ny);
     sparaLasta(ny);
+  }
+
+  function rensaNotiser() {
+    const ny = new Set([...dolda, ...synligaNotiser.map(n => n.id)]);
+    setDolda(ny);
+    sparaDolda(ny);
+    setOppen(false);
   }
 
   function oppnaNotis(notis: AdminNotis) {
@@ -101,7 +143,7 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
   }
 
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOppen(v => !v)}
@@ -149,10 +191,15 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {notiser.length > 0 && (
-                <button type="button" onClick={markeraAlla} className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>
-                  Markera lästa
-                </button>
+              {synligaNotiser.length > 0 && (
+                <>
+                  <button type="button" onClick={markeraAlla} className="text-xs font-semibold" style={{ color: 'var(--blue)' }}>
+                    Markera lästa
+                  </button>
+                  <button type="button" onClick={rensaNotiser} className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                    Rensa
+                  </button>
+                </>
               )}
               <button type="button" onClick={() => setOppen(false)} className="text-lg leading-none sm:hidden" style={{ color: 'var(--text-muted)' }}>
                 ×
