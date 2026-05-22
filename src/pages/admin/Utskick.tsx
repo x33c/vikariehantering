@@ -221,7 +221,7 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
     : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-  <div style="margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+  <div style="margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;font-weight:700;">
     <div style="font-weight:700;margin:0 0 5px 0;">${esc(rubrik)}:</div>
     ${innehåll}
   </div>`;
@@ -236,13 +236,13 @@ function byggHtml({
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
 }) {
-  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
+  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;font-weight:700;';
   const cell = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
   const head = `border:1px solid #666666;padding:7px;text-align:center;font-weight:700;${font}`;
   const label = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;font-weight:700;${font}`;
 
   const rows = [
-    `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }))}</th>`).join('')}</tr>`,
+    `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }).replace(/^./, (c) => c.toUpperCase()))}</th>`).join('')}</tr>`,
     `<tr><th style="${head}">${veckaNummer(dagar[0])}</th>${dagar.map((dag) => `<th style="${head}">${esc(kortDatum(dag))}</th>`).join('')}</tr>`,
     `<tr><th style="${label};height:110px;">Frånvaro</th>${dagar.map((dag) => `<td style="${cell};height:110px;">${htmlCell(cellText(iso(dag), 'franvaro'))}</td>`).join('')}</tr>`,
     `<tr><th style="${label};height:230px;">Vikarie</th>${dagar.map((dag) => `<td style="${cell};height:230px;">${htmlVikarieCell(cellText(iso(dag), 'vikarie'))}</td>`).join('')}</tr>`,
@@ -250,7 +250,7 @@ function byggHtml({
   ].join('');
 
   return `
-<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;font-weight:700;">
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
@@ -467,7 +467,7 @@ export default function Utskick() {
               <th className="w-24 border px-3 py-3 text-left" style={{ borderColor: 'var(--border)' }}>Vecka</th>
               {dagar.map((dag) => (
                 <th key={iso(dag)} className="border px-3 py-3 text-center" style={{ borderColor: 'var(--border)' }}>
-                  {dag.toLocaleDateString('sv-SE', { weekday: 'long' })}
+                  {dag.toLocaleDateString('sv-SE', { weekday: 'long' }).replace(/^./, (c) => c.toUpperCase())}
                 </th>
               ))}
             </tr>
@@ -521,7 +521,7 @@ export default function Utskick() {
             >
               <div className="mb-3">
                 <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>
-                  {dag.toLocaleDateString('sv-SE', { weekday: 'long' })}
+                  {dag.toLocaleDateString('sv-SE', { weekday: 'long' }).replace(/^./, (c) => c.toUpperCase())}
                 </p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {kortDatum(dag)} · vecka {veckaNummer(start)}
