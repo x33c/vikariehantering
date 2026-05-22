@@ -476,32 +476,46 @@ function FrånvaroModal({
         }
       }
     } else {
-      const res = await passApi.skapa({
-        frånvaro_id: skapadFrånvaro.id,
-        schemarad_id: null,
-        personal_id: skapadFrånvaro.personal_id,
-        vikarie_id: bokarDirekt ? valdVikarieId : null,
-        datum: datumFrån,
-        tid_från: helDag ? '08:00' : tidFrån,
-        tid_till: helDag ? '17:00' : tidTill,
-        typ: helDag ? 'hel_dag' : 'del_av_dag',
-        ämne: null,
-        grupp: null,
-        sal: null,
-        anteckning: null,
-        riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
-        status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
-        skapad_av: null,
-      });
-      if (res.data) {
-        await historikApi.skapa(res.data.id, 'pass_skapat');
-        if (skickarFörfrågan) {
-          await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
-          await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+      for (const datum of datumIntervall(skapadFrånvaro.datum_från, skapadFrånvaro.datum_till)) {
+        const res = await passApi.skapa({
+          frånvaro_id: skapadFrånvaro.id,
+          schemarad_id: null,
+          personal_id: skapadFrånvaro.personal_id,
+          vikarie_id: bokarDirekt ? valdVikarieId : null,
+          datum,
+          tid_från: helDag ? '08:00' : tidFrån,
+          tid_till: helDag ? '17:00' : tidTill,
+          typ: helDag ? 'hel_dag' : 'del_av_dag',
+          ämne: null,
+          grupp: null,
+          sal: null,
+          anteckning: null,
+          riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
+          status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
+          skapad_av: null,
+        });
+
+        if (res.error) {
+          setFel(res.error.message);
+          setSkaparPass(false);
+          return;
         }
-        if (bokarDirekt) {
-          await historikApi.skapa(res.data.id, 'vikarie_bokat', { vikarie_id: valdVikarieId, källa: 'frånvaro_boka_direkt' });
-          await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+
+        if (res.data) {
+          await historikApi.skapa(res.data.id, 'pass_skapat');
+
+          if (skickarFörfrågan) {
+            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+            await historikApi.skapa(res.data.id, 'vikarie_notifierat', { vikarie_id: valdVikarieId });
+          }
+
+          if (bokarDirekt) {
+            await historikApi.skapa(res.data.id, 'vikarie_bokat', {
+              vikarie_id: valdVikarieId,
+              källa: 'frånvaro_boka_direkt',
+            });
+            await notisApi.skickaNotiser(res.data.id, [valdVikarieId]);
+          }
         }
       }
     }
