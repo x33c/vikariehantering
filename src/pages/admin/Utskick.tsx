@@ -236,10 +236,11 @@ function byggHtml({
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
 }) {
-  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;';
+  const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
+  const axisFont = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;font-weight:700;';
   const cell = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;white-space:normal;${font}`;
-  const head = `border:1px solid #666666;padding:7px;text-align:center;font-weight:700;${font}`;
-  const label = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;font-weight:700;${font}`;
+  const head = `border:1px solid #666666;padding:7px;text-align:center;${axisFont}`;
+  const label = `border:1px solid #666666;padding:10px;text-align:center;vertical-align:middle;${axisFont}`;
 
   const rows = [
     `<tr><th style="${label};width:80px;">Vecka</th>${dagar.map((dag) => `<th style="${head};width:216px;">${esc(dag.toLocaleDateString('sv-SE', { weekday: 'long' }).replace(/^./, (c) => c.toUpperCase()))}</th>`).join('')}</tr>`,
@@ -250,7 +251,7 @@ function byggHtml({
   ].join('');
 
   return `
-<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
