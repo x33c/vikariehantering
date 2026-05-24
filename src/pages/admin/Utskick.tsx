@@ -239,7 +239,7 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
       ? `Tillfrågad: ${formatNamn(riktadVikarie)}`
       : 'Vikarie saknas';
 
-  const grupp = utskickGruppText(pass.grupp);
+  const grupp = utskickGruppText(pass.grupp ?? pass.personal?.arbetslag?.namn);
   const gruppText = grupp ? ` - ${grupp}` : '';
   return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }
