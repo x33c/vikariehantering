@@ -284,12 +284,21 @@ function htmlVikarieCell(text: string) {
     .split('\n')
     .map((rad) => {
       const clean = rad.trim();
-      if (!clean) return '<br>';
+      if (!clean) return null;
       const ärTid = /^\(?\d{1,2}[:.]\d{2}/.test(clean);
       const innehåll = esc(clean);
       return ärTid ? innehåll : `<strong>${innehåll}</strong>`;
     })
+    .filter((rad): rad is string => Boolean(rad))
     .join('<br>');
+}
+
+function kompaktVikarieText(text: string) {
+  return text
+    .split('\n')
+    .map((rad) => rad.trim())
+    .filter(Boolean)
+    .join('\n');
 }
 
 function htmlLänkRad(rad: string) {
@@ -555,7 +564,12 @@ export default function Utskick() {
     const sparat = await sparaCeller();
     if (!sparat) return;
 
-    const html = byggHtml({ dagar, cellText: textFörCell, extraText: textFörExtra });
+    const textFörMail = (datum: string, typ: CellTyp) => {
+      const text = textFörCell(datum, typ);
+      return typ === 'vikarie' ? kompaktVikarieText(text) : text;
+    };
+
+    const html = byggHtml({ dagar, cellText: textFörMail, extraText: textFörExtra });
     const plain = [
       'God morgon,',
       '',
@@ -566,7 +580,7 @@ export default function Utskick() {
         return [
           dag.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'numeric' }),
           `Frånvaro:\n${textFörCell(datum, 'franvaro') || '-'}`,
-          `Vikarie:\n${textFörCell(datum, 'vikarie') || '-'}`,
+          `Vikarie:\n${textFörMail(datum, 'vikarie') || '-'}`,
           `Övrigt:\n${textFörCell(datum, 'ovrigt') || '-'}`,
         ].join('\n');
       }),
