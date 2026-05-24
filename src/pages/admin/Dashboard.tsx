@@ -367,45 +367,64 @@ export default function Dashboard() {
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <section
-          className="rounded-3xl border p-5 shadow-sm"
-          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-        >
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-                Nästa bästa åtgärd
-              </p>
-              <h2 className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>
-                {nästaPass ? 'Bemanna det här passet först' : dagensKlart ? 'Dagen är bemannad' : 'Börja med frånvaro'}
-              </h2>
-            </div>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Alla pass</Button>
-          </div>
-
-          {nästaPass ? (
-            <PassCard
-              pass={nästaPass}
-              vikarier={vikarier}
-              onBemanna={bemannaDirekt}
-              disabled={bemannarPassId === nästaPass.id}
-            />
-          ) : (
-            <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-              <p className="font-semibold" style={{ color: 'var(--text)' }}>
-                {dagensKlart ? 'Alla registrerade pass är bemannade.' : 'Registrera frånvaro för att komma igång.'}
-              </p>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                Startsidan visar nästa rimliga steg och håller dagens arbete samlat.
-              </p>
-              <div className="mt-4">
-                <Button onClick={() => navigate('/admin/franvaro')}>Registrera frånvaro</Button>
+        <div className="space-y-4">
+          <section
+            className="rounded-3xl border p-5 shadow-sm"
+            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+                  Nästa bästa åtgärd
+                </p>
+                <h2 className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>
+                  {nästaPass ? 'Bemanna det här passet först' : dagensKlart ? 'Dagen är bemannad' : 'Börja med frånvaro'}
+                </h2>
               </div>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Alla pass</Button>
             </div>
-          )}
-        </section>
 
-        <Panel>
+            {nästaPass ? (
+              <PassCard
+                pass={nästaPass}
+                vikarier={vikarier}
+                onBemanna={bemannaDirekt}
+                disabled={bemannarPassId === nästaPass.id}
+              />
+            ) : (
+              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                <p className="font-semibold" style={{ color: 'var(--text)' }}>
+                  {dagensKlart ? 'Alla registrerade pass är bemannade.' : 'Registrera frånvaro för att komma igång.'}
+                </p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  Startsidan visar nästa rimliga steg och håller dagens arbete samlat.
+                </p>
+                <div className="mt-4">
+                  <Button onClick={() => navigate('/admin/franvaro')}>Registrera frånvaro</Button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <Panel>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Bemanningskö</h2>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Obokade pass sorterade efter datum och tid.</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Öppna</Button>
+            </div>
+            <div className="space-y-2">
+              {obokadePass.slice(0, 6).map((p) => (
+                <CompactPassRow key={p.id} pass={p} onOpen={() => navigate('/admin/vikariepass')} />
+              ))}
+              {obokadePass.length === 0 && <Empty text="Inga pass i bemanningskön." />}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="space-y-4">
+          <Panel>
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Morgonflöde</p>
             <h2 className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>Tre steg till färdigt utskick</h2>
@@ -434,27 +453,9 @@ export default function Dashboard() {
               action={<Button size="sm" variant="secondary" onClick={() => navigate('/admin/utskick')}>Förhandsvisa</Button>}
             />
           </div>
-        </Panel>
-      </div>
+          </Panel>
 
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Bemanningskö</h2>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Obokade pass sorterade efter datum och tid.</p>
-            </div>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Öppna</Button>
-          </div>
-          <div className="space-y-2">
-            {obokadePass.slice(0, 6).map((p) => (
-              <CompactPassRow key={p.id} pass={p} onOpen={() => navigate('/admin/vikariepass')} />
-            ))}
-            {obokadePass.length === 0 && <Empty text="Inga pass i bemanningskön." />}
-          </div>
-        </Panel>
-
-        <Panel>
+          <Panel>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Kommande frånvaro</h2>
@@ -478,7 +479,8 @@ export default function Dashboard() {
             ))}
             {kommandeFrånvaro.length === 0 && <Empty text="Ingen kommande frånvaro i veckan." />}
           </div>
-        </Panel>
+          </Panel>
+        </div>
       </div>
     </div>
   );
