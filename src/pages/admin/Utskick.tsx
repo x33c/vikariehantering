@@ -76,12 +76,44 @@ function slåIhopText(befintlig: string, nyText: string, typ: CellTyp) {
     ? ny.split(/\n{2,}/).map((del) => del.trim()).filter(Boolean)
     : ny.split('\n').map((del) => del.trim()).filter(Boolean);
 
+  if (typ === 'vikarie') {
+    const befintligaBlock = befintlig.split(/\n{2,}/).map((del) => del.trim()).filter(Boolean);
+
+    for (const nyttBlock of delar) {
+      const nyttNyckel = vikarieBlockNyckel(nyttBlock);
+      const skaErsättaSaknas = nyttNyckel && !nyttBlock.toLowerCase().startsWith('vikarie saknas');
+      const ersättIndex = skaErsättaSaknas
+        ? befintligaBlock.findIndex((block) =>
+            block.toLowerCase().startsWith('vikarie saknas') && vikarieBlockNyckel(block) === nyttNyckel
+          )
+        : -1;
+
+      if (ersättIndex !== -1) {
+        befintligaBlock[ersättIndex] = nyttBlock;
+      } else if (!befintligaBlock.includes(nyttBlock)) {
+        befintligaBlock.push(nyttBlock);
+      }
+    }
+
+    return befintligaBlock.join(separator);
+  }
+
   let resultat = befintlig.trimEnd();
   for (const del of delar) {
     if (!resultat.includes(del)) resultat += `${separator}${del}`;
   }
 
   return resultat;
+}
+
+function vikarieBlockNyckel(block: string) {
+  const rader = block.split('\n').map((rad) => rad.trim()).filter(Boolean);
+  const huvudrad = rader[0] ?? '';
+  const tidrad = rader.find((rad) => /^\(?\d{1,2}[:.]\d{2}/.test(rad)) ?? '';
+  const grupp = huvudrad.split(' - ').slice(1).join(' - ').trim().toLowerCase();
+  const tidText = tidrad.replace(/[()]/g, '').replace(/\s+/g, '');
+
+  return grupp && tidText ? `${grupp}|${tidText}` : null;
 }
 
 function arbetslagSortIndex(value?: string | null) {
