@@ -95,7 +95,7 @@ function slåIhopText(befintlig: string, nyText: string, typ: CellTyp) {
       }
     }
 
-    return befintligaBlock.join(separator);
+    return befintligaBlock.sort(sorteraVikarieBlock).join(separator);
   }
 
   let resultat = befintlig.trimEnd();
@@ -114,6 +114,36 @@ function vikarieBlockNyckel(block: string) {
   const tidText = tidrad.replace(/[()]/g, '').replace(/\s+/g, '');
 
   return grupp && tidText ? `${grupp}|${tidText}` : null;
+}
+
+function sorteraVikarieBlock(a: string, b: string) {
+  return (
+    vikarieBlockGruppIndex(a) - vikarieBlockGruppIndex(b) ||
+    vikarieBlockStartMinuter(a) - vikarieBlockStartMinuter(b) ||
+    a.localeCompare(b, 'sv')
+  );
+}
+
+function vikarieBlockGruppIndex(block: string) {
+  const huvudrad = block.split('\n').map((rad) => rad.trim()).find(Boolean) ?? '';
+  const grupp = huvudrad.split(' - ').slice(1).join(' - ').trim().toLowerCase().replace(/\s+/g, '');
+
+  if (!grupp) return 98;
+  if (grupp.includes('fsk') || grupp.includes('förskole') || grupp.includes('forskole')) return 0;
+
+  const match = grupp.match(/(?:åk\.?|ak\.?)?([1-6])/);
+  if (match) return Number(match[1]);
+
+  if (grupp.includes('prest')) return 7;
+  return 99;
+}
+
+function vikarieBlockStartMinuter(block: string) {
+  const tidrad = block.split('\n').map((rad) => rad.trim()).find((rad) => /^\(?\d{1,2}[:.]\d{2}/.test(rad)) ?? '';
+  const match = tidrad.match(/(\d{1,2})[:.](\d{2})/);
+  if (!match) return 24 * 60;
+
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 function arbetslagSortIndex(value?: string | null) {
