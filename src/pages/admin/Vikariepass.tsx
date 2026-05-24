@@ -38,6 +38,29 @@ function kortVeckodag(datum: string) {
   });
 }
 
+function PeriodIkon({ typ }: { typ: 'föregående' | 'idag' | 'nästa' }) {
+  if (typ === 'idag') {
+    return (
+      <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="5" width="16" height="15" rx="2.5" stroke="currentColor" strokeWidth="2" />
+        <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+      <path
+        d={typ === 'föregående' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'}
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function veckonummer(datum: string) {
   const d = new Date(`${datum}T12:00:00`);
   d.setHours(0, 0, 0, 0);
@@ -1701,7 +1724,19 @@ export default function Bemanning() {
           </div>
         </details>
 
-        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+        <details className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            <span>Statusfilter</span>
+            <span className="rounded-full px-2.5 py-1 text-xs" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+              {snabbFilter === 'atgard' ? 'Att göra' :
+                snabbFilter === 'alla' ? (döljPasserade ? 'Aktiva' : 'Alla') :
+                snabbFilter === 'lediga' ? 'Lediga' :
+                snabbFilter === 'bokade' ? 'Bokade' :
+                snabbFilter === 'ej_publicerade' ? 'Ej publicerade' : 'Arkiv'}
+            </span>
+          </summary>
+
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
             { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
@@ -1744,6 +1779,7 @@ export default function Bemanning() {
             {döljPasserade ? 'Visar aktiva' : 'Dölj passerade'}
           </button>
         </div>
+        </details>
 
         {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
@@ -1776,9 +1812,18 @@ export default function Bemanning() {
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
               </div>
               <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end">
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>Föregående</Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>Idag</Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>Nästa</Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
+                  <PeriodIkon typ="föregående" />
+                  <span>Föregående</span>
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
+                  <PeriodIkon typ="idag" />
+                  <span>Idag</span>
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
+                  <span>Nästa</span>
+                  <PeriodIkon typ="nästa" />
+                </Button>
               </div>
             </div>
 

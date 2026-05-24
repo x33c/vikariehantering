@@ -27,6 +27,29 @@ function kortDatum(datum: string) {
   });
 }
 
+function PeriodIkon({ typ }: { typ: 'föregående' | 'idag' | 'nästa' }) {
+  if (typ === 'idag') {
+    return (
+      <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="5" width="16" height="15" rx="2.5" stroke="currentColor" strokeWidth="2" />
+        <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+      <path
+        d={typ === 'föregående' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'}
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function isoDatum(datum: Date) {
   return datum.toISOString().slice(0, 10);
 }
@@ -976,17 +999,29 @@ export default function Franvaro() {
           <h1 className="mt-1 text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
             Frånvaro
           </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Se veckan, sök personal och skapa pass direkt från frånvaron.
-          </p>
         </div>
         <div className="sm:self-auto"><Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button></div>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+      <details className="mb-3 rounded-xl border px-3 py-2" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>
+          <span>Sök och lista</span>
+          <span className="flex flex-wrap items-center justify-end gap-2 text-xs">
+            <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+              {filtrerade.length} frånvaro
+            </span>
+            {antalSaknarPass > 0 && (
+              <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
+                {antalSaknarPass} saknar pass
+              </span>
+            )}
+          </span>
+        </summary>
+
+        <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="search"
             placeholder="Sök personal, arbetslag eller orsak"
@@ -1005,42 +1040,43 @@ export default function Franvaro() {
               Rensa
             </button>
           )}
-        </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full px-3 py-1.5 font-semibold" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
-            {filtrerade.length} frånvaro
-          </span>
-          {antalSaknarPass > 0 && (
-            <span className="rounded-full px-3 py-1.5 font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
-              {antalSaknarPass} saknar pass
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setVisaLista(!visaLista)}
-            className="shrink-0 rounded-full border px-3 py-1.5 font-semibold transition"
-            style={{ background: visaLista ? 'var(--accent)' : 'var(--bg-card)', borderColor: visaLista ? 'var(--accent)' : 'var(--border)', color: visaLista ? '#fff' : 'var(--text)' }}
-          >
-            {visaLista ? 'Dölj lista' : 'Visa lista'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setVisaLista(!visaLista)}
+              className="shrink-0 rounded-full border px-3 py-1.5 font-semibold transition"
+              style={{ background: visaLista ? 'var(--accent)' : 'var(--bg-card)', borderColor: visaLista ? 'var(--accent)' : 'var(--border)', color: visaLista ? '#fff' : 'var(--text)' }}
+            >
+              {visaLista ? 'Dölj lista' : 'Visa lista'}
+            </button>
+          </div>
         </div>
-      </div>
+      </details>
 
 
       <section className="mb-4 rounded-2xl border p-2 sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Kalender</p>
             <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {kortDatum(kalenderDagar[0])} - {kortDatum(kalenderDagar[4])} · {totaltIKalendern} frånvaro
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex">
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>Föregående</Button>
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(datumIdag())}>Idag</Button>
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>Nästa</Button>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>
+              <PeriodIkon typ="föregående" />
+              <span>Föregående</span>
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(datumIdag())}>
+              <PeriodIkon typ="idag" />
+              <span>Idag</span>
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>
+              <span>Nästa</span>
+              <PeriodIkon typ="nästa" />
+            </Button>
           </div>
         </div>
 
