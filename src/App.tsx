@@ -22,6 +22,7 @@ import Historik from './pages/admin/Historik';
 import Utskick from './pages/admin/Utskick';
 import Konton from './pages/admin/Konton';
 import Notiser from './pages/admin/Notiser';
+import { BetaBemanning, BetaFranvaro, BetaStart, BetaUtskick } from './pages/admin/beta/BetaAdmin';
 
 // Vikarie pages
 import LedigaPass from './pages/vikarie/LedigaPass';
@@ -86,6 +87,11 @@ export default function App() {
             <Route path="konton" element={<Konton />} />
             <Route path="utskick" element={<Utskick />} />
             <Route path="notiser" element={<Notiser />} />
+            <Route path="beta" element={<Navigate to="/admin/beta/start" replace />} />
+            <Route path="beta/start" element={<BetaStart />} />
+            <Route path="beta/franvaro" element={<BetaFranvaro />} />
+            <Route path="beta/bemanning" element={<BetaBemanning />} />
+            <Route path="beta/utskick" element={<BetaUtskick />} />
           </Route>
 
           {/* Vikarie routes */}

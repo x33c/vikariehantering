@@ -12,6 +12,7 @@ const huvudNavItems = [
 ];
 
 const registerNavItems = [
+  { to: '/admin/beta', label: 'Beta' },
   { to: '/admin/arbetslag', label: 'Personal' },
   { to: '/admin/vikarier', label: 'Konton' },
   { to: '/admin/import', label: 'Schema' },
