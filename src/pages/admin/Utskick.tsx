@@ -277,28 +277,29 @@ function htmlCell(text: string) {
 }
 
 function htmlVikarieCell(text: string) {
-  const trimmed = text.trim();
+  const trimmed = normaliseraVikarieRadbrytningar(text);
   if (!trimmed) return '&nbsp;';
 
   return trimmed
     .split('\n')
     .map((rad) => {
       const clean = rad.trim();
-      if (!clean) return null;
+      if (!clean) return '';
       const ärTid = /^\(?\d{1,2}[:.]\d{2}/.test(clean);
       const innehåll = esc(clean);
       return ärTid ? innehåll : `<strong>${innehåll}</strong>`;
     })
-    .filter((rad): rad is string => Boolean(rad))
     .join('<br>');
 }
 
-function kompaktVikarieText(text: string) {
+function normaliseraVikarieRadbrytningar(text: string) {
   return text
+    .replace(/\r\n/g, '\n')
     .split('\n')
-    .map((rad) => rad.trim())
-    .filter(Boolean)
-    .join('\n');
+    .map((rad) => rad.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function htmlLänkRad(rad: string) {
@@ -566,7 +567,7 @@ export default function Utskick() {
 
     const textFörMail = (datum: string, typ: CellTyp) => {
       const text = textFörCell(datum, typ);
-      return typ === 'vikarie' ? kompaktVikarieText(text) : text;
+      return typ === 'vikarie' ? normaliseraVikarieRadbrytningar(text) : text;
     };
 
     const html = byggHtml({ dagar, cellText: textFörMail, extraText: textFörExtra });
