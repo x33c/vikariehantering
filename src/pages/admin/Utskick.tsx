@@ -42,6 +42,29 @@ function kortDatum(datum: Date) {
   return datum.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
 }
 
+function PeriodIkon({ typ }: { typ: 'föregående' | 'idag' | 'nästa' }) {
+  if (typ === 'idag') {
+    return (
+      <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="5" width="16" height="15" rx="2.5" stroke="currentColor" strokeWidth="2" />
+        <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+      <path
+        d={typ === 'föregående' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'}
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function tid(t?: string | null) {
   return t?.slice(0, 5) ?? '';
 }
@@ -610,18 +633,43 @@ export default function Utskick() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="flex min-h-full flex-col overflow-hidden p-2 pb-24 sm:p-4">
-      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="flex min-h-full flex-col overflow-hidden p-2 pb-24 sm:p-3 lg:p-4">
+      <div className="mb-2 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Beta</p>
           <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Utskick</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Redigerbar veckovy. Grundtext hämtas från Frånvaro och Bemanning.
+          <p className="text-sm leading-5" style={{ color: 'var(--text-muted)' }}>
+            Vecka {veckaNummer(start)} · {kortDatum(dagar[0])} - {kortDatum(dagar[4])}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <div className="col-span-2 flex items-center gap-1 rounded-xl border p-1 sm:col-span-1" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
+          <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
+        </div>
+      </div>
+
+      <div className="mb-2 flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2">
+          <Button variant="secondary" size="sm" onClick={() => bytVecka(-1)}>
+            <PeriodIkon typ="föregående" />
+            <span className="hidden min-[390px]:inline">Föregående</span>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setVeckaStart(iso(startPåVecka(new Date())))}>
+            <PeriodIkon typ="idag" />
+            <span>Idag</span>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => bytVecka(1)}>
+            <span className="hidden min-[390px]:inline">Nästa</span>
+            <PeriodIkon typ="nästa" />
+          </Button>
+        </div>
+
+        <details className="rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <summary className="cursor-pointer list-none text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            Inställningar
+          </summary>
+          <div className="mt-3 grid gap-2 sm:flex sm:items-center">
+            <div className="flex items-center gap-1 rounded-xl border p-1" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             {(['normal', 'stor', 'max'] as const).map((storlek) => {
               const aktiv = rutaStorlek === storlek;
               const label = storlek === 'normal' ? 'Normal' : storlek === 'stor' ? 'Stor' : 'Max';
@@ -641,21 +689,17 @@ export default function Utskick() {
                 </button>
               );
             })}
+            </div>
+            <input
+              type="date"
+              value={veckaStart}
+              onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(`${e.target.value}T12:00:00`))))}
+              className="rounded-xl border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <Button variant="secondary" size="sm" onClick={sparaCeller} loading={sparar}>Spara text</Button>
           </div>
-          <input
-            type="date"
-            value={veckaStart}
-            onChange={(e) => setVeckaStart(iso(startPåVecka(new Date(`${e.target.value}T12:00:00`))))}
-            className="col-span-2 rounded-xl border px-3 py-2 text-sm sm:col-span-1"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          />
-          <Button variant="secondary" onClick={() => bytVecka(-1)}>Föregående</Button>
-          <Button variant="secondary" onClick={() => setVeckaStart(iso(startPåVecka(new Date())))}>Idag</Button>
-          <Button variant="secondary" onClick={() => bytVecka(1)}>Nästa</Button>
-          <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
-          <Button variant="secondary" onClick={sparaCeller} loading={sparar}>Spara text</Button>
-          <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
-        </div>
+        </details>
       </div>
 
       {fel && (
