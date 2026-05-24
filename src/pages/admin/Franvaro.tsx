@@ -967,8 +967,8 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-2 pb-24 pt-3 sm:px-6 sm:py-5 lg:px-8">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="px-2 pb-24 pt-0 sm:px-4 sm:pb-24 sm:pt-1 lg:px-5">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
             Bemanning
@@ -985,7 +985,7 @@ export default function Franvaro() {
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <input
             type="search"
@@ -1028,8 +1028,8 @@ export default function Franvaro() {
       </div>
 
 
-      <section className="mb-6 rounded-2xl border p-2 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mb-4 rounded-2xl border p-2 sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Kalender</p>
             <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>

@@ -231,7 +231,7 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-none overflow-x-hidden px-1.5 py-2 sm:px-4 sm:py-4 lg:px-5">
+          <div className="w-full max-w-none overflow-x-hidden px-1.5 py-0 sm:px-4 sm:py-2 lg:px-5 lg:py-3">
             <Outlet />
           </div>
         </main>

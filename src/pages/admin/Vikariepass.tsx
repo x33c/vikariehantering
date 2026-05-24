@@ -1653,8 +1653,8 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full">
-      <div className={`flex flex-col flex-1 p-2 pb-24 sm:p-3 lg:p-4 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className={`flex flex-col flex-1 px-2 pb-24 pt-0 sm:px-3 sm:pb-24 sm:pt-1 lg:px-4 lg:pt-1 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h1>
             <p className="mt-1 text-sm" style={{ color: filterCounts.atgard > 0 ? '#f97316' : 'var(--text-muted)' }}>
@@ -1701,7 +1701,7 @@ export default function Bemanning() {
           </div>
         </details>
 
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
             { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
