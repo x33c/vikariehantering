@@ -271,7 +271,7 @@ export default function Dashboard() {
 
     Promise.all([
       passApi.dashboardStatistik(),
-      frånvaroApi.lista(idag, omSju),
+      frånvaroApi.lista(),
       passApi.lista({ datumFrån: idag, datumTill: omSju }),
       vikariApi.lista(),
     ]).then(([statistik, frånvaroRes, passRes, vikarierRes]) => {
@@ -312,8 +312,8 @@ export default function Dashboard() {
   const förfrågningar = pass.filter((p) => p.status === 'notifierat').sort(passStartSort);
   const bokade = pass.filter((p) => p.status === 'bokat' || p.status === 'bekräftat').sort(passStartSort);
   const nästaPass = dagensObokade[0] ?? obokadePass[0] ?? null;
-  const dagensKlart = data.obokade === 0 && idagFrånvaro.length > 0;
-  const utskickRedo = data.obokade === 0 && förfrågningar.length === 0;
+  const dagensKlart = dagensObokade.length === 0 && idagFrånvaro.length > 0;
+  const utskickRedo = obokadePass.length === 0 && förfrågningar.length === 0;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6 lg:px-8">
@@ -338,9 +338,9 @@ export default function Dashboard() {
       <div className="mb-5 grid gap-3 lg:grid-cols-4">
         <MetricTile
           label="Saknar vikarie"
-          value={data.obokade}
-          hint={data.obokade === 0 ? 'Inget akut kvar.' : 'Bör hanteras först.'}
-          intent={data.obokade > 0 ? 'danger' : 'success'}
+          value={obokadePass.length}
+          hint={obokadePass.length === 0 ? 'Inget akut kvar.' : 'Bör hanteras först.'}
+          intent={obokadePass.length > 0 ? 'danger' : 'success'}
           onClick={() => navigate('/admin/vikariepass')}
         />
         <MetricTile
@@ -422,9 +422,9 @@ export default function Dashboard() {
             <StepCard
               number="2"
               title="Bemanning"
-              text={data.obokade > 0 ? `${data.obokade} pass saknar vikarie.` : 'Inga obokade pass just nu.'}
-              status={data.obokade > 0 ? 'arbete' : 'klar'}
-              action={<Button size="sm" variant={data.obokade > 0 ? 'primary' : 'secondary'} onClick={() => navigate('/admin/vikariepass')}>Bemanna</Button>}
+              text={obokadePass.length > 0 ? `${obokadePass.length} pass saknar vikarie.` : 'Inga obokade pass just nu.'}
+              status={obokadePass.length > 0 ? 'arbete' : 'klar'}
+              action={<Button size="sm" variant={obokadePass.length > 0 ? 'primary' : 'secondary'} onClick={() => navigate('/admin/vikariepass')}>Bemanna</Button>}
             />
             <StepCard
               number="3"
