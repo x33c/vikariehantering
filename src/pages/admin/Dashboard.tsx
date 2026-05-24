@@ -222,14 +222,14 @@ function MetricTile({
     <button
       type="button"
       onClick={onClick}
-      className="min-h-28 rounded-2xl border p-4 text-left transition hover:shadow-sm"
+      className="min-h-24 rounded-2xl border p-4 text-left transition hover:shadow-sm"
       style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</p>
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       </div>
-      <p className="mt-3 text-4xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{value}</p>
+      <p className="mt-2 text-4xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{value}</p>
       <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-subtle)' }}>{hint}</p>
     </button>
   );
@@ -316,8 +316,8 @@ export default function Dashboard() {
   const utskickRedo = obokadePass.length === 0 && förfrågningar.length === 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6 lg:px-8">
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-[88rem] px-2 py-4 sm:px-4 lg:px-6">
+      <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
             Idag
@@ -335,7 +335,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MetricTile
           label="Saknar vikarie"
           value={obokadePass.length}
@@ -366,7 +366,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <section
           className="rounded-3xl border p-5 shadow-sm"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
@@ -437,7 +437,7 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Panel>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>

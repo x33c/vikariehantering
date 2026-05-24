@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
@@ -9,14 +9,15 @@ const huvudNavItems = [
   { to: '/admin/franvaro', label: 'Frånvaro' },
   { to: '/admin/vikariepass', label: 'Bemanning' },
   { to: '/admin/utskick', label: 'Utskick' },
+  { to: '/admin/vikarier', label: 'Vikarier' },
 ];
 
-const registerNavItems = [
-  { to: '/admin/beta', label: 'Beta' },
+const merNavItems = [
   { to: '/admin/arbetslag', label: 'Personal' },
-  { to: '/admin/vikarier', label: 'Konton' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
+  { to: '/admin/konton', label: 'Konton' },
+  { to: '/admin/beta', label: 'Beta' },
 ];
 
 function useDarkMode() {
@@ -56,9 +57,11 @@ function TemaIkon({ mörkt }: { mörkt: boolean }) {
 
 export default function AdminLayout() {
   const { profil, loggaUt } = useAuth();
+  const location = useLocation();
   const [menyÖppen, setMenyÖppen] = useState(false);
   const [bekraftaLoggaUt, setBekraftaLoggaUt] = useState(false);
   const { mörkt, toggla } = useDarkMode();
+  const merÄrAktiv = merNavItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
 
   return (
     <div className="flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -68,19 +71,19 @@ export default function AdminLayout() {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-30 flex w-72 max-w-[88vw] flex-col border-r lg:max-w-none
+          fixed inset-y-0 left-0 z-30 flex w-64 max-w-[88vw] flex-col border-r lg:max-w-none
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       >
-        <div className="px-5 pb-6 pt-6">
+        <div className="px-5 pb-4 pt-5">
           <div className="flex items-center gap-4">
             <img
               src={mörkt ? "/sundbyberg-silver.png" : "/sundbyberg-halm.png"}
               alt=""
-              className="h-16 w-16 shrink-0 object-contain"
+              className="h-14 w-14 shrink-0 object-contain"
             />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
@@ -91,18 +94,15 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-2">
-          <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-            Dagligt arbete
-          </p>
-          <div className="space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          <div className="space-y-1.5">
             {huvudNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 onClick={() => setMenyÖppen(false)}
-                className="group flex min-h-12 items-center rounded-2xl border px-4 py-3 text-sm font-semibold transition-all"
+                className="group flex min-h-11 items-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all"
                 style={({ isActive }) => ({
                   background: isActive ? 'var(--nav-active)' : 'transparent',
                   color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
@@ -113,29 +113,41 @@ export default function AdminLayout() {
                 <span className="truncate">{item.label}</span>
               </NavLink>
             ))}
-          </div>
-
-          <p className="mb-2 mt-5 px-2 text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-            Register och historik
-          </p>
-          <div className="space-y-1">
-            {registerNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setMenyÖppen(false)}
-                className="group flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-sm font-medium transition-all"
-                style={({ isActive }) => ({
-                  background: isActive ? 'var(--nav-active)' : 'transparent',
-                  color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
-                  borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
-                  boxShadow: isActive ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
-                })}
+            <details className="group/mer" open={merÄrAktiv}>
+              <summary
+                className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all [&::-webkit-details-marker]:hidden"
+                style={{
+                  background: merÄrAktiv ? 'var(--nav-active)' : 'transparent',
+                  color: merÄrAktiv ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                  borderColor: merÄrAktiv ? 'var(--nav-active-ring)' : 'transparent',
+                  boxShadow: merÄrAktiv ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
+                }}
               >
-                <span className="truncate">{item.label}</span>
-              </NavLink>
-            ))}
+                <span>Mer</span>
+                <svg className="h-4 w-4 transition-transform group-open/mer:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </summary>
+              <div className="mt-1 space-y-1 pl-3">
+                {merNavItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/admin/beta'}
+                    onClick={() => setMenyÖppen(false)}
+                    className="group flex min-h-10 items-center rounded-xl border px-3 py-2 text-sm font-medium transition-all"
+                    style={({ isActive }) => ({
+                      background: isActive ? 'var(--nav-active)' : 'transparent',
+                      color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                      borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                      boxShadow: isActive ? '0 0 0 2px var(--nav-active-ring-soft)' : 'none',
+                    })}
+                  >
+                    <span className="truncate">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </details>
           </div>
         </nav>
 
