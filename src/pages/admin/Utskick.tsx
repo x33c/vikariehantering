@@ -81,15 +81,27 @@ function slåIhopText(befintlig: string, nyText: string, typ: CellTyp) {
 
     for (const nyttBlock of delar) {
       const nyttNyckel = vikarieBlockNyckel(nyttBlock);
+      const nyttPersonTid = vikarieBlockPersonTidNyckel(nyttBlock);
+      const nyttHarGrupp = vikarieBlockHarGrupp(nyttBlock);
       const skaErsättaSaknas = nyttNyckel && !nyttBlock.toLowerCase().startsWith('vikarie saknas');
       const ersättIndex = skaErsättaSaknas
         ? befintligaBlock.findIndex((block) =>
             block.toLowerCase().startsWith('vikarie saknas') && vikarieBlockNyckel(block) === nyttNyckel
           )
         : -1;
+      const dubblettIndex = nyttPersonTid
+        ? befintligaBlock.findIndex((block) =>
+            vikarieBlockPersonTidNyckel(block) === nyttPersonTid &&
+            (nyttHarGrupp || vikarieBlockHarGrupp(block))
+          )
+        : -1;
 
       if (ersättIndex !== -1) {
         befintligaBlock[ersättIndex] = nyttBlock;
+      } else if (dubblettIndex !== -1) {
+        if (nyttHarGrupp || !vikarieBlockHarGrupp(befintligaBlock[dubblettIndex])) {
+          befintligaBlock[dubblettIndex] = nyttBlock;
+        }
       } else if (!befintligaBlock.includes(nyttBlock)) {
         befintligaBlock.push(nyttBlock);
       }
@@ -114,6 +126,21 @@ function vikarieBlockNyckel(block: string) {
   const tidText = tidrad.replace(/[()]/g, '').replace(/\s+/g, '');
 
   return grupp && tidText ? `${grupp}|${tidText}` : null;
+}
+
+function vikarieBlockPersonTidNyckel(block: string) {
+  const rader = block.split('\n').map((rad) => rad.trim()).filter(Boolean);
+  const huvudrad = rader[0] ?? '';
+  const tidrad = rader.find((rad) => /^\(?\d{1,2}[:.]\d{2}/.test(rad)) ?? '';
+  const namn = huvudrad.split(' - ')[0]?.trim().toLowerCase();
+  const tidText = tidrad.replace(/[()]/g, '').replace(/\s+/g, '');
+
+  return namn && tidText ? `${namn}|${tidText}` : null;
+}
+
+function vikarieBlockHarGrupp(block: string) {
+  const huvudrad = block.split('\n').map((rad) => rad.trim()).find(Boolean) ?? '';
+  return huvudrad.includes(' - ');
 }
 
 function sorteraVikarieBlock(a: string, b: string) {
