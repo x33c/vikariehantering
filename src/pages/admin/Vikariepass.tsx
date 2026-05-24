@@ -1811,26 +1811,26 @@ export default function Bemanning() {
                 <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
               </div>
-              <div className="grid grid-cols-3 gap-2 sm:flex sm:justify-end">
+              <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-end sm:gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
                   <PeriodIkon typ="föregående" />
-                  <span>Föregående</span>
+                  <span className="hidden min-[390px]:inline">Föregående</span>
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
                   <PeriodIkon typ="idag" />
                   <span>Idag</span>
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
-                  <span>Nästa</span>
+                  <span className="hidden min-[390px]:inline">Nästa</span>
                   <PeriodIkon typ="nästa" />
                 </Button>
               </div>
             </div>
 
             <div className="pb-2">
-              <div className="-mx-2 flex snap-x gap-2 overflow-x-auto px-2 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-5">
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                 {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="min-h-[70dvh] w-[86vw] shrink-0 snap-start rounded-xl border p-2 transition md:min-h-[240px] md:w-auto md:shrink xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
+                  <section key={datum} className="rounded-xl border p-2 transition md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>

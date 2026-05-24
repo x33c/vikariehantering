@@ -105,7 +105,7 @@ function PassCard({
 }) {
   return (
     <article
-      className="rounded-2xl border p-4 transition-colors"
+      className="rounded-2xl border p-3 transition-colors sm:p-4"
       style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -127,7 +127,7 @@ function PassCard({
       </div>
 
       {pass.status === 'obokat' && vikarier && onBemanna && (
-        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr_auto]">
           <label className="sr-only" htmlFor={`vikarie-${pass.id}`}>
             Välj vikarie för {personNamn(pass)}
           </label>
@@ -149,7 +149,7 @@ function PassCard({
             ))}
           </select>
           <span
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold leading-tight"
+            className="hidden min-h-11 items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold leading-tight sm:inline-flex"
             style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}
           >
             Välj för att boka
@@ -180,8 +180,8 @@ function StepCard({
       : { bg: '#fffbeb', text: '#b45309', label: 'Nästa steg' };
 
   return (
-    <article className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-2xl border p-3 sm:p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-sm font-bold"
@@ -194,11 +194,11 @@ function StepCard({
             <p className="mt-1 text-sm leading-5" style={{ color: 'var(--text-muted)' }}>{text}</p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: tone.bg, color: tone.text }}>
+        <span className="w-fit shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: tone.bg, color: tone.text }}>
           {tone.label}
         </span>
       </div>
-      <div className="mt-4">{action}</div>
+      <div className="mt-3 sm:mt-4">{action}</div>
     </article>
   );
 }
@@ -222,15 +222,15 @@ function MetricTile({
     <button
       type="button"
       onClick={onClick}
-      className="min-h-24 rounded-2xl border p-4 text-left transition hover:shadow-sm"
+      className="min-h-20 rounded-2xl border p-3 text-left transition hover:shadow-sm sm:min-h-24 sm:p-4"
       style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        <p className="text-xs font-semibold sm:text-sm" style={{ color: 'var(--text-muted)' }}>{label}</p>
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       </div>
-      <p className="mt-2 text-4xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{value}</p>
-      <p className="mt-1 text-xs leading-5" style={{ color: 'var(--text-subtle)' }}>{hint}</p>
+      <p className="mt-1 text-3xl font-semibold tracking-tight sm:mt-2 sm:text-4xl" style={{ color: 'var(--text)' }}>{value}</p>
+      <p className="mt-1 hidden text-xs leading-5 sm:block" style={{ color: 'var(--text-subtle)' }}>{hint}</p>
     </button>
   );
 }
@@ -240,7 +240,7 @@ function CompactPassRow({ pass, onOpen }: { pass: Vikariepass; onOpen: () => voi
     <button
       type="button"
       onClick={onOpen}
-      className="grid w-full gap-2 rounded-2xl border p-4 text-left transition hover:shadow-sm sm:grid-cols-[1fr_auto]"
+      className="grid w-full gap-2 rounded-2xl border p-3 text-left transition hover:shadow-sm sm:grid-cols-[1fr_auto] sm:p-4"
       style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
     >
       <div className="min-w-0">
@@ -316,26 +316,26 @@ export default function Dashboard() {
   const utskickRedo = obokadePass.length === 0 && förfrågningar.length === 0;
 
   return (
-    <div className="mx-auto w-full max-w-[88rem] px-2 py-4 sm:px-4 lg:px-6">
-      <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-[88rem] px-1.5 py-2 sm:px-4 sm:py-4 lg:px-6">
+      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
             Idag
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: 'var(--text)' }}>
             Start
           </h1>
-          <p className="mt-1 max-w-2xl text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="mt-1 max-w-2xl text-sm leading-5" style={{ color: 'var(--text-muted)' }}>
             Registrera frånvaro, bemanna pass och förbered dagens utskick.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button variant="secondary" onClick={laddaStart}>Uppdatera</Button>
           <Button onClick={() => navigate('/admin/franvaro')}>Ny frånvaro</Button>
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <MetricTile
           label="Saknar vikarie"
           value={obokadePass.length}
@@ -366,22 +366,22 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <div className="space-y-4">
+      <div className="grid items-start gap-3 xl:grid-cols-[1.08fr_0.92fr] xl:gap-4">
+        <div className="space-y-3 xl:space-y-4">
           <section
-            className="rounded-3xl border p-5 shadow-sm"
+            className="rounded-3xl border p-3 shadow-sm sm:p-5"
             style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
           >
-            <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
                   Nästa bästa åtgärd
                 </p>
-                <h2 className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>
+                <h2 className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: 'var(--text)' }}>
                   {nästaPass ? 'Bemanna det här passet först' : dagensKlart ? 'Dagen är bemannad' : 'Börja med frånvaro'}
                 </h2>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Alla pass</Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Pass</Button>
             </div>
 
             {nästaPass ? (
@@ -423,7 +423,7 @@ export default function Dashboard() {
           </Panel>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 xl:space-y-4">
           <Panel>
           <div className="mb-4">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Morgonflöde</p>

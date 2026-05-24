@@ -1006,7 +1006,7 @@ export default function Franvaro() {
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
       <details className="mb-3 rounded-xl border px-3 py-2" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>
+        <summary className="flex cursor-pointer list-none flex-col gap-2 text-sm font-semibold sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text)' }}>
           <span>Sök och lista</span>
           <span className="flex flex-wrap items-center justify-end gap-2 text-xs">
             <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
@@ -1064,23 +1064,23 @@ export default function Franvaro() {
               {kortDatum(kalenderDagar[0])} - {kortDatum(kalenderDagar[4])} · {totaltIKalendern} frånvaro
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:flex">
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2">
             <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>
               <PeriodIkon typ="föregående" />
-              <span>Föregående</span>
+              <span className="hidden min-[390px]:inline">Föregående</span>
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(datumIdag())}>
               <PeriodIkon typ="idag" />
               <span>Idag</span>
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>
-              <span>Nästa</span>
+              <span className="hidden min-[390px]:inline">Nästa</span>
               <PeriodIkon typ="nästa" />
             </Button>
           </div>
         </div>
 
-        <div className="-mx-2 flex snap-x gap-3 overflow-x-auto px-2 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-5">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           {kalenderDagar.map((dag) => {
             const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
             const ärIdag = dag === datumIdag();
@@ -1088,7 +1088,7 @@ export default function Franvaro() {
             return (
               <div
                 key={dag}
-                className="min-h-[70dvh] w-[86vw] shrink-0 snap-start rounded-2xl border p-3 md:min-h-[240px] md:w-auto md:shrink"
+                className="rounded-2xl border p-3 md:min-h-[240px]"
                 style={{
                   background: 'var(--bg)',
                   borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
