@@ -88,6 +88,13 @@ function BetaShell({
 }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-6 lg:px-8">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:mb-3 focus:block focus:rounded-xl focus:px-4 focus:py-3 focus:text-sm focus:font-semibold"
+        style={{ background: 'var(--accent)', color: '#fff' }}
+      >
+        Skip to main content / Hoppa till beta-innehåll
+      </a>
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
@@ -103,30 +110,37 @@ function BetaShell({
         {action}
       </div>
 
-      <div className="mb-5 flex gap-1 overflow-x-auto rounded-2xl border p-1" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <nav
+        aria-label="Beta-vyer"
+        className="mb-5 flex gap-1 overflow-x-auto rounded-2xl border p-1"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+      >
         {betaNav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold"
+            className="shrink-0 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             style={({ isActive }) => ({
               background: isActive ? 'var(--accent)' : 'transparent',
               color: isActive ? '#fff' : 'var(--text-muted)',
+              boxShadow: isActive ? 'var(--nav-active-shadow)' : 'none',
             })}
           >
             {item.label}
           </NavLink>
         ))}
-      </div>
+      </nav>
 
-      {children}
+      <div id="main" role="main">
+        {children}
+      </div>
     </div>
   );
 }
 
 function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border p-4 ${className}`} style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+    <section className={`rounded-2xl border p-4 shadow-sm ${className}`} style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
       {children}
     </section>
   );
@@ -165,7 +179,7 @@ function PassCard({
   disabled?: boolean;
 }) {
   return (
-    <article className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+    <article className="rounded-2xl border p-4 transition-colors" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold" style={{ color: 'var(--text)' }}>{personNamn(pass)}</p>
@@ -184,7 +198,12 @@ function PassCard({
 
       {pass.status === 'obokat' && vikarier && onBemanna && (
         <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+          <label className="sr-only" htmlFor={`beta-vikarie-${pass.id}`}>
+            Välj vikarie för {personNamn(pass)}
+          </label>
           <select
+            id={`beta-vikarie-${pass.id}`}
+            aria-label={`Välj vikarie för ${personNamn(pass)}`}
             className="min-h-11 rounded-xl border px-3 text-sm"
             style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }}
             disabled={disabled}
@@ -199,8 +218,8 @@ function PassCard({
               <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
             ))}
           </select>
-          <span className="flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-            Boka direkt
+          <span className="flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}>
+            Välj för att boka
           </span>
         </div>
       )}
@@ -242,6 +261,10 @@ export function BetaStart() {
       description="En enklare arbetsyta där frånvaro, bemanning och utskick ligger i samma ordning som arbetsdagen."
       action={<Button onClick={() => navigate('/admin/franvaro')}>Registrera frånvaro</Button>}
     >
+      <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+        Testfokus: en startsida ska svara på tre frågor direkt: vad saknar vikarie, vad är redan klart och vad behöver förberedas till utskick.
+      </div>
+
       <div className="grid gap-3 lg:grid-cols-3">
         {[
           { label: 'Behöver vikarie', value: data.obokade, to: '/admin/beta/bemanning' },
@@ -263,7 +286,10 @@ export function BetaStart() {
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Att lösa idag</h2>
+            <div>
+              <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Att lösa idag</h2>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Pass utan vikarie visas först.</p>
+            </div>
             <Button size="sm" variant="secondary" onClick={() => navigate('/admin/beta/bemanning')}>Visa bemanning</Button>
           </div>
           <div className="space-y-2">
@@ -275,7 +301,10 @@ export function BetaStart() {
         </Panel>
 
         <Panel>
-          <h2 className="mb-3 font-semibold" style={{ color: 'var(--text)' }}>Kommande frånvaro</h2>
+          <div className="mb-3">
+            <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Kommande frånvaro</h2>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>För att kunna bemanna morgondagen i tid.</p>
+          </div>
           <div className="space-y-2">
             {kommandeFrånvaro.map((f) => (
               <div key={f.id} className="rounded-2xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
@@ -397,6 +426,21 @@ export function BetaBemanning() {
       description="Beta-vyn visar först pass som kräver beslut. Det går att välja vikarie direkt på raden."
       action={<Button variant="secondary" onClick={ladda}>Uppdatera</Button>}
     >
+      <div className="mb-4 grid gap-3 md:grid-cols-3">
+        <Panel>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Behöver beslut</p>
+          <p className="mt-2 text-3xl font-semibold" style={{ color: 'var(--text)' }}>{behöverVikarie.length}</p>
+        </Panel>
+        <Panel>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Bemannade</p>
+          <p className="mt-2 text-3xl font-semibold" style={{ color: 'var(--text)' }}>{bokade.length}</p>
+        </Panel>
+        <Panel>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Princip</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--text)' }}>En rad, ett beslut. Avancerade val ska ligga bakom originalvyn.</p>
+        </Panel>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <Panel>
           <h2 className="mb-3 font-semibold" style={{ color: 'var(--text)' }}>Behöver vikarie</h2>
