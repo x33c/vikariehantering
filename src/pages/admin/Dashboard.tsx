@@ -84,7 +84,7 @@ function StatusPill({ status }: { status: PassStatus }) {
 
   return (
     <span
-      className="rounded-full px-2.5 py-1 text-xs font-semibold"
+      className="inline-flex min-h-8 items-center justify-center rounded-full px-3 py-1 text-center text-xs font-semibold leading-none"
       style={{ color, background: 'color-mix(in srgb, currentColor 10%, transparent)' }}
     >
       {statusText[status]}
@@ -149,7 +149,7 @@ function PassCard({
             ))}
           </select>
           <span
-            className="flex min-h-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold leading-tight"
             style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}
           >
             Välj för att boka
@@ -416,7 +416,7 @@ export default function Dashboard() {
             </div>
             <div className="space-y-2">
               {obokadePass.slice(0, 6).map((p) => (
-                <CompactPassRow key={p.id} pass={p} onOpen={() => navigate('/admin/vikariepass')} />
+                <CompactPassRow key={p.id} pass={p} onOpen={() => navigate(`/admin/vikariepass?pass=${p.id}`)} />
               ))}
               {obokadePass.length === 0 && <Empty text="Inga pass i bemanningskön." />}
             </div>
