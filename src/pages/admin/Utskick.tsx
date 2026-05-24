@@ -66,6 +66,24 @@ function passFörDag(pass: Vikariepass[], dag: string) {
   return pass.filter((p) => p.datum === dag && p.status !== 'avbokat');
 }
 
+function slåIhopText(befintlig: string, nyText: string, typ: CellTyp) {
+  const ny = nyText.trim();
+  if (!ny) return befintlig;
+  if (!befintlig.trim()) return ny;
+
+  const separator = typ === 'vikarie' ? '\n\n' : '\n';
+  const delar = typ === 'vikarie'
+    ? ny.split(/\n{2,}/).map((del) => del.trim()).filter(Boolean)
+    : ny.split('\n').map((del) => del.trim()).filter(Boolean);
+
+  let resultat = befintlig.trimEnd();
+  for (const del of delar) {
+    if (!resultat.includes(del)) resultat += `${separator}${del}`;
+  }
+
+  return resultat;
+}
+
 function arbetslagSortIndex(value?: string | null) {
   const text = (value ?? '').toLowerCase().replace(/\s+/g, '');
   if (!text) return 99;
@@ -270,6 +288,7 @@ export default function Utskick() {
   const [celler, setCeller] = useState<Record<string, string>>({});
   const [laddar, setLaddar] = useState(true);
   const [sparar, setSparar] = useState(false);
+  const [uppdaterar, setUppdaterar] = useState(false);
   const [kopierat, setKopierat] = useState(false);
   const [fel, setFel] = useState('');
   const [rutaStorlek, setRutaStorlek] = useState<'normal' | 'stor' | 'max'>('normal');
@@ -325,17 +344,26 @@ export default function Utskick() {
     ladda();
   }, [startIso, slutIso]);
 
-  function grundText(datum: string, typ: CellTyp) {
+  function grundText(
+    datum: string,
+    typ: CellTyp,
+    frånvaroKälla = frånvaro,
+    passKälla = pass,
+    vikarierKälla = vikarier
+  ) {
+    const namnFormatter = skapaNamnFormatter(frånvaroKälla, passKälla, vikarierKälla);
+    const vikarieMap = new Map(vikarierKälla.map((v) => [v.id, v]));
+
     if (typ === 'franvaro') {
-      return frånvaroFörDag(frånvaro, datum)
-        .map((f) => frånvaroText(f, formatNamn))
+      return frånvaroFörDag(frånvaroKälla, datum)
+        .map((f) => frånvaroText(f, namnFormatter))
         .join('\n');
     }
 
     if (typ === 'vikarie') {
-      return passFörDag(pass, datum)
+      return passFörDag(passKälla, datum)
         .sort(sorteraPass)
-        .map((p) => vikarieText(p, formatNamn, vikarierById))
+        .map((p) => vikarieText(p, namnFormatter, vikarieMap))
         .join('\n\n');
     }
 
@@ -391,6 +419,47 @@ export default function Utskick() {
     }
 
     return true;
+  }
+
+  async function uppdateraFrånvaroOchBemanning() {
+    setUppdaterar(true);
+    setFel('');
+
+    const [fRes, pRes, vRes] = await Promise.all([
+      frånvaroApi.lista(startIso, slutIso),
+      passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
+      vikariApi.lista(),
+    ]);
+
+    if (fRes.error || pRes.error || vRes.error) {
+      setFel(fRes.error?.message ?? pRes.error?.message ?? vRes.error?.message ?? 'Kunde inte uppdatera utskicket.');
+      setUppdaterar(false);
+      return;
+    }
+
+    const nyFrånvaro = (fRes.data ?? []) as Frånvaro[];
+    const nyaPass = (pRes.data ?? []) as Vikariepass[];
+    const nyaVikarier = (vRes.data ?? []) as Vikarie[];
+
+    setFrånvaro(nyFrånvaro);
+    setPass(nyaPass);
+    setVikarier(nyaVikarier);
+    setCeller((prev) => {
+      const nästa = { ...prev };
+
+      for (const dag of dagar) {
+        const datum = iso(dag);
+        for (const typ of ['franvaro', 'vikarie'] as const) {
+          const key = cellKey(datum, typ);
+          const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
+          nästa[key] = slåIhopText(nästa[key] ?? '', nyText, typ);
+        }
+      }
+
+      return nästa;
+    });
+
+    setUppdaterar(false);
   }
 
   async function skickaMail() {
@@ -479,6 +548,7 @@ export default function Utskick() {
           <Button variant="secondary" onClick={() => bytVecka(-1)}>Föregående</Button>
           <Button variant="secondary" onClick={() => setVeckaStart(iso(startPåVecka(new Date())))}>Idag</Button>
           <Button variant="secondary" onClick={() => bytVecka(1)}>Nästa</Button>
+          <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
           <Button variant="secondary" onClick={sparaCeller} loading={sparar}>Spara text</Button>
           <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
