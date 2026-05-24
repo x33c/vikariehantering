@@ -227,6 +227,7 @@ export type UppdateraFrånvaro = Partial<NyFrånvaro>;
 
 export type NyttVikariepass = Omit<Vikariepass, 'id' | 'created_at' | 'updated_at' | 'personal' | 'vikarie' | 'frånvaro'>;
 export type UppdateraVikariepass = Partial<NyttVikariepass>;
+export type Bemanning = Vikariepass;
 
 // ============================================================
 // UI / application types
