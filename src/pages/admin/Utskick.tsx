@@ -5,11 +5,11 @@ import type { Frånvaro, Vikariepass, Vikarie } from '../../types';
 import { Button, LaddaSida } from '../../components/ui';
 
 type CellTyp = 'franvaro' | 'vikarie' | 'ovrigt';
-type ExtraTyp = 'lankar' | 'kontakt';
+type ExtraTyp = 'ingress' | 'lankar' | 'kontakt';
 type UtskickTyp = CellTyp | ExtraTyp;
 
 const cellTyper: CellTyp[] = ['franvaro', 'vikarie', 'ovrigt'];
-const extraTyper: ExtraTyp[] = ['lankar', 'kontakt'];
+const extraTyper: ExtraTyp[] = ['ingress', 'lankar', 'kontakt'];
 const GLOBAL_CELL_DATE = '1970-01-01';
 
 function iso(datum: Date) {
@@ -40,6 +40,28 @@ function veckaNummer(datum: Date) {
 
 function kortDatum(datum: Date) {
   return datum.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+}
+
+function långtDatum(datum: Date) {
+  return datum.toLocaleDateString('sv-SE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function standardIngress() {
+  return [
+    'God morgon,',
+    'här är frånvaron för {datum}',
+    '',
+    'Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.',
+  ].join('\n');
+}
+
+function byggIngress(template: string, datum: Date) {
+  return (template.trim() || standardIngress()).replaceAll('{datum}', långtDatum(datum));
 }
 
 function PeriodIkon({ typ }: { typ: 'föregående' | 'idag' | 'nästa' }) {
@@ -371,10 +393,12 @@ function byggHtml({
   dagar,
   cellText,
   extraText,
+  ingressText,
 }: {
   dagar: Date[];
   cellText: (datum: string, typ: CellTyp) => string;
   extraText: (typ: ExtraTyp) => string;
+  ingressText: string;
 }) {
   const font = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;';
   const axisFont = 'font-family:Aptos,Calibri,Arial,sans-serif;font-size:12pt;line-height:1.25;font-weight:700;';
@@ -392,6 +416,7 @@ function byggHtml({
 
   return `
 <div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+  <div style="margin:0 0 18px 0;white-space:normal;">${esc(ingressText).replaceAll('\n', '<br>')}</div>
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
@@ -502,6 +527,7 @@ export default function Utskick() {
   }
 
   function textFörExtra(typ: ExtraTyp) {
+    if (typ === 'ingress') return celler[cellKey(GLOBAL_CELL_DATE, typ)] ?? standardIngress();
     return celler[cellKey(GLOBAL_CELL_DATE, typ)] ?? '';
   }
 
@@ -593,11 +619,11 @@ export default function Utskick() {
       return typ === 'vikarie' ? normaliseraVikarieRadbrytningar(text) : text;
     };
 
-    const html = byggHtml({ dagar, cellText: textFörMail, extraText: textFörExtra });
+    const dagensDatum = new Date();
+    const ingressText = byggIngress(textFörExtra('ingress'), dagensDatum);
+    const html = byggHtml({ dagar, cellText: textFörMail, extraText: textFörExtra, ingressText });
     const plain = [
-      'God morgon,',
-      '',
-      'här är frånvaron.',
+      ingressText,
       '',
       ...dagar.map((dag) => {
         const datum = iso(dag);
@@ -625,8 +651,7 @@ export default function Utskick() {
     setKopierat(true);
     setTimeout(() => setKopierat(false), 2500);
 
-    const idagText = new Date().toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const ämne = `Frånvarolista - ${idagText}`;
+    const ämne = `Frånvarolista - ${långtDatum(dagensDatum)}`;
     window.location.href = `mailto:?subject=${encodeURIComponent(ämne)}`;
   }
 
@@ -808,10 +833,24 @@ export default function Utskick() {
           Fasta uppgifter i utskick
         </summary>
         <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Länkar och kontaktuppgifter sparas globalt och följer med oavsett vecka.
+          Ingress, länkar och kontaktuppgifter sparas globalt och följer med oavsett vecka.
         </p>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <section className="lg:col-span-2">
+            <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Ingress</label>
+            <textarea
+              value={textFörExtra('ingress')}
+              onChange={(e) => uppdateraExtra('ingress', e.target.value)}
+              placeholder={'God morgon,\nhär är frånvaron för {datum}\n\nPåminnelsetext...'}
+              className="min-h-32 w-full resize-y rounded-lg border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Skriv {'{datum}'} där dagens datum ska stå.
+            </p>
+          </section>
+
           <section>
             <label className="mb-2 block text-sm font-semibold" style={{ color: 'var(--text)' }}>Länkar</label>
             <textarea
