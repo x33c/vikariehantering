@@ -383,7 +383,7 @@ function htmlExtraBlock(rubrik: string, text: string, typ: 'lankar' | 'kontakt')
     : trimmed.split('\n').map(htmlKontaktRad).join('');
 
   return `
-  <div style="margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;font-weight:400;">
+  <div style="margin-top:18px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;line-height:1.25;font-weight:400;">
     <div style="font-size:12pt;font-weight:700;margin:0 0 5px 0;">${esc(rubrik)}:</div>
     ${innehåll}
   </div>`;
@@ -415,7 +415,7 @@ function byggHtml({
   ].join('');
 
   return `
-<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
+<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;line-height:1.25;">
 <div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replaceAll('\n', '<br>')}<br><br></div>  
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
