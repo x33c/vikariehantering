@@ -148,25 +148,65 @@ function datumIntervall(start: string, slut: string) {
 }
 
 const LOST_FRANVARO_MARKER = '[admin:franvaro-lost]';
+const LOST_FRANVARO_DATUM_PREFIX = '[admin:franvaro-lost:';
 const RADBRYTNING = String.fromCharCode(10);
+
+function löstFrånvaroDatumMarker(datum: string) {
+  return `${LOST_FRANVARO_DATUM_PREFIX}${datum}]`;
+}
+
+function ärLöstMarkerRad(rad: string) {
+  const text = rad.trim();
+  return text === LOST_FRANVARO_MARKER || /^\[admin:franvaro-lost:\d{4}-\d{2}-\d{2}\]$/.test(text);
+}
+
+function läsLöstaFrånvaroDatum(frånvaro: Frånvaro) {
+  const datum = new Set<string>();
+
+  for (const rad of (frånvaro.anteckning ?? '').split(RADBRYTNING)) {
+    const text = rad.trim();
+    const match = text.match(/^\[admin:franvaro-lost:(\d{4}-\d{2}-\d{2})\]$/);
+    if (match) datum.add(match[1]);
+  }
+
+  const harGammalHelMarkering = (frånvaro.anteckning ?? '')
+    .split(RADBRYTNING)
+    .some(rad => rad.trim() === LOST_FRANVARO_MARKER);
+  if (harGammalHelMarkering && frånvaro.datum_från === frånvaro.datum_till) {
+    datum.add(frånvaro.datum_från);
+  }
+
+  return datum;
+}
 
 function synligFrånvaroAnteckning(anteckning?: string | null) {
   return (anteckning ?? '')
     .split(RADBRYTNING)
-    .filter(rad => rad.trim() !== LOST_FRANVARO_MARKER)
+    .filter(rad => !ärLöstMarkerRad(rad))
     .join(RADBRYTNING)
     .trim();
 }
 
-function ärLöstFrånvaro(frånvaro: Frånvaro) {
-  return (frånvaro.anteckning ?? '')
-    .split(RADBRYTNING)
-    .some(rad => rad.trim() === LOST_FRANVARO_MARKER);
+function ärLöstFrånvaro(frånvaro: Frånvaro, datum?: string) {
+  const löstaDatum = läsLöstaFrånvaroDatum(frånvaro);
+  if (datum) return löstaDatum.has(datum);
+
+  return datumIntervall(frånvaro.datum_från, frånvaro.datum_till)
+    .every(dag => löstaDatum.has(dag));
 }
 
-function anteckningMedLöstMarkering(frånvaro: Frånvaro, löst: boolean) {
+function anteckningMedLöstMarkering(frånvaro: Frånvaro, löst: boolean, datum?: string) {
   const synlig = synligFrånvaroAnteckning(frånvaro.anteckning);
-  return löst ? [synlig, LOST_FRANVARO_MARKER].filter(Boolean).join(RADBRYTNING) : synlig || null;
+  const löstaDatum = läsLöstaFrånvaroDatum(frånvaro);
+  const datumAttÄndra = datum ? [datum] : datumIntervall(frånvaro.datum_från, frånvaro.datum_till);
+
+  for (const dag of datumAttÄndra) {
+    if (löst) löstaDatum.add(dag);
+    else löstaDatum.delete(dag);
+  }
+
+  const markörer = [...löstaDatum].sort().map(löstFrånvaroDatumMarker);
+  return [synlig, ...markörer].filter(Boolean).join(RADBRYTNING) || null;
 }
 
 function anteckningFörPass(frånvaro: Frånvaro) {
@@ -607,17 +647,16 @@ function FrånvaroModal({
               <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
             </div>
           )}
-          <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak(e.target.value)} placeholder="Sjukdom, VAB..." />
-          <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={2} />
+          <Input label="Orsak" value={orsak} onChange={(e) => setOrsak(e.target.value)} placeholder="Sjuk, VAB, ledig..." />
+          <Textarea label="Anteckning" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
-            <Button loading={laddar} onClick={registreraFrånvaro}>
-              {ingenVikarieBehövs ? 'Spara frånvaro' : 'Fortsätt'}
-            </Button>
+            <Button loading={laddar} onClick={registreraFrånvaro}>Spara</Button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
+          {fel && <Alert typ="error">{fel}</Alert>}
           <Alert typ="success">Frånvaron är sparad.</Alert>
 
           <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
@@ -625,15 +664,13 @@ function FrånvaroModal({
               label="Vem ska vikariera?"
               value={valdVikarieId}
               onChange={(e) => setValdVikarieId(e.target.value)}
+              hint="Om du väljer vikarie nu skickas en förfrågan. Passet markeras som tillfrågat tills vikarien svarar."
             >
               <option value="">Välj senare</option>
               {vikarier.map((vikarie) => (
                 <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
               ))}
             </Select>
-            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Välj vikarie om du vill skicka förfrågan eller boka personen direkt. Lämna tomt för att bara skapa pass för bemanning.
-            </p>
           </div>
 
           {schemarader.length > 0 ? (
@@ -728,7 +765,7 @@ function RedigeraFrånvaroModal({
     setFel('');
 
     const res = await frånvaroApi.uppdatera(frånvaro.id, {
-      personal_id: skapadFrånvaro.personal_id,
+      personal_id: frånvaro.personal_id,
       datum_från: datumFrån,
       datum_till: datumTill,
       hel_dag: helDag,
@@ -792,7 +829,7 @@ function RedigeraFrånvaroModal({
         )}
 
         <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak(e.target.value)} />
-        <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} rows={3} />
+        <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
@@ -815,10 +852,10 @@ export default function Franvaro() {
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
   const [löserFrånvaroId, setLöserFrånvaroId] = useState<string | null>(null);
+  const [redigeraFrånvaro, setRedigeraFrånvaro] = useState<Frånvaro | null>(null);
   const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
   const [visaLista, setVisaLista] = useState(false);
-  const [redigeraFrånvaro, setRedigeraFrånvaro] = useState<Frånvaro | null>(null);
   const [kalenderDatum, setKalenderDatum] = useState(datumIdag());
 
   useEffect(() => { ladda(); }, []);
@@ -841,11 +878,12 @@ export default function Franvaro() {
     return vikariepass.filter((pass) => pass.frånvaro_id === frånvaro.id && pass.status !== 'avbokat');
   }
 
-  async function växlaLöstFrånvaro(frånvaro: Frånvaro) {
-    const nästaLöst = !ärLöstFrånvaro(frånvaro);
-    const anteckning = anteckningMedLöstMarkering(frånvaro, nästaLöst);
+  async function växlaLöstFrånvaro(frånvaro: Frånvaro, datum?: string) {
+    const nästaLöst = !ärLöstFrånvaro(frånvaro, datum);
+    const anteckning = anteckningMedLöstMarkering(frånvaro, nästaLöst, datum);
+    const laddningsId = datum ? `${frånvaro.id}:${datum}` : frånvaro.id;
 
-    setLöserFrånvaroId(frånvaro.id);
+    setLöserFrånvaroId(laddningsId);
     setSidFel('');
 
     const res = await frånvaroApi.uppdatera(frånvaro.id, { anteckning } as any);
@@ -985,7 +1023,9 @@ export default function Franvaro() {
     return map;
   }, [filtrerade, kalenderDagar]);
   const totaltIKalendern = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag)?.length ?? 0), 0);
-  const antalSaknarPass = filtrerade.filter((frånvaro) => !ärLöstFrånvaro(frånvaro) && aktivaPassFör(frånvaro).length === 0).length;
+  const antalSaknarPass = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag) ?? [])
+    .filter((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0)
+    .length, 0);
 
   if (laddar) return <LaddaSida />;
 
@@ -1100,7 +1140,7 @@ export default function Franvaro() {
                     <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
                   </div>
-                  {dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro) && aktivaPassFör(frånvaro).length === 0) && (
+                  {dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0) && (
                     <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
                       Åtgärd
                     </span>
@@ -1114,9 +1154,9 @@ export default function Franvaro() {
                 ) : (
                   <div className="space-y-2">
                     {dagensFrånvaro.map((frånvaro) => {
-                      const pass = aktivaPassFör(frånvaro);
+                      const pass = aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag);
                       const harPass = pass.length > 0;
-                      const löst = ärLöstFrånvaro(frånvaro);
+                      const löst = ärLöstFrånvaro(frånvaro, dag);
                       const behöverÅtgärd = !löst && !harPass;
 
                       return (
@@ -1150,8 +1190,8 @@ export default function Franvaro() {
                             <Button
                               size="sm"
                               variant="secondary"
-                              loading={löserFrånvaroId === frånvaro.id}
-                              onClick={() => växlaLöstFrånvaro(frånvaro)}
+                              loading={löserFrånvaroId === `${frånvaro.id}:${dag}`}
+                              onClick={() => växlaLöstFrånvaro(frånvaro, dag)}
                             >
                               {löst ? 'Ångra löst' : 'Markera löst'}
                             </Button>
