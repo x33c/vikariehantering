@@ -20,6 +20,7 @@ import Vikariepass from './pages/admin/Vikariepass';
 import Import from './pages/admin/Import';
 import Historik from './pages/admin/Historik';
 import Utskick from './pages/admin/Utskick';
+import Export from './pages/admin/Export';
 import Konton from './pages/admin/Konton';
 import Notiser from './pages/admin/Notiser';
 import { BetaBemanning, BetaFranvaro, BetaStart, BetaUtskick } from './pages/admin/beta/BetaAdmin';
@@ -86,6 +87,7 @@ export default function App() {
             <Route path="historik" element={<Historik />} />
             <Route path="konton" element={<Konton />} />
             <Route path="utskick" element={<Utskick />} />
+            <Route path="export" element={<Export />} />
             <Route path="notiser" element={<Notiser />} />
             <Route path="beta" element={<Navigate to="/admin/beta/start" replace />} />
             <Route path="beta/start" element={<BetaStart />} />
