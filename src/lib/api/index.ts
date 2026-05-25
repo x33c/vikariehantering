@@ -12,6 +12,12 @@ function signaleraTillgänglighetÄndrad(vikarieId?: string | null) {
     // Lokal synk är en förbättring, inte ett krav.
   }
 }
+function arVardag(datum?: string | null) {
+  if (!datum) return false;
+  const dag = new Date(`${datum}T12:00:00`).getDay();
+  return dag >= 1 && dag <= 5;
+}
+
 import type {
   Arbetslag, NyArbetslag, UppdateraArbetslag,
   Personal, NyPersonal, UppdateraPersonal,
@@ -221,6 +227,10 @@ export const passApi = {
     return res;
   },
   async skapa(data: NyttVikariepass) {
+    if (!arVardag(data.datum)) {
+      return { data: null, error: null };
+    }
+
     const payload = {
       ...data,
       personal_id: data.personal_id || null,
