@@ -1698,88 +1698,94 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <details className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-            Filter och datum
-            {(statusFilter || datumFrån || datumTill || vikarieFilter) && (
-              <span className="ml-2 rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--hover)', color: 'var(--blue)' }}>
-                aktiva
-              </span>
-            )}
-          </summary>
-          <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
-            <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
-              <option value="">Alla statusar</option>
-              {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
-            </Select>
-            <Select value={vikarieFilter} onChange={e => setVikarieFilter(e.target.value)}>
-              <option value="">Alla vikarier</option>
-              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
-            </Select>
-            <Input type="date" value={datumFrån} onChange={e => {
-              setDatumFrån(e.target.value);
-              if (e.target.value) setVeckaStart(veckaStartIso(e.target.value));
-            }} />
-            <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
-          </div>
-        </details>
+        <div className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="flex flex-col gap-2 2xl:flex-row 2xl:items-center 2xl:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
+            </div>
 
-        <details className="mb-2 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            <span>Statusfilter</span>
-            <span className="rounded-full px-2.5 py-1 text-xs" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
-              {snabbFilter === 'atgard' ? 'Att göra' :
-                snabbFilter === 'alla' ? (döljPasserade ? 'Aktiva' : 'Alla') :
-                snabbFilter === 'lediga' ? 'Lediga' :
-                snabbFilter === 'bokade' ? 'Bokade' :
-                snabbFilter === 'ej_publicerade' ? 'Ej publicerade' : 'Arkiv'}
-            </span>
-          </summary>
-
-        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-          {[
-            { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
-            { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
-            { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
-            { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
-            { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
-            { id: 'arkiv', label: 'Arkiv', count: filterCounts.arkiv },
-          ].map(f => {
-            const aktiv = snabbFilter === f.id;
-            return (
+            <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 2xl:justify-center 2xl:pb-0">
+              {[
+                { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
+                { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
+                { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
+                { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
+                { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
+                { id: 'arkiv', label: 'Arkiv', count: filterCounts.arkiv },
+              ].map(f => {
+                const aktiv = snabbFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
+                    className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                    style={{
+                      background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
+                      borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                      color: aktiv ? '#fff' : 'var(--text-muted)',
+                    }}
+                  >
+                    <span>{f.label}</span>
+                    <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: aktiv ? 'rgba(255,255,255,0.22)' : 'var(--hover)' }}>
+                      {f.count}
+                    </span>
+                  </button>
+                );
+              })}
               <button
-                key={f.id}
                 type="button"
-                onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
+                data-hide-past-toggle
+                onClick={() => setDöljPasserade(!döljPasserade)}
                 className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
                 style={{
-                  background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
-                  borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
-                  color: aktiv ? '#fff' : 'var(--text-muted)',
+                  background: döljPasserade ? 'var(--blue)' : 'var(--bg-card)',
+                  borderColor: döljPasserade ? 'var(--blue)' : 'var(--border)',
+                  color: döljPasserade ? '#fff' : 'var(--text-muted)',
                 }}
               >
-                <span>{f.label}</span>
-                <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: aktiv ? 'rgba(255,255,255,0.22)' : 'var(--hover)' }}>
-                  {f.count}
-                </span>
+                {döljPasserade ? 'Visar aktiva' : 'Dölj passerade'}
               </button>
-            );
-          })}
-          <button
-            type="button"
-            data-hide-past-toggle
-            onClick={() => setDöljPasserade(!döljPasserade)}
-            className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-            style={{
-              background: döljPasserade ? 'var(--blue)' : 'var(--bg-card)',
-              borderColor: döljPasserade ? 'var(--blue)' : 'var(--border)',
-              color: döljPasserade ? '#fff' : 'var(--text-muted)',
-            }}
-          >
-            {döljPasserade ? 'Visar aktiva' : 'Dölj passerade'}
-          </button>
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1.5 sm:flex sm:justify-end sm:gap-2">
+              <details className="relative">
+                <summary className="flex h-full cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: (statusFilter || datumFrån || datumTill || vikarieFilter) ? 'var(--blue)' : 'var(--text)', background: 'var(--bg)' }}>
+                  Filter{(statusFilter || datumFrån || datumTill || vikarieFilter) ? ' •' : ''}
+                </summary>
+                <div className="absolute right-0 z-20 mt-2 grid w-[min(92vw,520px)] gap-2 rounded-xl border p-3 shadow-xl sm:grid-cols-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                  <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
+                    <option value="">Alla statusar</option>
+                    {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
+                  </Select>
+                  <Select value={vikarieFilter} onChange={e => setVikarieFilter(e.target.value)}>
+                    <option value="">Alla vikarier</option>
+                    {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                  </Select>
+                  <Input type="date" value={datumFrån} onChange={e => {
+                    setDatumFrån(e.target.value);
+                    if (e.target.value) setVeckaStart(veckaStartIso(e.target.value));
+                  }} />
+                  <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
+                </div>
+              </details>
+
+              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
+                <PeriodIkon typ="föregående" />
+                <span className="hidden min-[390px]:inline">Föregående</span>
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
+                <PeriodIkon typ="idag" />
+                <span>Idag</span>
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
+                <span className="hidden min-[390px]:inline">Nästa</span>
+                <PeriodIkon typ="nästa" />
+              </Button>
+            </div>
+          </div>
         </div>
-        </details>
 
         {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
@@ -1805,29 +1811,7 @@ export default function Bemanning() {
             })}
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex flex-col gap-3 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortVeckodag(veckaStart)} – {kortVeckodag(veckaSlut)}</p>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-end sm:gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
-                  <PeriodIkon typ="föregående" />
-                  <span className="hidden min-[390px]:inline">Föregående</span>
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
-                  <PeriodIkon typ="idag" />
-                  <span>Idag</span>
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
-                  <span className="hidden min-[390px]:inline">Nästa</span>
-                  <PeriodIkon typ="nästa" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="pb-2">
+         
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                 {grupperPerDag.map(({ datum, grupper }) => (
                   <section key={datum} className="rounded-xl border p-2 transition md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
