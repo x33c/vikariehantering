@@ -416,7 +416,7 @@ function byggHtml({
 
   return `
 <div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:10pt;line-height:1.25;">
-  <div style="margin:0 0 18px 0;white-space:normal;">${esc(ingressText).replaceAll('\n', '<br>')}</div>
+<div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replaceAll('\n', '<br>')}<br><br></div>  
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
