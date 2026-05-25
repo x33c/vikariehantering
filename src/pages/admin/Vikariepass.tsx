@@ -1901,7 +1901,6 @@ export default function Bemanning() {
                 ))}
               </div>
             </div>
-          </div>
         )}
       </div>
 
