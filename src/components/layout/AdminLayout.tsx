@@ -16,6 +16,7 @@ const merNavItems = [
   { to: '/admin/arbetslag', label: 'Personal' },
   { to: '/admin/import', label: 'Schema' },
   { to: '/admin/historik', label: 'Historik' },
+  { to: '/admin/export', label: 'Export' },
   { to: '/admin/konton', label: 'Konton' },
   { to: '/admin/beta', label: 'Beta' },
 ];
@@ -36,7 +37,6 @@ function useDarkMode() {
 
   return { mörkt, toggla };
 }
-
 
 function TemaIkon({ mörkt }: { mörkt: boolean }) {
   if (mörkt) {
@@ -89,7 +89,6 @@ export default function AdminLayout() {
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
                 Passportalen
               </p>
-              
             </div>
           </div>
         </div>
