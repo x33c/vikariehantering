@@ -1900,7 +1900,6 @@ export default function Bemanning() {
                   </section>
                 ))}
               </div>
-            </div>
         )}
       </div>
 
