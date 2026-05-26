@@ -185,7 +185,9 @@ export function BetaStart() {
   }
 
   function frånvaroFörDag(datum: string) {
-    return frånvaro.filter((f) => f.datum_från <= datum && f.datum_till >= datum).sort((a, b) => personNamn(null, a).localeCompare(personNamn(null, b), 'sv'));
+    return frånvaro
+      .filter((f) => f.datum_från <= datum && f.datum_till >= datum)
+      .sort((a, b) => personNamn(null, a).localeCompare(personNamn(null, b), 'sv'));
   }
 
   function passFörDag(datum: string) {
@@ -198,6 +200,14 @@ export function BetaStart() {
 
   function friståendePassFörDag(datum: string) {
     return passFörDag(datum).filter((p) => !p.frånvaro_id);
+  }
+
+  function vikarieNamnFörPass(passRad: Vikariepass) {
+    return passRad.vikarie?.namn ?? vikarier.find((v) => v.id === passRad.vikarie_id)?.namn ?? '';
+  }
+
+  function passBehöverVikarie(passRad: Vikariepass) {
+    return !passRad.vikarie_id && (passRad.status === 'obokat' || passRad.status === 'notifierat');
   }
 
   if (laddar) return <LaddaSida />;
@@ -217,7 +227,7 @@ export function BetaStart() {
       description="Test av en samlad kalender där frånvaro och bemanning syns ihop. Originalvyerna finns kvar tills det här känns stabilt."
       action={<div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={laddaPlanering}>Uppdatera</Button><Button onClick={() => navigate('/admin/franvaro')}>Ny frånvaro</Button></div>}
     >
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile label="Frånvaro utan pass" value={frånvaroUtanPass} tone={frånvaroUtanPass > 0 ? 'danger' : 'success'} />
         <MetricTile label="Saknar vikarie" value={obokade} tone={obokade > 0 ? 'danger' : 'success'} />
         <MetricTile label="Förfrågningar" value={förfrågningar} tone={förfrågningar > 0 ? 'warning' : 'neutral'} />
@@ -225,10 +235,10 @@ export function BetaStart() {
       </div>
 
       <section className="rounded-3xl border shadow-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex flex-col gap-3 border-b p-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--border)' }}>
           <div>
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckaNummer(veckaStart)}</h2>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{kortDatum(iso(dagar[0]))} - {kortDatum(iso(dagar[4]))}</p>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckaNummer(veckaStart)}</h2>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortDatum(iso(dagar[0]))} - {kortDatum(iso(dagar[4]))}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex">
             <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagar(veckaStart, -7))}>Föregående</Button>
@@ -237,62 +247,95 @@ export function BetaStart() {
           </div>
         </div>
 
-        <div className="grid gap-3 p-3 xl:grid-cols-5">
+        <div className="grid gap-2 p-2 xl:grid-cols-5">
           {dagar.map((dag) => {
             const datum = iso(dag);
             const dagensFrånvaro = frånvaroFörDag(datum);
             const dagensFriståendePass = friståendePassFörDag(datum);
-            const behöverÅtgärd = dagensFrånvaro.some((f) => passFörFrånvaro(f.id, datum).length === 0) || passFörDag(datum).some((p) => p.status === 'obokat' || p.status === 'notifierat');
+            const dagensPass = passFörDag(datum);
+            const behöverÅtgärd = dagensFrånvaro.some((f) => passFörFrånvaro(f.id, datum).length === 0) || dagensPass.some(passBehöverVikarie);
 
             return (
-              <section key={datum} className="min-h-80 rounded-2xl border p-3" style={{ borderColor: behöverÅtgärd ? '#f97316' : 'var(--border)', background: 'var(--bg)' }}>
-                <div className="mb-3 flex items-start justify-between gap-2">
+              <section key={datum} className="min-h-80 rounded-2xl border p-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-xl px-2 py-1.5" style={{ background: behöverÅtgärd ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
                   <div>
-                    <h3 className="font-semibold" style={{ color: 'var(--text)' }}>{dagNamn(dag)}</h3>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{kortDatum(datum)}</p>
+                    <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{dagNamn(dag)}</h3>
+                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{kortDatum(datum)} · {dagensFrånvaro.length} frånvaro · {dagensPass.length} pass</p>
                   </div>
-                  {behöverÅtgärd && <span className="rounded-full px-2 py-1 text-[11px] font-semibold" style={{ color: '#fb923c', background: 'rgba(249,115,22,0.14)' }}>Åtgärd</span>}
+                  {behöverÅtgärd && <span className="rounded-full px-2 py-1 text-[10px] font-semibold" style={{ color: '#fb923c', background: 'rgba(249,115,22,0.14)' }}>Åtgärd</span>}
                 </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Frånvaro</p>
-                    <div className="space-y-2">
-                      {dagensFrånvaro.map((f) => {
-                        const koppladePass = passFörFrånvaro(f.id, datum);
-                        return (
-                          <article key={`${f.id}-${datum}`} className="rounded-2xl border p-3" style={{ borderColor: koppladePass.length ? 'var(--border)' : '#f97316', background: 'var(--bg-card)' }}>
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{personNamn(null, f)}</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{gruppText(null, f) || 'Ingen grupp'} · {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}</p>
-                              </div>
-                              <span className="shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold" style={{ color: koppladePass.length ? '#22c55e' : '#fb923c', background: koppladePass.length ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.14)' }}>{koppladePass.length ? `${koppladePass.length} pass` : 'Saknar pass'}</span>
-                            </div>
+                <div className="space-y-2">
+                  {dagensFrånvaro.map((f) => {
+                    const koppladePass = passFörFrånvaro(f.id, datum);
+                    const saknarPass = koppladePass.length === 0;
 
-                            {koppladePass.length > 0 && <div className="mt-2 space-y-2">
-                              {koppladePass.map((p) => (
-                                <div key={p.id} className="rounded-xl border px-2 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                                  <div className="flex items-start justify-between gap-2"><p className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{tid(p.tid_från)}-{tid(p.tid_till)}</p><StatusPill status={p.status} /></div>
-                                  {p.vikarie?.namn ? <p className="mt-1 text-xs" style={{ color: '#22c55e' }}>Vikarie: {p.vikarie.namn}</p> : <select aria-label={`Bemanna ${personNamn(p, f)}`} className="mt-2 min-h-9 w-full rounded-xl border px-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}><option value="">Välj vikarie</option>{vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}</select>}
+                    return (
+                      <article key={`${f.id}-${datum}`} className="rounded-xl border p-2.5" style={{ borderColor: saknarPass ? 'rgba(249,115,22,0.65)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: saknarPass ? 'inset 3px 0 0 #f97316' : 'none' }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{personNamn(null, f)}</p>
+                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{gruppText(null, f) || 'Ingen grupp'} · {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}</p>
+                          </div>
+                          <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold" style={{ color: saknarPass ? '#fb923c' : '#22c55e', background: saknarPass ? 'rgba(249,115,22,0.14)' : 'rgba(34,197,94,0.12)' }}>
+                            {saknarPass ? 'Saknar pass' : `${koppladePass.length} pass`}
+                          </span>
+                        </div>
+
+                        {koppladePass.length > 0 && (
+                          <div className="mt-2 divide-y rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                            {koppladePass.map((p) => {
+                              const vikarieNamn = vikarieNamnFörPass(p);
+                              return (
+                                <div key={p.id} className="px-2 py-1.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text)' }}>{tid(p.tid_från)}-{tid(p.tid_till)}</span>
+                                    <span className="truncate text-[11px]" style={{ color: vikarieNamn ? '#22c55e' : 'var(--text-muted)' }}>{vikarieNamn || statusText[p.status]}</span>
+                                  </div>
+                                  {passBehöverVikarie(p) && (
+                                    <select aria-label={`Bemanna ${personNamn(p, f)}`} className="mt-1 min-h-8 w-full rounded-lg border px-2 text-[11px]" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}>
+                                      <option value="">Välj vikarie</option>
+                                      {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                                    </select>
+                                  )}
                                 </div>
-                              ))}
-                            </div>}
+                              );
+                            })}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
 
-                            <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => navigate('/admin/franvaro')}>Frånvaro</Button><Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Bemanning</Button></div>
-                          </article>
-                        );
-                      })}
-                      {dagensFrånvaro.length === 0 && <Empty text="Ingen frånvaro." />}
-                    </div>
-                  </div>
+                  {dagensFrånvaro.length === 0 && <Empty text="Ingen frånvaro." />}
 
-                  {dagensFriståendePass.length > 0 && <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Fristående pass</p>
-                    <div className="space-y-2">
-                      {dagensFriståendePass.map((p) => <article key={p.id} className="rounded-2xl border p-3" style={{ borderColor: p.status === 'obokat' ? '#f97316' : 'var(--border)', background: 'var(--bg-card)' }}><div className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{p.vikarie?.namn ?? 'Vikarie saknas'}</p><p className="text-xs" style={{ color: 'var(--text-muted)' }}>{tid(p.tid_från)}-{tid(p.tid_till)} · {gruppText(p) || 'Fristående'}</p></div><StatusPill status={p.status} /></div>{!p.vikarie_id && <select aria-label="Bemanna fristående pass" className="mt-2 min-h-9 w-full rounded-xl border px-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}><option value="">Välj vikarie</option>{vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}</select>}</article>)}
-                    </div>
-                  </div>}
+                  {dagensFriståendePass.length > 0 && (
+                    <details className="rounded-xl border px-2 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Fristående pass ({dagensFriståendePass.length})</summary>
+                      <div className="mt-2 space-y-1.5">
+                        {dagensFriståendePass.map((p) => {
+                          const vikarieNamn = vikarieNamnFörPass(p);
+                          return (
+                            <div key={p.id} className="rounded-lg border px-2 py-1.5" style={{ borderColor: passBehöverVikarie(p) ? 'rgba(249,115,22,0.65)' : 'var(--border)', background: 'var(--bg)' }}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-semibold" style={{ color: 'var(--text)' }}>{vikarieNamn || 'Vikarie saknas'}</p>
+                                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{tid(p.tid_från)}-{tid(p.tid_till)} · {gruppText(p) || 'Fristående'}</p>
+                                </div>
+                                <StatusPill status={p.status} />
+                              </div>
+                              {passBehöverVikarie(p) && (
+                                <select aria-label="Bemanna fristående pass" className="mt-1 min-h-8 w-full rounded-lg border px-2 text-[11px]" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}>
+                                  <option value="">Välj vikarie</option>
+                                  {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                                </select>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </section>
             );
