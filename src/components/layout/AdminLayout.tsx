@@ -59,6 +59,7 @@ export default function AdminLayout() {
   const { profil, loggaUt } = useAuth();
   const location = useLocation();
   const [menyÖppen, setMenyÖppen] = useState(false);
+  const [sidopanelKollapsad, setSidopanelKollapsad] = useState(false);
   const [bekraftaLoggaUt, setBekraftaLoggaUt] = useState(false);
   const { mörkt, toggla } = useDarkMode();
   const merÄrAktiv = merNavItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
@@ -71,21 +72,33 @@ export default function AdminLayout() {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-30 flex w-64 max-w-[88vw] flex-col border-r lg:max-w-none
+          fixed inset-y-0 left-0 z-30 flex max-w-[88vw] flex-col border-r lg:max-w-none
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
           ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
+          ${sidopanelKollapsad ? 'w-64 lg:w-[84px]' : 'w-64'}
         `}
         style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
       >
+        <button
+          type="button"
+          onClick={() => setSidopanelKollapsad(!sidopanelKollapsad)}
+          className="absolute -right-3 top-6 z-10 hidden h-7 w-7 items-center justify-center rounded-full border text-xs shadow-sm transition lg:flex"
+          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          aria-label={sidopanelKollapsad ? 'Visa sidopanel' : 'Dölj sidopanel'}
+          title={sidopanelKollapsad ? 'Visa sidopanel' : 'Dölj sidopanel'}
+        >
+          {sidopanelKollapsad ? '›' : '‹'}
+        </button>
+
         <div className="px-5 pb-4 pt-5">
-          <div className="flex items-center gap-4">
+          <div className={`flex items-center ${sidopanelKollapsad ? 'justify-center gap-0' : 'gap-4'}`}>
             <img
               src={mörkt ? "/sundbyberg-silver.png" : "/sundbyberg-halm.png"}
               alt=""
               className="h-14 w-14 shrink-0 object-contain"
             />
-            <div className="min-w-0">
+            <div className={`min-w-0 ${sidopanelKollapsad ? 'hidden' : ''}`}>
               <p className="truncate text-base font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
                 Passportalen
               </p>
@@ -109,10 +122,10 @@ export default function AdminLayout() {
                   boxShadow: isActive ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)` : 'none',
                 })}
               >
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{sidopanelKollapsad ? item.label.slice(0, 1) : item.label}</span>
               </NavLink>
             ))}
-            <details className="group/mer" open={merÄrAktiv}>
+            <details className={`group/mer ${sidopanelKollapsad ? 'hidden' : ''}`} open={merÄrAktiv}>
               <summary
                 className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all [&::-webkit-details-marker]:hidden"
                 style={{
@@ -150,15 +163,15 @@ export default function AdminLayout() {
           </div>
         </nav>
 
-        <div className="hidden border-t p-4 lg:block" style={{ borderColor: 'var(--border)' }}>
+        <div className={`hidden border-t p-4 lg:block ${sidopanelKollapsad ? 'px-3' : ''}`} style={{ borderColor: 'var(--border)' }}>
           <div className="mb-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-            <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            <p className={`truncate text-sm font-semibold ${sidopanelKollapsad ? 'text-center' : ''}`} style={{ color: 'var(--text)' }}>
               {profil?.namn ?? profil?.epost}
             </p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Administratör</p>
+            <p className={`text-xs ${sidopanelKollapsad ? 'hidden' : ''}`} style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid gap-2 ${sidopanelKollapsad ? 'grid-cols-1' : 'grid-cols-2'}`}>
             <AdminNotiser placement="up" />
             <button
               onClick={toggla}
@@ -172,15 +185,15 @@ export default function AdminLayout() {
           </div>
 
           <div className="mt-2">
-            <PushButton />
+            {!sidopanelKollapsad && <PushButton />}
           </div>
 
           <button
             onClick={() => setBekraftaLoggaUt(true)}
-            className="mt-2 w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors hover:opacity-80"
+            className={`mt-2 w-full rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-80 ${sidopanelKollapsad ? 'text-center' : 'text-left'}`}
             style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}
           >
-            Logga ut
+            {sidopanelKollapsad ? 'Ut' : 'Logga ut'}
           </button>
         </div>
 
