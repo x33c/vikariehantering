@@ -148,6 +148,7 @@ export function BetaStart() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [veckaStart, setVeckaStart] = useState(() => startPåVecka(new Date()));
   const [bemannarPassId, setBemannarPassId] = useState<string | null>(null);
+  const [kopplarPassId, setKopplarPassId] = useState<string | null>(null);
   const [laddar, setLaddar] = useState(true);
 
   const dagar = useMemo(() => [0, 1, 2, 3, 4].map((i) => läggTillDagar(veckaStart, i)), [veckaStart]);
@@ -182,6 +183,22 @@ export function BetaStart() {
       return;
     }
     setBemannarPassId(null);
+  }
+
+  async function kopplaPassTillFrånvaro(passRad: Vikariepass, frånvaroId: string) {
+    if (!frånvaroId) return;
+    const valdFrånvaro = frånvaro.find((f) => f.id === frånvaroId);
+    setKopplarPassId(passRad.id);
+    const res = await passApi.uppdatera(passRad.id, {
+      frånvaro_id: frånvaroId,
+      personal_id: valdFrånvaro?.personal_id ?? passRad.personal_id ?? null,
+    } as any);
+    if (!res.error) {
+      await historikApi.skapa(passRad.id, 'pass_uppdaterat', { åtgärd: 'kopplade_till_frånvaro', frånvaro_id: frånvaroId });
+      laddaPlanering();
+      return;
+    }
+    setKopplarPassId(null);
   }
 
   function frånvaroFörDag(datum: string) {
@@ -324,12 +341,34 @@ export function BetaStart() {
                                 </div>
                                 <StatusPill status={p.status} />
                               </div>
-                              {passBehöverVikarie(p) && (
-                                <select aria-label="Bemanna fristående pass" className="mt-1 min-h-8 w-full rounded-lg border px-2 text-[11px]" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}>
-                                  <option value="">Välj vikarie</option>
-                                  {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
-                                </select>
-                              )}
+                              <div className="mt-1 grid gap-1">
+                                {dagensFrånvaro.length > 0 && (
+                                  <select
+                                    aria-label="Koppla fristående pass till frånvaro"
+                                    className="min-h-8 w-full rounded-lg border px-2 text-[11px]"
+                                    style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }}
+                                    disabled={kopplarPassId === p.id}
+                                    defaultValue=""
+                                    onChange={(e) => {
+                                      if (e.target.value) kopplaPassTillFrånvaro(p, e.target.value);
+                                      e.currentTarget.value = '';
+                                    }}
+                                  >
+                                    <option value="">Koppla till frånvaro...</option>
+                                    {dagensFrånvaro.map((f) => (
+                                      <option key={f.id} value={f.id}>
+                                        {personNamn(null, f)} · {gruppText(null, f) || 'Ingen grupp'}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                                {passBehöverVikarie(p) && (
+                                  <select aria-label="Bemanna fristående pass" className="min-h-8 w-full rounded-lg border px-2 text-[11px]" style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }} disabled={bemannarPassId === p.id} defaultValue="" onChange={(e) => { if (e.target.value) bemannaDirekt(p, e.target.value); e.currentTarget.value = ''; }}>
+                                    <option value="">Välj vikarie</option>
+                                    {vikarier.map((v) => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                                  </select>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
