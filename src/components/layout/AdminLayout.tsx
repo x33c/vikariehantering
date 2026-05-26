@@ -5,21 +5,46 @@ import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
 
 const huvudNavItems = [
-  { to: '/admin', label: 'Start', end: true },
-  { to: '/admin/franvaro', label: 'Frånvaro' },
-  { to: '/admin/vikariepass', label: 'Bemanning' },
-  { to: '/admin/utskick', label: 'Utskick' },
-  { to: '/admin/vikarier', label: 'Vikarier' },
+  { to: '/admin', label: 'Start', icon: 'home', end: true },
+  { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
+  { to: '/admin/vikariepass', label: 'Bemanning', icon: 'board' },
+  { to: '/admin/utskick', label: 'Utskick', icon: 'mail' },
+  { to: '/admin/vikarier', label: 'Vikarier', icon: 'users' },
 ];
 
 const merNavItems = [
-  { to: '/admin/arbetslag', label: 'Personal' },
-  { to: '/admin/import', label: 'Schema' },
-  { to: '/admin/historik', label: 'Historik' },
-  { to: '/admin/export', label: 'Export' },
-  { to: '/admin/konton', label: 'Konton' },
-  { to: '/admin/beta', label: 'Beta' },
+  { to: '/admin/arbetslag', label: 'Personal', icon: 'people' },
+  { to: '/admin/import', label: 'Schema', icon: 'table' },
+  { to: '/admin/historik', label: 'Historik', icon: 'history' },
+  { to: '/admin/export', label: 'Export', icon: 'download' },
+  { to: '/admin/konton', label: 'Konton', icon: 'account' },
+  { to: '/admin/beta', label: 'Beta', icon: 'layers' },
 ];
+
+function NavIkon({ namn }: { namn: string }) {
+  const gemensam = {
+    className: 'h-5 w-5 shrink-0',
+    fill: 'none',
+    viewBox: '0 0 24 24',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  if (namn === 'calendar') return <svg {...gemensam}><path d="M8 2v4M16 2v4M3 10h18" /><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" /></svg>;
+  if (namn === 'board') return <svg {...gemensam}><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M8 4v16M16 4v16M3 10h18" /></svg>;
+  if (namn === 'mail') return <svg {...gemensam}><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 7 8 6 8-6" /></svg>;
+  if (namn === 'users') return <svg {...gemensam}><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9.5" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+  if (namn === 'people') return <svg {...gemensam}><path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
+  if (namn === 'table') return <svg {...gemensam}><path d="M4 4h16v16H4zM4 10h16M10 4v16" /></svg>;
+  if (namn === 'history') return <svg {...gemensam}><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v6h6M12 7v5l3 2" /></svg>;
+  if (namn === 'download') return <svg {...gemensam}><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>;
+  if (namn === 'account') return <svg {...gemensam}><rect x="4" y="3" width="16" height="18" rx="3" /><circle cx="12" cy="9" r="3" /><path d="M8 17a4 4 0 0 1 8 0" /></svg>;
+  if (namn === 'layers') return <svg {...gemensam}><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>;
+  return <svg {...gemensam}><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg>;
+}
 
 function useDarkMode() {
   const [mörkt, setMörkt] = useState(() =>
@@ -114,15 +139,17 @@ export default function AdminLayout() {
                 to={item.to}
                 end={item.end}
                 onClick={() => setMenyÖppen(false)}
-                className="group flex min-h-11 items-center rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-all"
+                className={`group flex min-h-11 items-center gap-3 rounded-2xl border py-2.5 text-sm font-semibold transition-all ${sidopanelKollapsad ? 'justify-center px-2' : 'px-4'}`}
                 style={({ isActive }) => ({
                   background: isActive ? 'var(--nav-active)' : 'transparent',
                   color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
                   borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
                   boxShadow: isActive ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)` : 'none',
                 })}
+                title={item.label}
               >
-                <span className="truncate">{sidopanelKollapsad ? item.label.slice(0, 1) : item.label}</span>
+                <NavIkon namn={item.icon} />
+                <span className={`truncate ${sidopanelKollapsad ? 'sr-only' : ''}`}>{item.label}</span>
               </NavLink>
             ))}
             <details className={`group/mer ${sidopanelKollapsad ? 'hidden' : ''}`} open={merÄrAktiv}>
@@ -164,9 +191,9 @@ export default function AdminLayout() {
         </nav>
 
         <div className={`hidden border-t p-4 lg:block ${sidopanelKollapsad ? 'px-3' : ''}`} style={{ borderColor: 'var(--border)' }}>
-          <div className="mb-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className={`mb-3 rounded-2xl border ${sidopanelKollapsad ? 'px-2 py-3' : 'px-4 py-3'}`} style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <p className={`truncate text-sm font-semibold ${sidopanelKollapsad ? 'text-center' : ''}`} style={{ color: 'var(--text)' }}>
-              {profil?.namn ?? profil?.epost}
+              {sidopanelKollapsad ? (profil?.namn ?? profil?.epost ?? '').slice(0, 1).toUpperCase() : (profil?.namn ?? profil?.epost)}
             </p>
             <p className={`text-xs ${sidopanelKollapsad ? 'hidden' : ''}`} style={{ color: 'var(--text-muted)' }}>Administratör</p>
           </div>
@@ -190,10 +217,16 @@ export default function AdminLayout() {
 
           <button
             onClick={() => setBekraftaLoggaUt(true)}
-            className={`mt-2 w-full rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-80 ${sidopanelKollapsad ? 'text-center' : 'text-left'}`}
+            className={`mt-2 flex w-full items-center justify-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-80 ${sidopanelKollapsad ? 'text-center' : 'text-left'}`}
             style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+            title="Logga ut"
           >
-            {sidopanelKollapsad ? 'Ut' : 'Logga ut'}
+            {sidopanelKollapsad ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5M15 12H3" />
+              </svg>
+            ) : 'Logga ut'}
           </button>
         </div>
 
