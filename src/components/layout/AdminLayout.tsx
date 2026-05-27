@@ -187,6 +187,29 @@ export default function AdminLayout() {
                 ))}
               </div>
             </details>
+            {sidopanelKollapsad && (
+              <div className="space-y-1.5 border-t pt-2" style={{ borderColor: 'var(--border)' }}>
+                {merNavItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/admin/beta'}
+                    onClick={() => setMenyÖppen(false)}
+                    className="group flex min-h-11 items-center justify-center rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all"
+                    style={({ isActive }) => ({
+                      background: isActive ? 'var(--nav-active)' : 'transparent',
+                      color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
+                      borderColor: isActive ? 'var(--nav-active-ring)' : 'transparent',
+                      boxShadow: isActive ? `0 0 0 3px var(--nav-active-ring-soft), var(--nav-active-shadow)` : 'none',
+                    })}
+                    title={item.label}
+                  >
+                    <NavIkon namn={item.icon} />
+                    <span className="sr-only">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </div>
         </nav>
 
