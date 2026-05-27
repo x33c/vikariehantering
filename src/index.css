@@ -431,3 +431,171 @@ tbody tr:nth-child(even) {
     margin-right: 10.25rem;
   }
 }
+
+/* Admin mobile: bemanning/frånvaro ska kännas som swipebara app-vyer, inte långa desktopkolumner. */
+@media (max-width: 767px) {
+  main {
+    overflow-x: hidden;
+  }
+
+  main > div > .flex.h-full,
+  main > div > .flex.h-full > div[class*="flex-col"],
+  main > div > div[class*="pb-24"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main h1 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"],
+  main > div > div[class*="pb-24"] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child,
+  main > div > div[class*="pb-24"] > div:first-child {
+    margin-bottom: 0.5rem !important;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child > div:last-child,
+  main > div > div[class*="pb-24"] > div:first-child > div:last-child {
+    display: flex !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child button,
+  main > div > div[class*="pb-24"] > div:first-child button {
+    min-height: 2.35rem;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2),
+  main > div > div[class*="pb-24"] > details:first-of-type,
+  main > div > div[class*="pb-24"] > section:first-of-type {
+    border-radius: 0.85rem !important;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-radius: 0 !important;
+    backdrop-filter: blur(14px);
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div {
+    gap: 0.45rem !important;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2) {
+    order: 3;
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding-inline: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2)::-webkit-scrollbar {
+    display: none;
+  }
+
+  main details > div.absolute.right-0.z-20 {
+    position: fixed !important;
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    top: 5.5rem !important;
+    width: auto !important;
+    max-height: calc(100dvh - 7rem);
+    overflow: auto;
+  }
+
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 {
+    display: flex !important;
+    gap: 0.75rem !important;
+    overflow-x: auto;
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
+    padding-bottom: 0.75rem;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > section,
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > div {
+    flex: 0 0 min(88vw, 24rem);
+    min-width: min(88vw, 24rem);
+    max-width: min(88vw, 24rem);
+    scroll-snap-align: start;
+  }
+
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > section > div:last-child,
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > div > div:last-child {
+    max-height: calc(100dvh - 17rem);
+    overflow-y: auto;
+    padding-right: 0.1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 article,
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 section > div > div {
+    overflow-wrap: anywhere;
+  }
+
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 button,
+  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 a {
+    touch-action: manipulation;
+  }
+
+  main > div > div[class*="pb-24"] > details:first-of-type {
+    margin-bottom: 0.55rem !important;
+  }
+
+  main > div > div[class*="pb-24"] > details:first-of-type > summary {
+    flex-direction: row !important;
+    align-items: center !important;
+  }
+
+  main > div > div[class*="pb-24"] > details:first-of-type > summary > span:first-child {
+    white-space: nowrap;
+  }
+
+  main > div > div[class*="pb-24"] > section:first-of-type {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-radius: 0 !important;
+    padding: 0.5rem !important;
+  }
+
+  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child h2 {
+    margin-top: 0;
+    font-size: 1rem;
+  }
+
+  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child > div:last-child button {
+    min-width: 0;
+    padding-inline: 0.5rem;
+  }
+}
