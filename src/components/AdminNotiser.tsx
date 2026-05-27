@@ -147,7 +147,7 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
       <button
         type="button"
         onClick={() => setOppen(v => !v)}
-        className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition"
+        className="flex items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition"
         style={{
           borderColor: olasta.length > 0 ? 'var(--blue)' : 'var(--border)',
           color: olasta.length > 0 ? 'var(--blue)' : 'var(--text)',
@@ -166,7 +166,7 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
             </span>
           )}
         </span>
-        <span className="hidden sm:inline">Notiser</span>
+        <span className="sr-only">Notiser</span>
       </button>
 
       {oppen && (
