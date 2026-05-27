@@ -343,3 +343,37 @@ tbody tr:nth-child(even) {
       stroke 220ms ease !important;
   }
 }
+
+/* Bemanning desktop: lyft upp veckopanelen bredvid rubriken för mindre tomrum. */
+@media (min-width: 1536px) {
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child {
+    min-height: 3.4rem;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) {
+    margin-top: -3.45rem;
+    margin-left: 13.75rem;
+    width: calc(100% - 22.5rem);
+    min-height: 3.05rem;
+    margin-bottom: 0.45rem;
+    padding-block: 0.35rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem !important;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:first-child {
+    min-width: 8.5rem;
+  }
+
+  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2) {
+    justify-content: flex-start;
+    padding-bottom: 0;
+  }
+}
