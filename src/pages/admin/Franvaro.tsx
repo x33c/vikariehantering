@@ -1030,81 +1030,81 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-2 pb-24 pt-0 sm:px-4 sm:pb-24 sm:pt-1 lg:px-5">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-            Bemanning
+    <div className="px-2 pb-28 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+            Planering
           </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
+          <h1 className="text-xl font-semibold leading-tight" style={{ color: 'var(--text)' }}>
             Frånvaro
           </h1>
+          <p className="mt-1 text-sm" style={{ color: antalSaknarPass > 0 ? '#f97316' : 'var(--text-muted)' }}>
+            {antalSaknarPass > 0 ? `${antalSaknarPass} frånvaro saknar pass` : 'Alla synliga dagar är hanterade'}
+          </p>
         </div>
-        <div className="sm:self-auto"><Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button></div>
+        <Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <details className="mb-3 rounded-xl border px-3 py-2" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <summary className="flex cursor-pointer list-none flex-col gap-2 text-sm font-semibold sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text)' }}>
-          <span>Sök och lista</span>
-          <span className="flex flex-wrap items-center justify-end gap-2 text-xs">
-            <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
-              {filtrerade.length} frånvaro
+      <div className="sticky top-0 z-10 mb-3 rounded-xl border p-2 backdrop-blur sm:static sm:p-3" style={{ background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)', borderColor: 'var(--border)' }}>
+        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto] lg:items-center">
+          <label className="min-w-0">
+            <span className="sr-only">Sök frånvaro</span>
+            <input
+              type="search"
+              placeholder="Sök personal, arbetslag eller orsak"
+              value={sök}
+              onChange={(e) => setSök(e.target.value)}
+              className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: sök ? 'var(--accent)' : 'var(--border)' }}
+            />
+          </label>
+
+          <div className="flex min-w-0 snap-x gap-1.5 overflow-x-auto pb-1 text-xs sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0">
+            <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              <span>{filtrerade.length} frånvaro</span>
             </span>
             {antalSaknarPass > 0 && (
-              <span className="rounded-full px-2.5 py-1 font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
+              <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'rgba(249,115,22,0.14)', borderColor: 'rgba(249,115,22,0.34)', color: '#fb923c' }}>
                 {antalSaknarPass} saknar pass
               </span>
             )}
-          </span>
-        </summary>
-
-        <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="search"
-            placeholder="Sök personal, arbetslag eller orsak"
-            value={sök}
-            onChange={(e) => setSök(e.target.value)}
-            className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm sm:max-w-md"
-            style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-          />
-          {sök && (
+            {sök && (
+              <button
+                type="button"
+                onClick={() => setSök('')}
+                className="shrink-0 snap-start rounded-full border px-3 py-1.5 font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
+                style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+              >
+                Rensa
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setSök('')}
-              className="shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold"
-              style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
-            >
-              Rensa
-            </button>
-          )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button
-              type="button"
+              aria-pressed={visaLista}
               onClick={() => setVisaLista(!visaLista)}
-              className="shrink-0 rounded-full border px-3 py-1.5 font-semibold transition"
-              style={{ background: visaLista ? 'var(--accent)' : 'var(--bg-card)', borderColor: visaLista ? 'var(--accent)' : 'var(--border)', color: visaLista ? '#fff' : 'var(--text)' }}
+              className="shrink-0 snap-start rounded-full border px-3 py-1.5 font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
+              style={{ background: visaLista ? 'var(--accent)' : 'var(--bg)', borderColor: visaLista ? 'var(--accent)' : 'var(--border)', color: visaLista ? '#fff' : 'var(--text)' }}
             >
               {visaLista ? 'Dölj lista' : 'Visa lista'}
             </button>
           </div>
         </div>
-      </details>
+      </div>
 
 
       <section className="mb-4 rounded-2xl border p-2 sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        <div className="mb-3 grid gap-3 lg:grid-cols-[minmax(190px,240px)_auto] lg:items-center lg:justify-between">
+          <div className="rounded-lg px-2 py-1.5" style={{ background: 'var(--bg)' }}>
             <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              {kortDatum(kalenderDagar[0])} - {kortDatum(kalenderDagar[4])} · {totaltIKalendern} frånvaro
+              {kortDatum(kalenderDagar[0])} - {kortDatum(kalenderDagar[4])}
             </p>
+            <p className="text-xs" style={{ color: 'var(--text-subtle)' }}>{totaltIKalendern} frånvaro i veckan</p>
           </div>
-          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2">
+          <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-end sm:gap-2">
             <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>
               <PeriodIkon typ="föregående" />
               <span className="hidden min-[390px]:inline">Föregående</span>
@@ -1120,27 +1120,28 @@ export default function Franvaro() {
           </div>
         </div>
 
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
           {kalenderDagar.map((dag) => {
             const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
             const ärIdag = dag === datumIdag();
+            const dagensSaknarPass = dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0);
 
             return (
               <div
                 key={dag}
-                className="rounded-2xl border p-3 md:min-h-[240px]"
+                className="scroll-mt-32 rounded-2xl border p-2 transition-all duration-200 ease-out md:min-h-[240px]"
                 style={{
                   background: 'var(--bg)',
                   borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
                   boxShadow: ärIdag ? '0 0 0 1px var(--accent)' : 'none',
                 }}
               >
-                <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="mb-2 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1" style={{ background: dagensSaknarPass ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
                   <div>
                     <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
                   </div>
-                  {dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0) && (
+                  {dagensSaknarPass && (
                     <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
                       Åtgärd
                     </span>
@@ -1162,7 +1163,7 @@ export default function Franvaro() {
                       return (
                         <article
                           key={`${dag}-${frånvaro.id}`}
-                          className="rounded-xl border p-3"
+                          className="rounded-xl border p-2.5 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-3"
                           style={{
                             background: 'var(--bg-card)',
                             borderColor: löst ? '#22c55e' : behöverÅtgärd ? '#f97316' : 'var(--border)',
@@ -1186,7 +1187,7 @@ export default function Franvaro() {
                             {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
                           </p>
 
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
                             <Button
                               size="sm"
                               variant="secondary"
@@ -1198,7 +1199,7 @@ export default function Franvaro() {
                             <button
                               type="button"
                               onClick={() => setRedigeraFrånvaro(frånvaro)}
-                              className="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                              className="rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
                               style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
                             >
                               Redigera
@@ -1207,7 +1208,7 @@ export default function Franvaro() {
                               <button
                                 type="button"
                                 onClick={() => navigate('/admin/vikariepass')}
-                                className="rounded-full border px-2.5 py-1 text-xs font-semibold"
+                                className="rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
                                 style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
                               >
                                 Bemanning
