@@ -1925,6 +1925,11 @@ export default function Bemanning() {
     setSkapaModal(true);
   }
 
+  function öppnaPassDetaljer(pass: Bemanning, element?: HTMLElement | null) {
+    element?.blur();
+    setValtPass(pass);
+  }
+
 
   return (
     <div className="flex h-full">
@@ -1969,7 +1974,7 @@ export default function Bemanning() {
               />
             </label>
 
-            <div className="grid grid-cols-4 gap-1.5 sm:flex sm:justify-end sm:gap-2">
+            <div className="grid grid-cols-[auto_1fr] gap-1.5 sm:grid-cols-[auto_1fr] sm:items-center">
               <details className="relative">
                 <summary className="flex h-full cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: aktivaFilterAntal ? 'var(--blue)' : 'var(--text)', background: 'var(--bg)' }}>
                   Filter{aktivaFilterAntal ? ` (${aktivaFilterAntal})` : ''}
@@ -2007,18 +2012,20 @@ export default function Bemanning() {
                 </div>
               </details>
 
-              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
-                <PeriodIkon typ="föregående" />
-                <span className="hidden min-[390px]:inline">Föregående</span>
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
-                <PeriodIkon typ="idag" />
-                <span>Idag</span>
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
-                <span className="hidden min-[390px]:inline">Nästa</span>
-                <PeriodIkon typ="nästa" />
-              </Button>
+              <div className="grid grid-cols-3 gap-1.5 justify-self-center sm:flex sm:justify-center sm:gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
+                  <PeriodIkon typ="föregående" />
+                  <span className="hidden min-[390px]:inline">Föregående</span>
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
+                  <PeriodIkon typ="idag" />
+                  <span>Idag</span>
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
+                  <span className="hidden min-[390px]:inline">Nästa</span>
+                  <PeriodIkon typ="nästa" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -2038,7 +2045,7 @@ export default function Bemanning() {
                     type="button"
                     aria-pressed={aktiv}
                     onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
-                    className="flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:gap-2 sm:px-3"
+                    className="flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3"
                     style={{
                       background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
                       borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
@@ -2057,7 +2064,7 @@ export default function Bemanning() {
                 data-hide-past-toggle
                 aria-pressed={döljPasserade}
                 onClick={() => setDöljPasserade(!döljPasserade)}
-                className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:px-3"
+                className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:px-3"
                 style={{
                   background: döljPasserade ? 'var(--blue)' : 'var(--bg-card)',
                   borderColor: döljPasserade ? 'var(--blue)' : 'var(--border)',
@@ -2082,7 +2089,7 @@ export default function Bemanning() {
                 <div key={`${grupp.personal_id}_${grupp.datum}`} className="rounded-xl border p-3 shadow-sm sm:p-4" style={{ background: 'var(--bg-card)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)' }}>
                   <div className="flex items-start gap-3">
                     <button type="button" aria-pressed={alleMarkerade} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, index, e.shiftKey); }} className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
-                    <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 text-left">
+                    <button type="button" onClick={(e) => öppnaPassDetaljer(grupp.pass[0], e.currentTarget)} className="min-w-0 flex-1 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                       <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{new Date(`${grupp.datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                       <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{tidFrån}–{tidTill}</p>
                       <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}><span className="font-medium" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>{grupp.arbetslagNamn && <> · {grupp.arbetslagNamn}</>}</p>
@@ -2095,11 +2102,11 @@ export default function Bemanning() {
         ) : (
          
               <div
-                className="grid grid-cols-1 gap-2 transition-[grid-template-columns] duration-200 ease-out md:grid-cols-2 xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
+                className="bemanning-kalender-grid grid grid-cols-1 gap-2 transition-[grid-template-columns,opacity] duration-300 ease-out md:grid-cols-2 xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
                 style={{ ['--bemanning-kolumner']: kalenderKolumner } as any}
               >
                 {synligaDagar.map(({ datum, grupper }) => (
-                  <section key={datum} className="scroll-mt-32 rounded-xl border p-2 transition-all duration-200 ease-out md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
+                  <section key={datum} className="bemanning-dag scroll-mt-32 rounded-xl border p-2 transition-[border-color,background-color,box-shadow,transform,opacity] duration-300 ease-out md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1" style={{ background: grupper.some(grupp => gruppInfo(grupp).atgard) ? 'rgba(249, 115, 22, 0.08)' : 'transparent' }}>
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
@@ -2112,7 +2119,7 @@ export default function Bemanning() {
                         <button
                           type="button"
                           onClick={() => öppnaSkapaPass(datum)}
-                          className="rounded-full border px-2.5 py-1 text-[11px] font-semibold opacity-90 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:opacity-60 sm:hover:opacity-100 sm:focus-visible:opacity-100"
+                          className="rounded-full border px-2.5 py-1 text-[11px] font-semibold opacity-90 transition hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:opacity-60 sm:hover:opacity-100 sm:focus-visible:opacity-100"
                           style={{ borderColor: 'var(--blue)', background: 'var(--blue)', color: '#fff' }}
                         >
                           + Pass
@@ -2142,8 +2149,8 @@ export default function Bemanning() {
                           return (
                             <div key={`${grupp.personal_id}_${grupp.datum}`} className="min-h-[104px] rounded-xl border p-2.5 transition hover:-translate-y-0.5 hover:shadow-sm sm:min-h-[116px] sm:p-3" style={{ borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)', background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)' }}>
                               <div className="flex items-start gap-2.5 sm:gap-3">
-                                <button type="button" aria-pressed={alleMarkerade} aria-label={alleMarkerade ? 'Avmarkera pass' : 'Markera pass'} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] transition focus:outline-none focus:ring-2 focus:ring-blue-500" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
-                                <button type="button" onClick={() => setValtPass(grupp.pass[0])} className="min-w-0 flex-1 rounded-lg text-left focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button type="button" aria-pressed={alleMarkerade} aria-label={alleMarkerade ? 'Avmarkera pass' : 'Markera pass'} onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }} className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" style={{ background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)', borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)', color: alleMarkerade ? '#fff' : 'var(--text-subtle)' }}>{alleMarkerade ? '✓' : ''}</button>
+                                <button type="button" onClick={(e) => öppnaPassDetaljer(grupp.pass[0], e.currentTarget)} className="min-w-0 flex-1 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                       {vikariNamn ? (

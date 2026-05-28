@@ -334,47 +334,43 @@ tbody tr:nth-child(even) {
   html.tema-vaxlar,
   html.tema-vaxlar * {
     transition:
-      background 220ms ease,
-      background-color 220ms ease,
-      color 220ms ease,
-      border-color 220ms ease,
-      box-shadow 220ms ease,
-      fill 220ms ease,
-      stroke 220ms ease !important;
+      background 300ms ease,
+      background-color 300ms ease,
+      color 300ms ease,
+      border-color 300ms ease,
+      box-shadow 300ms ease,
+      fill 300ms ease,
+      stroke 300ms ease !important;
+  }
+
+  html.tema-vaxlar body {
+    transition:
+      background 300ms ease,
+      background-color 300ms ease,
+      color 300ms ease !important;
+  }
+
+  .bemanning-kalender-grid {
+    transition:
+      grid-template-columns 240ms ease,
+      gap 180ms ease,
+      opacity 180ms ease;
+  }
+
+  .bemanning-dag {
+    animation: bemanning-dag-in 180ms ease-out;
   }
 }
 
-/* Bemanning desktop: lyft upp veckopanelen bredvid rubriken för mindre tomrum. */
-@media (min-width: 1536px) {
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child {
-    min-height: 3.4rem;
+@keyframes bemanning-dag-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.995);
   }
 
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) {
-    margin-top: -3.45rem;
-    margin-left: 13.75rem;
-    width: calc(100% - 22.5rem);
-    min-height: 3.05rem;
-    margin-bottom: 0.45rem;
-    padding-block: 0.35rem;
-    position: relative;
-    z-index: 1;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div {
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.75rem !important;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:first-child {
-    min-width: 8.5rem;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2) {
-    justify-content: flex-start;
-    padding-bottom: 0;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

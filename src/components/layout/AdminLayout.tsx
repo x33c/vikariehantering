@@ -54,7 +54,7 @@ function useDarkMode() {
   function toggla() {
     const nytt = !mörkt;
     document.documentElement.classList.add('tema-vaxlar');
-    window.setTimeout(() => document.documentElement.classList.remove('tema-vaxlar'), 260);
+    window.setTimeout(() => document.documentElement.classList.remove('tema-vaxlar'), 340);
     setMörkt(nytt);
     document.documentElement.classList.toggle('dark', nytt);
     localStorage.setItem('tema', nytt ? 'dark' : 'light');
