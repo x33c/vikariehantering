@@ -1732,6 +1732,10 @@ export default function Bemanning() {
     datum,
     grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
   }));
+  const synligaDagar = döljPasserade && snabbFilter !== 'arkiv'
+    ? grupperPerDag.filter(({ grupper }) => grupper.length > 0)
+    : grupperPerDag;
+  const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
   const veckaSlut = veckodagar[4];
   const idag = new Date().toLocaleDateString('sv-SE');
   const allaSynligaIds = kalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
@@ -1906,9 +1910,12 @@ export default function Bemanning() {
           </div>
         ) : (
          
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-                {grupperPerDag.map(({ datum, grupper }) => (
-                  <section key={datum} className="rounded-xl border p-2 transition md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
+              <div
+                className="grid gap-2 transition-[grid-template-columns] duration-200 ease-out md:grid-cols-2 xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
+                style={{ ['--bemanning-kolumner']: kalenderKolumner } as any}
+              >
+                {synligaDagar.map(({ datum, grupper }) => (
+                  <section key={datum} className="rounded-xl border p-2 transition-all duration-200 ease-out md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
