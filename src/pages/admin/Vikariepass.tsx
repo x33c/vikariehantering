@@ -1255,6 +1255,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
     tid_från: '08:00', tid_till: '17:00', grupp: '', anteckning: '', publicerad: false,
     veckopass: false,
+    registreraFrånvaro: false, frånvaroOrsak: '', frånvaroHelDag: true,
   });
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
@@ -1366,9 +1367,33 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
     }
 
     for (const dag of passSomSkaSkapas) {
+      let frånvaroId: string | null = null;
+
+      if (form.registreraFrånvaro && form.personal_id) {
+        const frånvaroRes = await frånvaroApi.skapa({
+          personal_id: form.personal_id,
+          datum_från: dag.datum,
+          datum_till: dag.datum,
+          hel_dag: form.frånvaroHelDag,
+          tid_från: form.frånvaroHelDag ? null : dag.tid_från,
+          tid_till: form.frånvaroHelDag ? null : dag.tid_till,
+          orsak: form.frånvaroOrsak || null,
+          anteckning: form.anteckning || null,
+          skapad_av: null,
+        });
+
+        if (frånvaroRes.error) {
+          setLaddar(false);
+          setFel(frånvaroRes.error.message);
+          return;
+        }
+
+        frånvaroId = frånvaroRes.data?.id ?? null;
+      }
+
       const res = await passApi.skapa({
         personal_id: form.personal_id || null,
-        frånvaro_id: null,
+        frånvaro_id: frånvaroId,
         schemarad_id: null,
         vikarie_id: null,
         datum: dag.datum,
@@ -1394,7 +1419,10 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
       }
 
       if (res.data) {
-        await historikApi.skapa(res.data.id, 'pass_skapat', form.veckopass ? { typ: 'veckopass', datum: dag.datum } : undefined);
+        await historikApi.skapa(res.data.id, 'pass_skapat', {
+          ...(form.veckopass ? { typ: 'veckopass', datum: dag.datum } : {}),
+          ...(frånvaroId ? { frånvaro_id: frånvaroId, åtgärd: 'skapade_pass_med_frånvaro' } : {}),
+        });
       }
     }
 
@@ -1428,7 +1456,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
           value={form.personal_id}
           onChange={e => {
             const personal_id = e.target.value;
-            setForm({ ...form, personal_id });
+            setForm({ ...form, personal_id, registreraFrånvaro: personal_id ? form.registreraFrånvaro : false });
             hämtaSchemaTid(personal_id, form.datum);
           }}
         >
@@ -1538,6 +1566,44 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
           <Input label={form.veckopass ? "Standard till kl *" : "Till kl *"} type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>
         <Input label="Grupp" value={form.grupp} onChange={e => setForm({ ...form, grupp: e.target.value })} />
+        {form.personal_id && (
+          <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+            <label className="flex items-start gap-2 text-sm" style={{ color: 'var(--text)' }}>
+              <input
+                type="checkbox"
+                checked={form.registreraFrånvaro}
+                onChange={e => setForm({ ...form, registreraFrånvaro: e.target.checked })}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300"
+              />
+              <span>
+                Registrera även frånvaro
+                <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Skapar frånvaro för vald personal och kopplar passet till den.
+                </span>
+              </span>
+            </label>
+
+            {form.registreraFrånvaro && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <Input
+                  label="Orsak, valfritt"
+                  value={form.frånvaroOrsak}
+                  onChange={e => setForm({ ...form, frånvaroOrsak: e.target.value })}
+                  placeholder="Sjuk, VAB, ledig..."
+                />
+                <label className="flex items-center gap-2 self-end rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.frånvaroHelDag}
+                    onChange={e => setForm({ ...form, frånvaroHelDag: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Heldag
+                </label>
+              </div>
+            )}
+          </section>
+        )}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>Kommentar</label>
           <textarea
