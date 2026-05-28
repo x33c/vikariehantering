@@ -251,14 +251,23 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     return notisText ? `${text} · ${notisText}` : text;
   }
 
+  if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'ändrade_ersatt_personal') {
+    const tidigare = typeof metadata.tidigare_personal === 'string' && metadata.tidigare_personal.trim() ? metadata.tidigare_personal : 'Fristående pass';
+    const ny = typeof metadata.personal === 'string' && metadata.personal.trim() ? metadata.personal : 'Fristående pass';
+    const notisText = notisHistorikText(metadata);
+    const text = `Ersätter ändrad: ${tidigare} -> ${ny}`;
+    return notisText ? `${text} · ${notisText}` : text;
+  }
+
   const bastext = HÄNDELSE_LABELS[h.händelse] ?? h.händelse.replace(/_/g, ' ');
   const notisText = notisHistorikText(metadata);
   return notisText ? `${bastext} · ${notisText}` : bastext;
 }
 
-function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
+function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
   pass: Bemanning;
   vikarier: Vikarie[];
+  personal: Personal[];
   onStäng: () => void;
   onUppdaterad: (p: Bemanning) => void;
 }) {
@@ -267,6 +276,8 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const [tidFrån, setTidFrån] = useState(pass.tid_från.slice(0, 5));
   const [tidTill, setTidTill] = useState(pass.tid_till.slice(0, 5));
   const [grupp, setGrupp] = useState(pass.grupp ?? '');
+  const [valdPersonalId, setValdPersonalId] = useState(pass.personal_id ?? '');
+  const [personalSök, setPersonalSök] = useState('');
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
@@ -287,8 +298,9 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     setTidFrån(pass.tid_från.slice(0, 5));
     setTidTill(pass.tid_till.slice(0, 5));
     setGrupp(pass.grupp ?? '');
+    setValdPersonalId(pass.personal_id ?? '');
     setValdVikarieId(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
-  }, [pass.id, pass.tid_från, pass.tid_till, pass.grupp, pass.vikarie_id, pass.riktad_till_vikarie_id]);
+  }, [pass.id, pass.tid_från, pass.tid_till, pass.grupp, pass.personal_id, pass.vikarie_id, pass.riktad_till_vikarie_id]);
 
   async function laddaHistorikFörPass() {
     const res = await historikApi.listaFörPass(pass.id);
@@ -344,6 +356,7 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
       'status' in data ||
       'publicerad' in data ||
       'grupp' in data ||
+      'personal_id' in data ||
       'vikarie_id' in data;
 
     if (!målVikarieId || !blirBokat || !ändrarRelevant) return {};
@@ -354,6 +367,11 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
 
     if (!ärNyBokning && 'grupp' in data && (data.grupp ?? '') !== (pass.grupp ?? '')) {
       ändringar.push(`Grupp ändrad: ${pass.grupp || 'Ingen grupp'} -> ${data.grupp || 'Ingen grupp'}`);
+    }
+
+    if (!ärNyBokning && 'personal_id' in data && (data.personal_id ?? '') !== (pass.personal_id ?? '')) {
+      const nyPersonal = data.personal_id ? personal.find(p => p.id === data.personal_id)?.namn ?? 'vald personal' : 'Fristående pass';
+      ändringar.push(`Ersätter ändrad: ${pass.personal?.namn ?? 'Fristående pass'} -> ${nyPersonal}`);
     }
 
     if (!ärNyBokning && typeof data.datum === 'string' && data.datum !== pass.datum) {
@@ -425,13 +443,16 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
     }
 
     const notisMetadata = await notifieraBokadVikarieOmPassÄndrats(data);
-    setExkluderadeVikarieIds(new Set(ids));
 
     await historikApi.skapa(pass.id, 'pass_uppdaterat', { ...historik, ...notisMetadata });
     await laddaHistorikFörPass();
 
     setSparar(false);
-    onUppdaterad({ ...pass, ...data });
+    const uppdateradPersonal = 'personal_id' in data
+      ? personal.find(p => p.id === data.personal_id)
+      : pass.personal;
+
+    onUppdaterad({ ...pass, ...data, personal: uppdateradPersonal });
     return true;
   }
 
@@ -488,6 +509,24 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
         åtgärd: 'ändrade_grupp',
         tidigare_grupp: gammalGrupp,
         grupp: nyGrupp,
+      }
+    );
+  }
+
+  async function sparaErsattPersonal() {
+    const nyPersonalId = valdPersonalId || null;
+    const gammalPersonalId = pass.personal_id ?? null;
+
+    if ((nyPersonalId ?? '') === (gammalPersonalId ?? '')) return;
+
+    const valdPersonal = nyPersonalId ? personal.find(p => p.id === nyPersonalId) : undefined;
+
+    await uppdateraPass(
+      { personal_id: nyPersonalId } as Partial<Bemanning>,
+      {
+        åtgärd: 'ändrade_ersatt_personal',
+        tidigare_personal: pass.personal?.namn ?? null,
+        personal: valdPersonal?.namn ?? null,
       }
     );
   }
@@ -695,6 +734,18 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
   const tillsattVikarie = vikarier.find(v => v.id === pass.vikarie_id);
   const riktadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
   const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
+  const personalSökTerm = personalSök.trim().toLowerCase();
+  const filtreradPersonal = personal
+    .filter(p => {
+      if (!personalSökTerm) return true;
+      return [p.namn, p.signatur, p.epost, p.arbetslag?.namn]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(personalSökTerm);
+    })
+    .slice(0, 80);
+  const ersattPersonalÄndrad = valdPersonalId !== (pass.personal_id ?? '');
   const normaliseradGrupp = grupp.trim();
   const gruppÄndrad = normaliseradGrupp !== (pass.grupp ?? '');
   const tiderÄndrade = tidFrån !== pass.tid_från.slice(0, 5) || tidTill !== pass.tid_till.slice(0, 5);
@@ -849,6 +900,49 @@ function PassDetaljer({ pass, vikarier, onStäng, onUppdaterad }: {
                 {tillsattVikarie?.namn ?? riktadVikarie?.namn ?? 'Ingen vald'}
               </span>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Ersätter</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                {pass.personal?.namn ?? 'Fristående pass'}
+              </p>
+            </div>
+            {pass.personal_id ? (
+              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ color: '#22c55e', background: 'rgba(34, 197, 94, 0.12)' }}>Kopplat</span>
+            ) : (
+              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ color: '#f97316', background: 'rgba(249, 115, 22, 0.12)' }}>Fristående</span>
+            )}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <input
+              type="search"
+              value={personalSök}
+              onChange={e => setPersonalSök(e.target.value)}
+              placeholder="Sök personal..."
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            />
+            <select
+              value={valdPersonalId}
+              onChange={e => setValdPersonalId(e.target.value)}
+              className="rounded-md border px-3 py-2 text-sm"
+              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+            >
+              <option value="">Fristående pass</option>
+              {filtreradPersonal.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.namn}{p.arbetslag?.namn ? ` · ${p.arbetslag.namn}` : ''}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" onClick={sparaErsattPersonal} loading={sparar} disabled={!ersattPersonalÄndrad}>
+              Spara
+            </Button>
           </div>
         </section>
 
@@ -1908,6 +2002,7 @@ export default function Bemanning() {
           <PassDetaljer
             pass={valtPass}
             vikarier={vikarier}
+            personal={personal}
             onStäng={stängPassModal}
             onUppdaterad={uppdaterad => {
               setPass(prev => prev.map(p => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
