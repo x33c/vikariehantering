@@ -1804,8 +1804,6 @@ export default function Bemanning() {
   const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
   const veckaSlut = veckodagar[4];
   const idag = new Date().toLocaleDateString('sv-SE');
-  const allaSynligaIds = kalenderGrupper.flatMap(grupp => grupp.pass.map(p => p.id));
-  const allaSynligaMarkerade = allaSynligaIds.length > 0 && allaSynligaIds.every(id => valda.has(id));
 
   function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
     const ny = new Set(valda);
@@ -1829,14 +1827,6 @@ export default function Bemanning() {
     setSkapaModal(true);
   }
 
-  function växlaAllaSynliga() {
-    if (allaSynligaMarkerade) {
-      setValda(new Set());
-    } else {
-      setValda(new Set(allaSynligaIds));
-    }
-  }
-
 
   return (
     <div className="flex h-full">
@@ -1848,12 +1838,7 @@ export default function Bemanning() {
               {filterCounts.atgard > 0 ? `${filterCounts.atgard} pass behöver åtgärd` : 'Inga akuta pass just nu'}
             </p>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
-            {grupper.length > 0 && (
-              <Button variant="secondary" size="sm" onClick={växlaAllaSynliga}>
-                {allaSynligaMarkerade ? 'Avmarkera alla' : 'Markera alla'}
-              </Button>
-            )}
+          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             {valda.size > 0 && (
               <Button variant="danger" size="sm" onClick={() => setRaderaValda(true)}>
                 Ta bort ({valda.size})
