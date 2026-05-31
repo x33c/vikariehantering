@@ -439,6 +439,7 @@ export default function Utskick() {
   const [kopierat, setKopierat] = useState(false);
   const [fel, setFel] = useState('');
   const [uppdateringsInfo, setUppdateringsInfo] = useState('');
+  const [uppdateringsDetaljer, setUppdateringsDetaljer] = useState<string[]>([]);
   const [rutaStorlek, setRutaStorlek] = useState<'normal' | 'stor' | 'max'>('normal');
 
   const start = useMemo(() => startPåVecka(new Date(`${veckaStart}T12:00:00`)), [veckaStart]);
@@ -574,6 +575,7 @@ export default function Utskick() {
     setUppdaterar(true);
     setFel('');
     setUppdateringsInfo('');
+    setUppdateringsDetaljer([]);
 
     const [fRes, pRes, vRes] = await Promise.all([
       frånvaroApi.lista(startIso, slutIso),
@@ -596,6 +598,7 @@ export default function Utskick() {
     setVikarier(nyaVikarier);
     const nästa = { ...celler };
     let ändrade = 0;
+    const detaljer: string[] = [];
 
     for (const dag of dagar) {
       const datum = iso(dag);
@@ -604,12 +607,16 @@ export default function Utskick() {
         const gammalText = nästa[key] ?? '';
         const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
         const uppdateradText = slåIhopText(gammalText, nyText, typ);
-        if (uppdateradText !== gammalText) ändrade += 1;
+        if (uppdateradText !== gammalText) {
+          ändrade += 1;
+          detaljer.push(`${kortDatum(dag)} · ${typ === 'franvaro' ? 'Frånvaro' : 'Vikarie'}`);
+        }
         nästa[key] = uppdateradText;
       }
     }
 
     setCeller(nästa);
+    setUppdateringsDetaljer(detaljer);
     setUppdateringsInfo(
       ändrade > 0
         ? `${ändrade} auto-fält uppdaterades. Manuell övrigt-text ändrades inte.`
@@ -684,7 +691,13 @@ export default function Utskick() {
 
       {uppdateringsInfo && (
         <div className="mb-2 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
-          {uppdateringsInfo}
+          <p>{uppdateringsInfo}</p>
+          {uppdateringsDetaljer.length > 0 && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-subtle)' }}>
+              Ändrat: {uppdateringsDetaljer.slice(0, 8).join(', ')}
+              {uppdateringsDetaljer.length > 8 ? ` + ${uppdateringsDetaljer.length - 8} till` : ''}
+            </p>
+          )}
         </div>
       )}
 
