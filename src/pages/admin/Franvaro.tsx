@@ -1156,7 +1156,97 @@ export default function Franvaro() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
+        <div className="space-y-2 md:hidden">
+          {kalenderDagar
+            .filter((dag) => dag === datumIdag() || (frånvaroPerDag.get(dag)?.length ?? 0) > 0)
+            .map((dag) => {
+              const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
+              const ärIdag = dag === datumIdag();
+              const dagensSaknarPass = dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0);
+
+              return (
+                <section
+                  key={dag}
+                  className="rounded-xl border p-3"
+                  style={{
+                    background: 'var(--bg)',
+                    borderColor: ärIdag ? 'var(--accent)' : dagensSaknarPass ? '#f97316' : 'var(--border)',
+                  }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</h2>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {dagensFrånvaro.length > 0 ? `${dagensFrånvaro.length} frånvaro` : 'Ingen frånvaro'}
+                      </p>
+                    </div>
+                    {dagensSaknarPass && (
+                      <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
+                        Åtgärd
+                      </span>
+                    )}
+                  </div>
+
+                  {dagensFrånvaro.length === 0 ? (
+                    <div className="rounded-lg border border-dashed px-3 py-6 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
+                      Inget att hantera idag.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {dagensFrånvaro.map((frånvaro) => {
+                        const pass = aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag);
+                        const löst = ärLöstFrånvaro(frånvaro, dag);
+                        const status = frånvaroPassStatus(pass, löst);
+
+                        return (
+                          <article
+                            key={`${dag}-${frånvaro.id}`}
+                            className="rounded-xl border p-3"
+                            style={{
+                              background: 'var(--bg-card)',
+                              borderColor: löst ? '#22c55e' : pass.length === 0 ? '#f97316' : 'var(--border)',
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{frånvaro.personal?.namn ?? '-'}</p>
+                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Inget arbetslag'}</p>
+                              </div>
+                              <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: status.bg, color: status.färg }}>
+                                {status.text}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                              {frånvaro.hel_dag ? 'Heldag' : `${tid(frånvaro.tid_från)}-${tid(frånvaro.tid_till)}`}
+                              {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
+                            </p>
+
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              {pass.length > 0 ? (
+                                <Button size="sm" variant="secondary" onClick={() => navigate(pass.length === 1 ? `/admin/vikariepass?pass=${pass[0].id}` : '/admin/vikariepass')}>
+                                  Öppna pass
+                                </Button>
+                              ) : (
+                                <Button size="sm" loading={skaparPassId === frånvaro.id} onClick={() => skapaPassFrånFrånvaro(frånvaro)}>
+                                  Skapa pass
+                                </Button>
+                              )}
+                              <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(frånvaro)}>
+                                Redigera
+                              </Button>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+        </div>
+
+        <div className="hidden grid-cols-1 gap-2 md:grid md:grid-cols-2 xl:grid-cols-5">
           {kalenderDagar.map((dag) => {
             const dagensFrånvaro = frånvaroPerDag.get(dag) ?? [];
             const ärIdag = dag === datumIdag();
