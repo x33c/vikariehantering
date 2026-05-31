@@ -1,13 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { frånvaroApi, historikApi, passApi, vikariApi } from '../../lib/api';
 import type { DashboardStatistik, Frånvaro, PassStatus, Vikarie, Vikariepass } from '../../types';
 import { Button, LaddaSida } from '../../components/ui';
 
 const statusText: Record<PassStatus, string> = {
-  obokat: 'Behöver vikarie',
+  obokat: 'Saknar vikarie',
   notifierat: 'Förfrågan skickad',
-  bokat: 'Vikarie bokad',
+  bokat: 'Bokat',
   bekräftat: 'Klart',
   avbokat: 'Avbokad',
 };
@@ -26,11 +26,11 @@ function läggTillDagar(datum: Date, dagar: number) {
   return d;
 }
 
-function tid(tid?: string | null) {
-  return tid?.slice(0, 5) ?? '';
+function tid(värde?: string | null) {
+  return värde?.slice(0, 5) ?? '';
 }
 
-function kortDatum(datum: string) {
+function datumText(datum: string) {
   return new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', {
     weekday: 'short',
     day: 'numeric',
@@ -46,7 +46,7 @@ function gruppText(pass?: Vikariepass | null, frånvaro?: Frånvaro | null) {
   return pass?.grupp ?? pass?.personal?.arbetslag?.namn ?? frånvaro?.personal?.arbetslag?.namn ?? '';
 }
 
-function passStartSort(a: Vikariepass, b: Vikariepass) {
+function passSort(a: Vikariepass, b: Vikariepass) {
   return (
     a.datum.localeCompare(b.datum) ||
     tid(a.tid_från).localeCompare(tid(b.tid_från)) ||
@@ -54,10 +54,14 @@ function passStartSort(a: Vikariepass, b: Vikariepass) {
   );
 }
 
+function frånvaroSort(a: Frånvaro, b: Frånvaro) {
+  return a.datum_från.localeCompare(b.datum_från) || personNamn(null, a).localeCompare(personNamn(null, b), 'sv');
+}
+
 function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
     <section
-      className={`rounded-2xl border p-4 shadow-sm ${className}`}
+      className={`rounded-3xl border p-3 shadow-sm sm:p-4 ${className}`}
       style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
     >
       {children}
@@ -84,7 +88,7 @@ function StatusPill({ status }: { status: PassStatus }) {
 
   return (
     <span
-      className="inline-flex min-h-8 items-center justify-center rounded-full px-3 py-1 text-center text-xs font-semibold leading-none"
+      className="inline-flex min-h-7 items-center rounded-full px-2.5 py-1 text-xs font-semibold"
       style={{ color, background: 'color-mix(in srgb, currentColor 10%, transparent)' }}
     >
       {statusText[status]}
@@ -92,165 +96,106 @@ function StatusPill({ status }: { status: PassStatus }) {
   );
 }
 
-function PassCard({
+function StatButton({
+  label,
+  value,
+  tone,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  tone: 'danger' | 'warning' | 'success' | 'neutral';
+  onClick: () => void;
+}) {
+  const color = tone === 'danger' ? '#dc2626' : tone === 'warning' ? '#b45309' : tone === 'success' ? '#059669' : 'var(--text-muted)';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-2xl border p-3 text-left transition hover:shadow-sm"
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</span>
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+      </div>
+      <span className="mt-2 block text-3xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>{value}</span>
+    </button>
+  );
+}
+
+function PassRow({
   pass,
   vikarier,
+  busy,
+  onOpen,
   onBemanna,
-  disabled,
 }: {
   pass: Vikariepass;
   vikarier?: Vikarie[];
-  onBemanna?: (pass: Vikariepass, vikarieId: string) => void;
-  disabled?: boolean;
+  busy?: boolean;
+  onOpen: () => void;
+  onBemanna?: (vikarieId: string) => void;
 }) {
   return (
-    <article
-      className="rounded-2xl border p-3 transition-colors sm:p-4"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
-    >
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-2xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+      <button type="button" onClick={onOpen} className="grid w-full gap-2 text-left sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
-          <p className="truncate text-base font-semibold" style={{ color: 'var(--text)' }}>
-            {personNamn(pass)}
-          </p>
+          <p className="truncate font-semibold" style={{ color: 'var(--text)' }}>{personNamn(pass)}</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {kortDatum(pass.datum)} · {tid(pass.tid_från)}-{tid(pass.tid_till)}
+            {datumText(pass.datum)} · {tid(pass.tid_från)}-{tid(pass.tid_till)}
             {gruppText(pass) && <> · {gruppText(pass)}</>}
           </p>
           {pass.vikarie?.namn && (
-            <p className="mt-2 text-sm" style={{ color: 'var(--text)' }}>
-              Vikarie: <span className="font-semibold">{pass.vikarie.namn}</span>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text)' }}>
+              {pass.vikarie.namn}
             </p>
           )}
         </div>
         <StatusPill status={pass.status} />
-      </div>
+      </button>
 
       {pass.status === 'obokat' && vikarier && onBemanna && (
-        <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr_auto]">
-          <label className="sr-only" htmlFor={`vikarie-${pass.id}`}>
-            Välj vikarie för {personNamn(pass)}
-          </label>
+        <div className="mt-3">
+          <label className="sr-only" htmlFor={`vikarie-${pass.id}`}>Välj vikarie</label>
           <select
             id={`vikarie-${pass.id}`}
-            aria-label={`Välj vikarie för ${personNamn(pass)}`}
-            className="min-h-11 rounded-xl border px-3 text-sm"
+            className="min-h-11 w-full rounded-xl border px-3 text-sm font-medium"
             style={{ borderColor: 'var(--border)', background: 'var(--input-bg)', color: 'var(--text)' }}
-            disabled={disabled}
             defaultValue=""
+            disabled={busy}
             onChange={(e) => {
-              if (e.target.value) onBemanna(pass, e.target.value);
+              if (e.target.value) onBemanna(e.target.value);
               e.currentTarget.value = '';
             }}
           >
-            <option value="">Välj vikarie</option>
+            <option value="">Bemanna direkt</option>
             {vikarier.map((vikarie) => (
               <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
             ))}
           </select>
-          <span
-            className="hidden min-h-11 items-center justify-center rounded-xl border px-3 text-center text-sm font-semibold leading-tight sm:inline-flex"
-            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}
-          >
-            Välj för att boka
-          </span>
         </div>
       )}
     </article>
   );
 }
 
-function StepCard({
-  number,
-  title,
-  text,
-  status,
-  action,
-}: {
-  number: string;
-  title: string;
-  text: string;
-  status: 'klar' | 'väntar' | 'arbete';
-  action: ReactNode;
-}) {
-  const tone = status === 'klar'
-    ? { bg: '#ecfdf5', text: '#047857', label: 'Klart' }
-    : status === 'arbete'
-      ? { bg: '#fef2f2', text: '#b91c1c', label: 'Behöver göras' }
-      : { bg: '#fffbeb', text: '#b45309', label: 'Nästa steg' };
-
-  return (
-    <article className="rounded-2xl border p-3 sm:p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-sm font-bold"
-            style={{ background: 'var(--bg)', color: 'var(--text)' }}
-          >
-            {number}
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{title}</h2>
-            <p className="mt-1 text-sm leading-5" style={{ color: 'var(--text-muted)' }}>{text}</p>
-          </div>
-        </div>
-        <span className="w-fit shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: tone.bg, color: tone.text }}>
-          {tone.label}
-        </span>
-      </div>
-      <div className="mt-3 sm:mt-4">{action}</div>
-    </article>
-  );
-}
-
-function MetricTile({
-  label,
-  value,
-  hint,
-  intent = 'neutral',
-  onClick,
-}: {
-  label: string;
-  value: number | string;
-  hint: string;
-  intent?: 'danger' | 'success' | 'warning' | 'neutral';
-  onClick?: () => void;
-}) {
-  const color = intent === 'danger' ? '#dc2626' : intent === 'success' ? '#059669' : intent === 'warning' ? '#b45309' : 'var(--text-muted)';
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="min-h-20 rounded-2xl border p-3 text-left transition hover:shadow-sm sm:min-h-24 sm:p-4"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold sm:text-sm" style={{ color: 'var(--text-muted)' }}>{label}</p>
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-      </div>
-      <p className="mt-1 text-3xl font-semibold tracking-tight sm:mt-2 sm:text-4xl" style={{ color: 'var(--text)' }}>{value}</p>
-      <p className="mt-1 hidden text-xs leading-5 sm:block" style={{ color: 'var(--text-subtle)' }}>{hint}</p>
-    </button>
-  );
-}
-
-function CompactPassRow({ pass, onOpen }: { pass: Vikariepass; onOpen: () => void }) {
+function FrånvaroRow({ frånvaro, onOpen }: { frånvaro: Frånvaro; onOpen: () => void }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="grid w-full gap-2 rounded-2xl border p-3 text-left transition hover:shadow-sm sm:grid-cols-[1fr_auto] sm:p-4"
+      className="grid w-full gap-1 rounded-2xl border p-3 text-left transition hover:shadow-sm"
       style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
     >
-      <div className="min-w-0">
-        <p className="truncate font-semibold" style={{ color: 'var(--text)' }}>{personNamn(pass)}</p>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          {kortDatum(pass.datum)} · {tid(pass.tid_från)}-{tid(pass.tid_till)}
-          {gruppText(pass) && <> · {gruppText(pass)}</>}
-        </p>
-      </div>
-      <StatusPill status={pass.status} />
+      <p className="font-semibold" style={{ color: 'var(--text)' }}>{personNamn(null, frånvaro)}</p>
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+        {datumText(frånvaro.datum_från)}
+        {frånvaro.datum_till !== frånvaro.datum_från && <>-{datumText(frånvaro.datum_till)}</>}
+        {!frånvaro.hel_dag && <> · {tid(frånvaro.tid_från)}-{tid(frånvaro.tid_till)}</>}
+        {gruppText(null, frånvaro) && <> · {gruppText(null, frånvaro)}</>}
+      </p>
     </button>
   );
 }
@@ -267,12 +212,12 @@ export default function Dashboard() {
   function laddaStart() {
     setLaddar(true);
     const idag = idagIso();
-    const omSju = iso(läggTillDagar(new Date(), 7));
+    const omSjuDagar = iso(läggTillDagar(new Date(), 7));
 
     Promise.all([
       passApi.dashboardStatistik(),
       frånvaroApi.lista(),
-      passApi.lista({ datumFrån: idag, datumTill: omSju }),
+      passApi.lista({ datumFrån: idag, datumTill: omSjuDagar }),
       vikariApi.lista(),
     ]).then(([statistik, frånvaroRes, passRes, vikarierRes]) => {
       setData(statistik);
@@ -298,187 +243,151 @@ export default function Dashboard() {
     setBemannarPassId(null);
   }
 
+  const grupper = useMemo(() => {
+    const idag = idagIso();
+    const frånvaroIdag = frånvaro
+      .filter((f) => f.datum_från <= idag && f.datum_till >= idag)
+      .sort(frånvaroSort);
+    const kommandeFrånvaro = frånvaro
+      .filter((f) => f.datum_till > idag)
+      .filter((f) => !(f.datum_från <= idag && f.datum_till >= idag))
+      .sort(frånvaroSort);
+    const obokade = pass.filter((p) => p.status === 'obokat').sort(passSort);
+    const förfrågningar = pass.filter((p) => p.status === 'notifierat').sort(passSort);
+    const bokade = pass.filter((p) => p.status === 'bokat' || p.status === 'bekräftat').sort(passSort);
+
+    return {
+      idag,
+      frånvaroIdag,
+      kommandeFrånvaro,
+      obokade,
+      förfrågningar,
+      bokade,
+      attGöra: [...obokade, ...förfrågningar].sort(passSort),
+    };
+  }, [frånvaro, pass]);
+
   if (laddar) return <LaddaSida />;
   if (!data) return null;
 
-  const idag = idagIso();
-  const idagFrånvaro = frånvaro.filter((f) => f.datum_från <= idag && f.datum_till >= idag);
-  const kommandeFrånvaro = frånvaro
-    .filter((f) => f.datum_från > idag || f.datum_till > idag)
-    .sort((a, b) => a.datum_från.localeCompare(b.datum_från) || personNamn(null, a).localeCompare(personNamn(null, b), 'sv'))
-    .slice(0, 6);
-  const obokadePass = pass.filter((p) => p.status === 'obokat').sort(passStartSort);
-  const dagensObokade = obokadePass.filter((p) => p.datum === idag);
-  const förfrågningar = pass.filter((p) => p.status === 'notifierat').sort(passStartSort);
-  const bokade = pass.filter((p) => p.status === 'bokat' || p.status === 'bekräftat').sort(passStartSort);
-  const nästaPass = dagensObokade[0] ?? obokadePass[0] ?? null;
-  const dagensKlart = dagensObokade.length === 0 && idagFrånvaro.length > 0;
-  const utskickRedo = obokadePass.length === 0 && förfrågningar.length === 0;
+  const huvudPass = grupper.attGöra.slice(0, 5);
+  const sekundäraPass = grupper.bokade.slice(0, 4);
 
   return (
-    <div className="mx-auto w-full max-w-[88rem] px-1.5 py-2 sm:px-4 sm:py-4 lg:px-6">
-      <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-[86rem] px-1.5 py-2 sm:px-4 sm:py-4 lg:px-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-            Idag
-          </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: 'var(--text)' }}>
-            Start
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-5" style={{ color: 'var(--text-muted)' }}>
-            Registrera frånvaro, bemanna pass och förbered dagens utskick.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Idag</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Start</h1>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <Button variant="secondary" onClick={laddaStart}>Uppdatera</Button>
           <Button onClick={() => navigate('/admin/franvaro')}>Ny frånvaro</Button>
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <MetricTile
+      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <StatButton
           label="Saknar vikarie"
-          value={obokadePass.length}
-          hint={obokadePass.length === 0 ? 'Inget akut kvar.' : 'Bör hanteras först.'}
-          intent={obokadePass.length > 0 ? 'danger' : 'success'}
+          value={grupper.obokade.length}
+          tone={grupper.obokade.length > 0 ? 'danger' : 'success'}
           onClick={() => navigate('/admin/vikariepass')}
         />
-        <MetricTile
+        <StatButton
           label="Frånvaro idag"
-          value={idagFrånvaro.length}
-          hint="Personer som påverkar dagen."
-          intent={idagFrånvaro.length > 0 ? 'warning' : 'neutral'}
+          value={grupper.frånvaroIdag.length}
+          tone={grupper.frånvaroIdag.length > 0 ? 'warning' : 'neutral'}
           onClick={() => navigate('/admin/franvaro')}
         />
-        <MetricTile
+        <StatButton
           label="Förfrågningar"
-          value={förfrågningar.length}
-          hint="Väntar på svar från vikarie."
-          intent={förfrågningar.length > 0 ? 'warning' : 'neutral'}
+          value={grupper.förfrågningar.length}
+          tone={grupper.förfrågningar.length > 0 ? 'warning' : 'neutral'}
           onClick={() => navigate('/admin/vikariepass')}
         />
-        <MetricTile
+        <StatButton
           label="Bokade"
-          value={bokade.length}
-          hint="Pass som redan har bemanning."
-          intent="success"
+          value={grupper.bokade.length}
+          tone="success"
           onClick={() => navigate('/admin/vikariepass')}
         />
       </div>
 
-      <div className="grid items-start gap-3 xl:grid-cols-[1.08fr_0.92fr] xl:gap-4">
-        <div className="space-y-3 xl:space-y-4">
-          <section
-            className="rounded-3xl border p-3 shadow-sm sm:p-5"
-            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-          >
-            <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Panel>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Behöver åtgärd</h2>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{grupper.attGöra.length} pass</p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Visa alla</Button>
+          </div>
+
+          <div className="space-y-2">
+            {huvudPass.map((p) => (
+              <PassRow
+                key={p.id}
+                pass={p}
+                vikarier={vikarier}
+                busy={bemannarPassId === p.id}
+                onOpen={() => navigate(`/admin/vikariepass?pass=${p.id}`)}
+                onBemanna={(vikarieId) => bemannaDirekt(p, vikarieId)}
+              />
+            ))}
+            {huvudPass.length === 0 && <Empty text="Inga pass behöver åtgärd." />}
+          </div>
+        </Panel>
+
+        <div className="grid gap-4">
+          <Panel>
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
-                  Nästa bästa åtgärd
-                </p>
-                <h2 className="mt-1 text-lg font-semibold sm:text-xl" style={{ color: 'var(--text)' }}>
-                  {nästaPass ? 'Bemanna det här passet först' : dagensKlart ? 'Dagen är bemannad' : 'Börja med frånvaro'}
-                </h2>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Frånvaro</h2>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Idag och kommande</p>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Pass</Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/franvaro')}>Öppna</Button>
             </div>
 
-            {nästaPass ? (
-              <PassCard
-                pass={nästaPass}
-                vikarier={vikarier}
-                onBemanna={bemannaDirekt}
-                disabled={bemannarPassId === nästaPass.id}
-              />
-            ) : (
-              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                <p className="font-semibold" style={{ color: 'var(--text)' }}>
-                  {dagensKlart ? 'Alla registrerade pass är bemannade.' : 'Registrera frånvaro för att komma igång.'}
+            <div className="space-y-2">
+              {grupper.frånvaroIdag.slice(0, 4).map((f) => (
+                <FrånvaroRow key={f.id} frånvaro={f} onOpen={() => navigate('/admin/franvaro')} />
+              ))}
+              {grupper.frånvaroIdag.length === 0 && <Empty text="Ingen frånvaro idag." />}
+            </div>
+
+            {grupper.kommandeFrånvaro.length > 0 && (
+              <div className="mt-4 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+                  Kommande
                 </p>
-                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  Startsidan visar nästa rimliga steg och håller dagens arbete samlat.
-                </p>
-                <div className="mt-4">
-                  <Button onClick={() => navigate('/admin/franvaro')}>Registrera frånvaro</Button>
+                <div className="space-y-2">
+                  {grupper.kommandeFrånvaro.slice(0, 4).map((f) => (
+                    <FrånvaroRow key={f.id} frånvaro={f} onOpen={() => navigate('/admin/franvaro')} />
+                  ))}
                 </div>
               </div>
             )}
-          </section>
+          </Panel>
 
           <Panel>
-            <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Bemanningskö</h2>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Obokade pass sorterade efter datum och tid.</p>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Bokade pass</h2>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Närmaste bemannade pass</p>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Öppna</Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/admin/utskick')}>Utskick</Button>
             </div>
+
             <div className="space-y-2">
-              {obokadePass.slice(0, 6).map((p) => (
-                <CompactPassRow key={p.id} pass={p} onOpen={() => navigate(`/admin/vikariepass?pass=${p.id}`)} />
+              {sekundäraPass.map((p) => (
+                <PassRow
+                  key={p.id}
+                  pass={p}
+                  onOpen={() => navigate(`/admin/vikariepass?pass=${p.id}`)}
+                />
               ))}
-              {obokadePass.length === 0 && <Empty text="Inga pass i bemanningskön." />}
+              {sekundäraPass.length === 0 && <Empty text="Inga bokade pass att visa." />}
             </div>
-          </Panel>
-        </div>
-
-        <div className="space-y-3 xl:space-y-4">
-          <Panel>
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Morgonflöde</p>
-            <h2 className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>Tre steg till färdigt utskick</h2>
-          </div>
-
-          <div className="space-y-3">
-            <StepCard
-              number="1"
-              title="Frånvaro"
-              text={idagFrånvaro.length > 0 ? `${idagFrånvaro.length} frånvaro registrerad idag.` : 'Ingen frånvaro registrerad idag.'}
-              status={idagFrånvaro.length > 0 ? 'klar' : 'väntar'}
-              action={<Button size="sm" variant="secondary" onClick={() => navigate('/admin/franvaro')}>Registrera</Button>}
-            />
-            <StepCard
-              number="2"
-              title="Bemanning"
-              text={obokadePass.length > 0 ? `${obokadePass.length} pass saknar vikarie.` : 'Inga obokade pass just nu.'}
-              status={obokadePass.length > 0 ? 'arbete' : 'klar'}
-              action={<Button size="sm" variant={obokadePass.length > 0 ? 'primary' : 'secondary'} onClick={() => navigate('/admin/vikariepass')}>Bemanna</Button>}
-            />
-            <StepCard
-              number="3"
-              title="Utskick"
-              text={utskickRedo ? 'Underlaget ser redo ut.' : 'Vänta tills bemanning och förfrågningar är hanterade.'}
-              status={utskickRedo ? 'klar' : 'väntar'}
-              action={<Button size="sm" variant="secondary" onClick={() => navigate('/admin/utskick')}>Förhandsvisa</Button>}
-            />
-          </div>
-          </Panel>
-
-          <Panel>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-semibold" style={{ color: 'var(--text)' }}>Kommande frånvaro</h2>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Det här bör planeras innan dagen börjar.</p>
-            </div>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/admin/franvaro')}>Visa</Button>
-          </div>
-          <div className="space-y-2">
-            {kommandeFrånvaro.map((f) => (
-              <div
-                key={f.id}
-                className="grid gap-1 rounded-2xl border p-3"
-                style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
-              >
-                <p className="font-semibold" style={{ color: 'var(--text)' }}>{personNamn(null, f)}</p>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                  {kortDatum(f.datum_från)}-{kortDatum(f.datum_till)}
-                  {!f.hel_dag && <> · {tid(f.tid_från)}-{tid(f.tid_till)}</>}
-                </p>
-              </div>
-            ))}
-            {kommandeFrånvaro.length === 0 && <Empty text="Ingen kommande frånvaro i veckan." />}
-          </div>
           </Panel>
         </div>
       </div>
