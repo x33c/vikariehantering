@@ -168,7 +168,7 @@ export const frånvaroApi = {
 
 export const passApi = {
   async lista(filter?: PassFilter) {
-    let q = supabase.from('vikariepass')
+    let q: any = supabase.from('vikariepass')
       .select('*, personal(*, arbetslag(*)), frånvaro(*)')
       .order('datum').order('tid_från');
     if (filter?.datumFrån) q = q.gte('datum', filter.datumFrån);
@@ -177,7 +177,7 @@ export const passApi = {
     return q;
   },
   async hämta(id: string) {
-    return supabase.from('vikariepass')
+    return (supabase.from('vikariepass') as any)
       .select('*, personal(*, arbetslag(*)), frånvaro(*)')
       .eq('id', id).single();
   },
@@ -256,6 +256,7 @@ export const passApi = {
 
     const payload = {
       ...data,
+      publicerad: data.publicerad ?? false,
       personal_id: data.personal_id || null,
       frånvaro_id: data.frånvaro_id || null,
       schemarad_id: data.schemarad_id || null,
@@ -265,7 +266,7 @@ export const passApi = {
     };
 
     return supabase.from('vikariepass')
-      .insert({ publicerad: false, ...payload })
+      .insert(payload)
       .select('*, personal(*)')
       .single();
   },
@@ -336,7 +337,7 @@ export const passApi = {
 
 export const historikApi = {
   async listaFörPass(passId: string) {
-    return supabase.from('passhistorik')
+    return (supabase.from('passhistorik') as any)
       .select('*, utförd_av_profil:profiler(namn, epost)')
       .eq('pass_id', passId).order('created_at', { ascending: false });
   },

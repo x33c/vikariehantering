@@ -136,7 +136,7 @@ export default function Historik() {
   useEffect(() => {
     async function ladda() {
       setLaddar(true);
-      let q = supabase
+      let q: any = supabase
         .from('passhistorik')
         .select(`
           *,

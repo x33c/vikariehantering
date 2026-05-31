@@ -930,7 +930,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
             <StatusBadge status={pass.status} />
           </div>
 
-          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
             <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
               Synlighet<br />
               <span className="font-semibold" style={{ color: pass.publicerad ? 'var(--blue)' : 'var(--text)' }}>
@@ -941,6 +941,14 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
               Vikarie<br />
               <span className="font-semibold" style={{ color: tillsattVikarie ? '#22c55e' : 'var(--text)' }}>
                 {tillsattVikarie?.namn ?? riktadVikarie?.namn ?? 'Ingen vald'}
+              </span>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              Frånvaro<br />
+              <span className="font-semibold" style={{ color: pass.frånvaro_id ? '#22c55e' : '#f97316' }}>
+                {pass.frånvaro
+                  ? `${pass.frånvaro.hel_dag ? 'Heldag' : `${pass.frånvaro.tid_från?.slice(0, 5) ?? ''}-${pass.frånvaro.tid_till?.slice(0, 5) ?? ''}`}${pass.frånvaro.orsak ? ` · ${pass.frånvaro.orsak}` : ''}`
+                  : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro'}
               </span>
             </div>
           </div>
@@ -1260,7 +1268,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Övrigt</p>
           <Button size="sm" variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
-            Avboka pass
+            Arkivera pass
           </Button>
         </section>
 

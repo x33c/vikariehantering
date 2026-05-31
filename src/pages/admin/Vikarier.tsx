@@ -172,6 +172,7 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   async function sparaKonto() {
     setFel('');
     setOk('');
+    if (!vikarie) return;
 
     if (!epost.trim()) {
       setFel('Ange e-post.');
@@ -747,7 +748,7 @@ export default function Vikarier() {
   const [laddar, setLaddar] = useState(true);
   const [modal, setModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [kontoModal, setKontoModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
-  const [tillgModal, setTillgModal] = useState<{ öppen: boolean; vikarie?: Vikarie }>({ öppen: false });
+  const [tillgModal, setTillgModal] = useState<{ öppen: boolean; rad?: Vikarie }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [markeradeIds, setMarkeradeIds] = useState<Set<string>>(new Set());
   const [massModal, setMassModal] = useState(false);
@@ -1023,10 +1024,10 @@ export default function Vikarier() {
         />
       )}
 
-        {tillgModal.öppen && tillgModal.vikarie && (
+        {tillgModal.öppen && tillgModal.rad && (
           <TillgänglighetModal
             öppen={tillgModal.öppen}
-            vikarie={tillgModal.vikarie}
+            vikarie={tillgModal.rad}
             onStäng={() => setTillgModal({ öppen: false })}
           />
         )}

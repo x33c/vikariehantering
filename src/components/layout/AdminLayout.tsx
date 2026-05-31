@@ -17,6 +17,7 @@ const merNavItems = [
   { to: '/admin/import', label: 'Schema', icon: 'table' },
   { to: '/admin/historik', label: 'Historik', icon: 'history' },
   { to: '/admin/export', label: 'Export', icon: 'download' },
+  { to: '/admin/datastadning', label: 'Datastädning', icon: 'tool' },
   { to: '/admin/konton', label: 'Konton', icon: 'account' },
   { to: '/admin/beta', label: 'Beta', icon: 'layers' },
 ];
@@ -41,6 +42,7 @@ function NavIkon({ namn }: { namn: string }) {
   if (namn === 'table') return <svg {...gemensam}><path d="M4 4h16v16H4zM4 10h16M10 4v16" /></svg>;
   if (namn === 'history') return <svg {...gemensam}><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v6h6M12 7v5l3 2" /></svg>;
   if (namn === 'download') return <svg {...gemensam}><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>;
+  if (namn === 'tool') return <svg {...gemensam}><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.4 2.4-2-2 2.4-2.4Z" /></svg>;
   if (namn === 'account') return <svg {...gemensam}><rect x="4" y="3" width="16" height="18" rx="3" /><circle cx="12" cy="9" r="3" /><path d="M8 17a4 4 0 0 1 8 0" /></svg>;
   if (namn === 'layers') return <svg {...gemensam}><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>;
   return <svg {...gemensam}><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg>;

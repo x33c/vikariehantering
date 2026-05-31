@@ -91,6 +91,23 @@ function datumÖverlappar(startA: string, slutA: string, startB: string, slutB: 
   return startA <= slutB && slutA >= startB;
 }
 
+function frånvaroPassStatus(pass: Vikariepass[], löst: boolean) {
+  if (löst) return { text: 'löst', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
+  if (pass.length === 0) return { text: '0 pass skapade', färg: '#fb923c', bg: 'rgba(249,115,22,0.14)' };
+
+  const allaBemannade = pass.every((p) => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
+  if (allaBemannade) return { text: 'bemannat', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
+
+  const saknarVikarie = pass.some((p) => !p.vikarie_id && p.status !== 'avbokat');
+  if (saknarVikarie) return { text: 'saknar vikarie', färg: '#fb923c', bg: 'rgba(249,115,22,0.14)' };
+
+  return {
+    text: pass.length === 1 ? '1 pass skapat' : `${pass.length} pass skapade`,
+    färg: 'var(--text-muted)',
+    bg: 'var(--hover)',
+  };
+}
+
 function unikNyckel(rad: Schemarad) {
   return [
     rad.datum,
@@ -675,13 +692,15 @@ function FrånvaroModal({
               label="Vem ska vikariera?"
               value={valdVikarieId}
               onChange={(e) => setValdVikarieId(e.target.value)}
-              hint="Om du väljer vikarie nu skickas en förfrågan. Passet markeras som tillfrågat tills vikarien svarar."
             >
               <option value="">Välj senare</option>
               {vikarier.map((vikarie) => (
                 <option key={vikarie.id} value={vikarie.id}>{vikarie.namn}</option>
               ))}
             </Select>
+            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Om du väljer vikarie nu skickas en förfrågan. Passet markeras som tillfrågat tills vikarien svarar.
+            </p>
           </div>
 
           {schemarader.length > 0 ? (
@@ -888,6 +907,11 @@ export default function Franvaro() {
 
   function aktivaPassFör(frånvaro: Frånvaro) {
     return vikariepass.filter((pass) => pass.frånvaro_id === frånvaro.id && pass.status !== 'avbokat');
+  }
+
+  function öppnaPassFörFrånvaro(frånvaro: Frånvaro) {
+    const pass = aktivaPassFör(frånvaro);
+    navigate(pass.length === 1 ? `/admin/vikariepass?pass=${pass[0].id}` : '/admin/vikariepass');
   }
 
   async function växlaLöstFrånvaro(frånvaro: Frånvaro, datum?: string) {
@@ -1171,6 +1195,7 @@ export default function Franvaro() {
                       const harPass = pass.length > 0;
                       const löst = ärLöstFrånvaro(frånvaro, dag);
                       const behöverÅtgärd = !löst && !harPass;
+                      const status = frånvaroPassStatus(pass, löst);
 
                       return (
                         <article
@@ -1187,10 +1212,10 @@ export default function Franvaro() {
                               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Inget arbetslag'}</p>
                             </div>
                             <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{
-                              background: löst ? 'rgba(34,197,94,0.14)' : harPass ? 'rgba(34,197,94,0.14)' : 'rgba(249,115,22,0.14)',
-                              color: löst ? '#22c55e' : harPass ? '#22c55e' : '#fb923c',
+                              background: status.bg,
+                              color: status.färg,
                             }}>
-                              {löst ? 'Löst' : harPass ? `${pass.length} pass` : 'Saknar pass'}
+                              {status.text}
                             </span>
                           </div>
 
@@ -1219,11 +1244,11 @@ export default function Franvaro() {
                             {harPass ? (
                               <button
                                 type="button"
-                                onClick={() => navigate('/admin/vikariepass')}
+                                onClick={() => navigate(pass.length === 1 ? `/admin/vikariepass?pass=${pass[0].id}` : '/admin/vikariepass')}
                                 className="rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
                                 style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
                               >
-                                Bemanning
+                                Öppna pass
                               </button>
                             ) : (
                               <Button size="sm" loading={skaparPassId === frånvaro.id} onClick={() => skapaPassFrånFrånvaro(frånvaro)}>Skapa pass</Button>
@@ -1286,6 +1311,17 @@ export default function Franvaro() {
                       {f.orsak}
                     </p>
                   )}
+                  {(() => {
+                    const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f));
+                    return (
+                      <p>
+                        <span className="font-medium" style={{ color: 'var(--text)' }}>Bemanning:</span>{' '}
+                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ color: status.färg, background: status.bg }}>
+                          {status.text}
+                        </span>
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" loading={löserFrånvaroId === f.id} onClick={() => växlaLöstFrånvaro(f)}>
@@ -1293,7 +1329,7 @@ export default function Franvaro() {
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                   {aktivaPassFör(f).length > 0 ? (
-                    <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
+                    <Button size="sm" variant="secondary" onClick={() => öppnaPassFörFrånvaro(f)}>Öppna pass</Button>
                   ) : (
                     <Button size="sm" loading={skaparPassId === f.id} onClick={() => skapaPassFrånFrånvaro(f)}>Skapa pass</Button>
                   )}
@@ -1310,6 +1346,7 @@ export default function Franvaro() {
                   <th className="px-4 py-3 text-left font-medium">Arbetslag</th>
                   <th className="px-4 py-3 text-left font-medium">Datum</th>
                   <th className="px-4 py-3 text-left font-medium">Typ</th>
+                  <th className="px-4 py-3 text-left font-medium">Bemanning</th>
                   <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -1323,6 +1360,16 @@ export default function Franvaro() {
                     <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
                       {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
                     </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f));
+                        return (
+                          <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ color: status.färg, background: status.bg }}>
+                            {status.text}
+                          </span>
+                        );
+                      })()}
+                    </td>
                     <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
@@ -1331,7 +1378,7 @@ export default function Franvaro() {
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => setRedigeraFrånvaro(f)}>Redigera</Button>
                         {aktivaPassFör(f).length > 0 ? (
-                          <Button size="sm" variant="secondary" onClick={() => navigate('/admin/vikariepass')}>Till bemanning</Button>
+                          <Button size="sm" variant="secondary" onClick={() => öppnaPassFörFrånvaro(f)}>Öppna pass</Button>
                         ) : (
                           <Button size="sm" loading={skaparPassId === f.id} onClick={() => skapaPassFrånFrånvaro(f)}>Skapa pass</Button>
                         )}

@@ -61,7 +61,7 @@ function standardIngress() {
 }
 
 function byggIngress(template: string, datum: Date) {
-  return (template.trim() || standardIngress()).replaceAll('{datum}', långtDatum(datum));
+  return (template.trim() || standardIngress()).replace(/\{datum\}/g, långtDatum(datum));
 }
 
 function PeriodIkon({ typ }: { typ: 'föregående' | 'idag' | 'nästa' }) {
@@ -343,7 +343,7 @@ function normaliseraVikarieRadbrytningar(text: string) {
     .split('\n')
     .map((rad) => rad.trimEnd())
     .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 }
 
@@ -416,7 +416,7 @@ function byggHtml({
 
   return `
 <div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;line-height:1.25;">
-<div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replaceAll('\n', '<br>')}<br><br></div>  
+<div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replace(/\n/g, '<br>')}<br><br></div>  
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
@@ -438,6 +438,7 @@ export default function Utskick() {
   const [uppdaterar, setUppdaterar] = useState(false);
   const [kopierat, setKopierat] = useState(false);
   const [fel, setFel] = useState('');
+  const [uppdateringsInfo, setUppdateringsInfo] = useState('');
   const [rutaStorlek, setRutaStorlek] = useState<'normal' | 'stor' | 'max'>('normal');
 
   const start = useMemo(() => startPåVecka(new Date(`${veckaStart}T12:00:00`)), [veckaStart]);
@@ -572,6 +573,7 @@ export default function Utskick() {
   async function uppdateraFrånvaroOchBemanning() {
     setUppdaterar(true);
     setFel('');
+    setUppdateringsInfo('');
 
     const [fRes, pRes, vRes] = await Promise.all([
       frånvaroApi.lista(startIso, slutIso),
@@ -592,20 +594,27 @@ export default function Utskick() {
     setFrånvaro(nyFrånvaro);
     setPass(nyaPass);
     setVikarier(nyaVikarier);
-    setCeller((prev) => {
-      const nästa = { ...prev };
+    const nästa = { ...celler };
+    let ändrade = 0;
 
-      for (const dag of dagar) {
-        const datum = iso(dag);
-        for (const typ of ['franvaro', 'vikarie'] as const) {
-          const key = cellKey(datum, typ);
-          const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
-          nästa[key] = slåIhopText(nästa[key] ?? '', nyText, typ);
-        }
+    for (const dag of dagar) {
+      const datum = iso(dag);
+      for (const typ of ['franvaro', 'vikarie'] as const) {
+        const key = cellKey(datum, typ);
+        const gammalText = nästa[key] ?? '';
+        const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
+        const uppdateradText = slåIhopText(gammalText, nyText, typ);
+        if (uppdateradText !== gammalText) ändrade += 1;
+        nästa[key] = uppdateradText;
       }
+    }
 
-      return nästa;
-    });
+    setCeller(nästa);
+    setUppdateringsInfo(
+      ändrade > 0
+        ? `${ändrade} auto-fält uppdaterades. Manuell övrigt-text ändrades inte.`
+        : 'Ingen ny auto-data hittades. Manuell övrigt-text ändrades inte.'
+    );
 
     setUppdaterar(false);
   }
@@ -672,6 +681,12 @@ export default function Utskick() {
           <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
       </div>
+
+      {uppdateringsInfo && (
+        <div className="mb-2 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+          {uppdateringsInfo}
+        </div>
+      )}
 
       <div className="mb-2 flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2">

@@ -109,6 +109,7 @@ export default function Import() {
             grupp: String(r['grupp'] || r['Grupp'] || r['Klass'] || ''),
             sal: String(r['sal'] || r['Sal'] || ''),
             lektionsId: String(i),
+            vecka: 0,
           }));
 
           const fb = rader.map(rad => {
