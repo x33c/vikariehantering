@@ -527,6 +527,12 @@ function FrånvaroModal({
           skapad_av: null,
         });
 
+        if (res.error) {
+          setFel(res.error.message);
+          setSkaparPass(false);
+          return;
+        }
+
         if (res.data) {
           await historikApi.skapa(res.data.id, 'pass_skapat');
           if (skickarFörfrågan) {

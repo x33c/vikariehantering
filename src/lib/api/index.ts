@@ -231,6 +231,29 @@ export const passApi = {
       return { data: null, error: null };
     }
 
+    if (data.personal_id && data.tid_från && data.tid_till) {
+      const befintligt = await supabase
+        .from('vikariepass')
+        .select('id, datum, tid_från, tid_till, personal_id, personal(namn)')
+        .eq('personal_id', data.personal_id)
+        .eq('datum', data.datum)
+        .neq('status', 'avbokat')
+        .lt('tid_från', data.tid_till)
+        .gt('tid_till', data.tid_från)
+        .limit(1);
+
+      if (befintligt.error) return { data: null, error: befintligt.error };
+
+      if ((befintligt.data ?? []).length > 0) {
+        return {
+          data: null,
+          error: {
+            message: 'Det finns redan ett aktivt vikariepass för personen som överlappar den här tiden. Öppna det befintliga passet och ändra det istället.',
+          },
+        };
+      }
+    }
+
     const payload = {
       ...data,
       personal_id: data.personal_id || null,
