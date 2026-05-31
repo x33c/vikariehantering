@@ -13,6 +13,7 @@ import NyttLosenord from './pages/auth/NyttLosenord';
 
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
+import Register from './pages/admin/Register';
 import Arbetslag from './pages/admin/Arbetslag';
 import Vikarier from './pages/admin/Vikarier';
 import Franvaro from './pages/admin/Franvaro';
@@ -80,13 +81,19 @@ export default function App() {
             }
           >
             <Route index element={<Dashboard />} />
-            <Route path="arbetslag" element={<Arbetslag />} />
-            <Route path="vikarier" element={<Vikarier />} />
+            <Route path="register" element={<Register />}>
+              <Route index element={<Navigate to="/admin/register/vikarier" replace />} />
+              <Route path="vikarier" element={<Vikarier />} />
+              <Route path="personal" element={<Arbetslag />} />
+              <Route path="konton" element={<Konton />} />
+            </Route>
+            <Route path="arbetslag" element={<Navigate to="/admin/register/personal" replace />} />
+            <Route path="vikarier" element={<Navigate to="/admin/register/vikarier" replace />} />
             <Route path="franvaro" element={<Franvaro />} />
             <Route path="vikariepass" element={<Vikariepass />} />
             <Route path="import" element={<Import />} />
             <Route path="historik" element={<Historik />} />
-            <Route path="konton" element={<Konton />} />
+            <Route path="konton" element={<Navigate to="/admin/register/konton" replace />} />
             <Route path="utskick" element={<Utskick />} />
             <Route path="export" element={<Export />} />
             <Route path="datastadning" element={<Datastadning />} />

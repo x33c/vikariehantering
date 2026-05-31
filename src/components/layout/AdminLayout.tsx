@@ -9,16 +9,14 @@ const huvudNavItems = [
   { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
   { to: '/admin/vikariepass', label: 'Bemanning', icon: 'board' },
   { to: '/admin/utskick', label: 'Utskick', icon: 'mail' },
-  { to: '/admin/vikarier', label: 'Vikarier', icon: 'users' },
+  { to: '/admin/register', label: 'Personer', icon: 'users' },
 ];
 
 const merNavItems = [
-  { to: '/admin/arbetslag', label: 'Personal', icon: 'people' },
   { to: '/admin/import', label: 'Schema', icon: 'table' },
   { to: '/admin/historik', label: 'Historik', icon: 'history' },
   { to: '/admin/export', label: 'Export', icon: 'download' },
   { to: '/admin/datastadning', label: 'Datastädning', icon: 'tool' },
-  { to: '/admin/konton', label: 'Konton', icon: 'account' },
   { to: '/admin/beta', label: 'Beta', icon: 'layers' },
 ];
 

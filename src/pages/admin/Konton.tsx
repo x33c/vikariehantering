@@ -82,7 +82,7 @@ export default function Konton() {
         <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Admin</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>Admin-konton</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Hantera administratörskonton. Vikariekonton hanteras under Vikarier.
+          Hantera administratörskonton. Vikariekonton hanteras under fliken Vikarier.
         </p>
       </div>
 
