@@ -302,10 +302,11 @@ export const passApi = {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();
   },
   async radera(id: string) {
-    await supabase.from('vikariepass_exkluderingar').delete().eq('pass_id', id);
-    await supabase.from('notiser').delete().eq('pass_id', id);
-    await supabase.from('passhistorik').delete().eq('pass_id', id);
-    return supabase.from('vikariepass').delete().eq('id', id);
+    return supabase.from('vikariepass')
+      .update({ status: 'avbokat' })
+      .eq('id', id)
+      .select()
+      .single();
   },
   async dashboardStatistik(): Promise<DashboardStatistik> {
     const idag = new Date().toISOString().slice(0, 10);

@@ -423,7 +423,7 @@ function FrånvaroModal({
 
     if (finnsRedan) {
       setLaddar(false);
-      setFel(`${frånvarandeNamn || 'Personen'} har redan frånvaro ${finnsRedan.datum_från} - ${finnsRedan.datum_till}. Ta bort eller ändra den först.`);
+      setFel(`${frånvarandeNamn || 'Personen'} har redan frånvaro ${finnsRedan.datum_från} - ${finnsRedan.datum_till}. Ändra eller arkivera den först.`);
       return;
     }
 
@@ -1267,7 +1267,7 @@ export default function Franvaro() {
                     className="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium"
                     style={{ color: 'var(--danger)' }}
                   >
-                    Ta bort
+                    Arkivera
                   </button>
                 </div>
 
@@ -1336,7 +1336,7 @@ export default function Franvaro() {
                           <Button size="sm" loading={skaparPassId === f.id} onClick={() => skapaPassFrånFrånvaro(f)}>Skapa pass</Button>
                         )}
                         <button onClick={() => setRaderaId(f.id)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--danger)' }}>
-                          Ta bort
+                          Arkivera
                         </button>
                       </div>
                     </td>
@@ -1367,13 +1367,18 @@ export default function Franvaro() {
 
       <Confirm
         öppen={!!raderaId}
-        titel="Ta bort"
-        text="Ta bort frånvaron? Kopplade vikariepass påverkas inte."
-        bekräftaText="Ta bort"
+        titel="Arkivera frånvaro"
+        text="Arkivera frånvaron? Den döljs från arbetsvyn men sparas för historik och export. Kopplade vikariepass påverkas inte."
+        bekräftaText="Arkivera"
         farlig
         onBekräfta={async () => {
           if (!raderaId) return;
-          await frånvaroApi.radera(raderaId);
+          const frånvaro = frånvaron.find((f) => f.id === raderaId);
+          if (frånvaro) {
+            await frånvaroApi.uppdatera(raderaId, {
+              anteckning: anteckningMedLöstMarkering(frånvaro, true),
+            });
+          }
           setFrånvaron((prev) => prev.filter((f) => f.id !== raderaId));
           setRaderaId(null);
         }}

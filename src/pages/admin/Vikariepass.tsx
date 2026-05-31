@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi } from '../../lib/api';
-import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande, Frånvaro } from '../../types';
+import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
@@ -1706,8 +1706,8 @@ export default function Bemanning() {
   const [veckaStart, setVeckaStart] = useState(() => veckaStartIso(new Date().toISOString().slice(0, 10)));
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
-  const [raderaValda, setRaderaValda] = useState(false);
-  const [raderar, setRaderar] = useState(false);
+  const [arkiveraValda, setArkiveraValda] = useState(false);
+  const [arkiverar, setArkiverar] = useState(false);
   const [senastMarkeradIndex, setSenastMarkeradIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -1768,83 +1768,22 @@ export default function Bemanning() {
     }
   }
 
-  async function raderaMånga() {
-    setRaderar(true);
-    const valdaPass = pass.filter(p => valda.has(p.id));
-    const passMedFrånvaro = valdaPass.filter(p => p.frånvaro_id);
-    const raderaKoppladFrånvaro = passMedFrånvaro.length > 0 && window.confirm(
-      `Vill du även ta bort kopplad frånvaro för ${passMedFrånvaro.length} markerade pass? Endast de valda passens datum påverkas.`
-    );
+  async function arkiveraMånga() {
+    setArkiverar(true);
+    const ids = [...valda];
 
-    if (raderaKoppladFrånvaro) {
-      await taBortFrånvarodagarFörPass(passMedFrånvaro);
+    for (const id of ids) {
+      const res = await passApi.radera(id);
+      if (!res.error) {
+        await historikApi.skapa(id, 'pass_avbokat', { åtgärd: 'arkiverad_från_bemanning' }, 'Pass arkiverat från bemanningsvyn.');
+      }
     }
 
-    for (const id of valda) {
-      await passApi.radera(id);
-    }
+    setPass(prev => prev.map(p => ids.includes(p.id) ? { ...p, status: 'avbokat' as PassStatus } : p));
     setValda(new Set());
-    setRaderaValda(false);
-    setRaderar(false);
+    setArkiveraValda(false);
+    setArkiverar(false);
     ladda();
-  }
-
-  async function taBortFrånvarodagarFörPass(passLista: Bemanning[]) {
-    const datumPerFrånvaro = new Map<string, Set<string>>();
-
-    for (const passrad of passLista) {
-      if (!passrad.frånvaro_id) continue;
-      const datum = datumPerFrånvaro.get(passrad.frånvaro_id) ?? new Set<string>();
-      datum.add(passrad.datum);
-      datumPerFrånvaro.set(passrad.frånvaro_id, datum);
-    }
-
-    for (const [frånvaroId, datumSomTasBort] of datumPerFrånvaro) {
-      const res = await frånvaroApi.hämta(frånvaroId);
-      if (res.error || !res.data) continue;
-
-      const frånvaro = res.data as Frånvaro;
-      const kvarvarandeDatum = datumIntervall(frånvaro.datum_från, frånvaro.datum_till)
-        .filter(datum => !datumSomTasBort.has(datum));
-
-      if (kvarvarandeDatum.length === 0) {
-        await frånvaroApi.radera(frånvaroId);
-        continue;
-      }
-
-      const segment = datumSegment(kvarvarandeDatum);
-      const [första, ...övriga] = segment;
-
-      await frånvaroApi.uppdatera(frånvaroId, {
-        datum_från: första.start,
-        datum_till: första.slut,
-      });
-
-      for (const del of övriga) {
-        const ny = await frånvaroApi.skapa({
-          personal_id: frånvaro.personal_id,
-          datum_från: del.start,
-          datum_till: del.slut,
-          hel_dag: frånvaro.hel_dag,
-          tid_från: frånvaro.tid_från,
-          tid_till: frånvaro.tid_till,
-          orsak: frånvaro.orsak,
-          anteckning: frånvaro.anteckning,
-          skapad_av: frånvaro.skapad_av,
-        });
-
-        if (!ny.data) continue;
-        const nyFrånvaroId = (ny.data as Frånvaro).id;
-
-        const passRes = await passApi.lista({ datumFrån: del.start, datumTill: del.slut });
-        const koppladePass = ((passRes.data ?? []) as Bemanning[])
-          .filter(p => p.frånvaro_id === frånvaroId && !datumSomTasBort.has(p.datum));
-
-        await Promise.all(koppladePass.map(p =>
-          passApi.uppdatera(p.id, { frånvaro_id: nyFrånvaroId } as Partial<Bemanning>)
-        ));
-      }
-    }
   }
 
   if (laddar) return <LaddaSida />;
@@ -1886,7 +1825,7 @@ export default function Bemanning() {
     const passerad = ärGruppPasserad(grupp);
     const ejPublicerad = !publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
     const ledigtPassKräverÅtgärd = publicerad && !harBokad && !harRiktadFörfrågan && !avbokad;
-    const atgard = !passerad && (harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || ledigtPassKräverÅtgärd || avbokad);
+    const atgard = !passerad && (harAvbokningsförfrågan || harRiktadFörfrågan || ejPublicerad || ledigtPassKräverÅtgärd);
 
     return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, passerad, ejPublicerad, atgard };
   }
@@ -1894,8 +1833,8 @@ export default function Bemanning() {
   function matcharSnabbFilter(grupp: Passgrupp, filter: SnabbFilterTyp) {
     const info = gruppInfo(grupp);
 
-    if (filter === 'arkiv') return info.passerad;
-    if (info.passerad && döljPasserade) return false;
+    if (filter === 'arkiv') return info.passerad || info.avbokad;
+    if ((info.passerad || info.avbokad) && döljPasserade) return false;
 
     if (filter === 'alla') return true;
     if (filter === 'atgard') return info.atgard;
@@ -1996,8 +1935,8 @@ export default function Bemanning() {
           </div>
           <div className="flex shrink-0 gap-2">
             {valda.size > 0 && (
-              <Button variant="danger" size="sm" onClick={() => setRaderaValda(true)}>
-                Ta bort ({valda.size})
+              <Button variant="danger" size="sm" onClick={() => setArkiveraValda(true)}>
+                Arkivera ({valda.size})
               </Button>
             )}
           </div>
@@ -2306,13 +2245,13 @@ export default function Bemanning() {
       <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} förvaltDatum={skapaDatum} />
 
       <Confirm
-        öppen={raderaValda}
-        titel="Ta bort pass"
-        text={`Ta bort ${valda.size} markerade pass? Åtgärden kan inte ångras.`}
-        bekräftaText={raderar ? 'Tar bort…' : `Ta bort ${valda.size} pass`}
+        öppen={arkiveraValda}
+        titel="Arkivera pass"
+        text={`Arkivera ${valda.size} markerade pass? Passen flyttas till Arkiv. Frånvaro, historik, notiser och meddelanden behålls.`}
+        bekräftaText={arkiverar ? 'Arkiverar…' : `Arkivera ${valda.size} pass`}
         farlig
-        onBekräfta={raderaMånga}
-        onAvbryt={() => setRaderaValda(false)}
+        onBekräfta={arkiveraMånga}
+        onAvbryt={() => setArkiveraValda(false)}
       />
     </div>
   );
