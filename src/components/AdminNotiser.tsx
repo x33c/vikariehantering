@@ -174,11 +174,11 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
           <button
             type="button"
             aria-label="Stäng notiser"
-            className="fixed inset-0 z-40 bg-transparent sm:hidden"
+            className="fixed inset-0 z-[90] bg-transparent sm:hidden"
             onClick={() => setOppen(false)}
           />
           <div
-            className={`fixed inset-x-3 top-16 z-50 max-h-[calc(100dvh-5rem)] overflow-hidden rounded-2xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:w-80 sm:max-w-[calc(100vw-2rem)] ${
+            className={`fixed inset-x-3 top-16 z-[100] max-h-[calc(100dvh-5rem)] overflow-hidden rounded-2xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:w-80 sm:max-w-[calc(100vw-2rem)] ${
               placement === 'up' ? 'sm:bottom-full sm:left-0 sm:mb-2' : 'sm:right-0 sm:top-full sm:mt-2'
             }`}
             style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}

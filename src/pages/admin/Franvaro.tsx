@@ -522,6 +522,7 @@ function FrånvaroModal({
           sal: salar.length === 1 ? salar[0] : null,
           anteckning: `Sammanhållet pass från ${sorterade.length} lektioner:\n${lektionslista}`,
           riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
+          publicerad: false,
           status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
           skapad_av: null,
         });
@@ -554,6 +555,7 @@ function FrånvaroModal({
           sal: null,
           anteckning: null,
           riktad_till_vikarie_id: skickarFörfrågan ? valdVikarieId : null,
+          publicerad: false,
           status: bokarDirekt ? 'bokat' : skickarFörfrågan ? 'notifierat' : 'obokat',
           skapad_av: null,
         });
@@ -756,6 +758,7 @@ function RedigeraFrånvaroModal({
   }, [frånvaro]);
 
   if (!frånvaro) return null;
+  const aktuellFrånvaro = frånvaro;
 
   async function spara() {
     if (!personalId) { setFel('Välj person.'); return; }
@@ -764,8 +767,8 @@ function RedigeraFrånvaroModal({
     setSparar(true);
     setFel('');
 
-    const res = await frånvaroApi.uppdatera(frånvaro.id, {
-      personal_id: frånvaro.personal_id,
+    const res = await frånvaroApi.uppdatera(aktuellFrånvaro.id, {
+      personal_id: personalId,
       datum_från: datumFrån,
       datum_till: datumTill,
       hel_dag: helDag,
@@ -776,7 +779,7 @@ function RedigeraFrånvaroModal({
         anteckning.trim() || null,
         ingenVikarieBehövs ? 'Ingen vikarie behövs' : null,
       ].filter(Boolean).join('\n') || null,
-      skapad_av: frånvaro.skapad_av,
+      skapad_av: aktuellFrånvaro.skapad_av,
     });
 
     setSparar(false);

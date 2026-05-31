@@ -93,10 +93,10 @@ function tid(t?: string | null) {
 
 function esc(text: string) {
   return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function cellKey(datum: string, typ: UtskickTyp) {
@@ -318,7 +318,7 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
 
 function htmlCell(text: string) {
   const trimmed = text.trim();
-  return trimmed ? esc(trimmed).replaceAll('\n', '<br>') : '&nbsp;';
+  return trimmed ? esc(trimmed).replace(/\n/g, '<br>') : '&nbsp;';
 }
 
 function htmlVikarieCell(text: string) {

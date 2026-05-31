@@ -274,7 +274,7 @@ export default function AdminLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
-          className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b px-3 backdrop-blur sm:px-4 lg:hidden"
+          className="sticky top-0 z-[70] flex h-16 shrink-0 items-center border-b px-3 backdrop-blur sm:px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           <button onClick={() => setMenyÖppen(true)} className="rounded-xl border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
