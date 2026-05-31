@@ -9,6 +9,18 @@ import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
 const STANDARD_TID_TILL = '16:30';
+type SnabbFilterTyp = 'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv';
+
+const SNABBFILTER: { id: SnabbFilterTyp; label: string }[] = [
+  { id: 'atgard', label: 'Att göra' },
+  { id: 'alla', label: 'Alla' },
+  { id: 'lediga', label: 'Lediga' },
+  { id: 'bokade', label: 'Bokade' },
+  { id: 'ej_publicerade', label: 'Ej publicerade' },
+  { id: 'arkiv', label: 'Arkiv' },
+];
+
+const SYNLIGA_SNABBFILTER_KEY = 'bemanning_synliga_snabbfilter_v1';
 
 function minuter(tid?: string | null) {
   const [h, m] = (tid?.slice(0, 5) ?? '00:00').split(':').map(Number);
@@ -1676,7 +1688,17 @@ export default function Bemanning() {
   const [skapaDatum, setSkapaDatum] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
-  const [snabbFilter, setSnabbFilter] = useState<'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv'>('alla');
+  const [snabbFilter, setSnabbFilter] = useState<SnabbFilterTyp>('alla');
+  const [synligaSnabbfilter, setSynligaSnabbfilter] = useState<Set<SnabbFilterTyp>>(() => {
+    try {
+      const sparade = window.localStorage.getItem(SYNLIGA_SNABBFILTER_KEY);
+      if (!sparade) return new Set();
+      const värden = JSON.parse(sparade) as SnabbFilterTyp[];
+      return new Set(värden.filter((värde) => SNABBFILTER.some((filter) => filter.id === värde)));
+    } catch {
+      return new Set();
+    }
+  });
   const [bemanningSok, setBemanningSok] = useState('');
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
@@ -1687,6 +1709,14 @@ export default function Bemanning() {
   const [raderaValda, setRaderaValda] = useState(false);
   const [raderar, setRaderar] = useState(false);
   const [senastMarkeradIndex, setSenastMarkeradIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SYNLIGA_SNABBFILTER_KEY, JSON.stringify([...synligaSnabbfilter]));
+    } catch {
+      // Synliga genvägar är en lokal preferens, inte kritisk data.
+    }
+  }, [synligaSnabbfilter]);
 
   const ladda = useCallback(async () => {
     const [pRes, vRes, perRes] = await Promise.all([
@@ -1847,8 +1877,6 @@ export default function Bemanning() {
   const grupperEfterVikarie = vikarieFilter
     ? grupper.filter(grupp => grupp.pass.some(p => p.vikarie_id === vikarieFilter))
     : grupper;
-  type SnabbFilter = typeof snabbFilter;
-
   function gruppInfo(grupp: Passgrupp) {
     const harBokad = grupp.pass.some(p => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
     const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
@@ -1863,7 +1891,7 @@ export default function Bemanning() {
     return { harBokad, harAvbokningsförfrågan, harRiktadFörfrågan, publicerad, avbokad, passerad, ejPublicerad, atgard };
   }
 
-  function matcharSnabbFilter(grupp: Passgrupp, filter: SnabbFilter) {
+  function matcharSnabbFilter(grupp: Passgrupp, filter: SnabbFilterTyp) {
     const info = gruppInfo(grupp);
 
     if (filter === 'arkiv') return info.passerad;
@@ -1877,7 +1905,7 @@ export default function Bemanning() {
     return true;
   }
 
-  const filterCounts: Record<SnabbFilter, number> = {
+  const filterCounts: Record<SnabbFilterTyp, number> = {
     alla: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'alla')).length,
     atgard: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'atgard')).length,
     lediga: grupperEfterVikarie.filter(g => matcharSnabbFilter(g, 'lediga')).length,
@@ -1903,7 +1931,29 @@ export default function Bemanning() {
   const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
   const veckaSlut = veckodagar[4];
   const idag = new Date().toLocaleDateString('sv-SE');
-  const aktivaFilterAntal = [bemanningSok, statusFilter, datumFrån, datumTill, vikarieFilter].filter(Boolean).length;
+  const aktivaFilterAntal = [
+    bemanningSok,
+    statusFilter,
+    datumFrån,
+    datumTill,
+    vikarieFilter,
+    snabbFilter !== 'alla' ? snabbFilter : '',
+  ].filter(Boolean).length;
+
+  function snabbfilterLabel(filterId: SnabbFilterTyp) {
+    const filter = SNABBFILTER.find((f) => f.id === filterId);
+    if (!filter) return filterId;
+    return filter.id === 'alla' && döljPasserade ? 'Aktiva' : filter.label;
+  }
+
+  function togglaSynligtSnabbfilter(filterId: SnabbFilterTyp) {
+    setSynligaSnabbfilter((prev) => {
+      const nästa = new Set(prev);
+      if (nästa.has(filterId)) nästa.delete(filterId);
+      else nästa.add(filterId);
+      return nästa;
+    });
+  }
 
   function sättGruppMarkerad(grupp: Passgrupp, markerad: boolean, index: number, shiftKey = false) {
     const ny = new Set(valda);
@@ -1981,7 +2031,37 @@ export default function Bemanning() {
                 <summary className="flex h-full cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: aktivaFilterAntal ? 'var(--blue)' : 'var(--text)', background: 'var(--bg)' }}>
                   Filter{aktivaFilterAntal ? ` (${aktivaFilterAntal})` : ''}
                 </summary>
-                <div className="fixed inset-x-3 top-28 z-50 grid gap-2 rounded-xl border p-3 shadow-xl sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,560px)] sm:grid-cols-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                <div className="fixed inset-x-3 top-28 z-50 grid gap-3 rounded-xl border p-3 shadow-xl sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,640px)] sm:grid-cols-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+                      Visa
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SNABBFILTER.map((filter) => {
+                        const aktiv = snabbFilter === filter.id;
+                        return (
+                          <button
+                            key={filter.id}
+                            type="button"
+                            aria-pressed={aktiv}
+                            onClick={() => setSnabbFilter(filter.id)}
+                            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold"
+                            style={{
+                              background: aktiv ? 'var(--blue)' : 'var(--bg)',
+                              borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                              color: aktiv ? '#fff' : 'var(--text-muted)',
+                            }}
+                          >
+                            {snabbfilterLabel(filter.id)}
+                            <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: aktiv ? 'rgba(255,255,255,0.22)' : 'var(--hover)' }}>
+                              {filterCounts[filter.id]}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value as PassStatus | '')}>
                     <option value="">Alla statusar</option>
                     {ALLA_STATUSAR.map(s => <option key={s} value={s}>{PASS_STATUS_LABELS[s]}</option>)}
@@ -1995,6 +2075,23 @@ export default function Bemanning() {
                     if (e.target.value) setVeckaStart(veckaStartIso(e.target.value));
                   }} />
                   <Input type="date" value={datumTill} onChange={e => setDatumTill(e.target.value)} />
+                  <div className="grid gap-2 sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
+                      Synliga genvägar
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {SNABBFILTER.map((filter) => (
+                        <label key={filter.id} className="flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}>
+                          <input
+                            type="checkbox"
+                            checked={synligaSnabbfilter.has(filter.id)}
+                            onChange={() => togglaSynligtSnabbfilter(filter.id)}
+                          />
+                          {snabbfilterLabel(filter.id)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                   {aktivaFilterAntal > 0 && (
                     <button
                       type="button"
@@ -2004,6 +2101,7 @@ export default function Bemanning() {
                         setDatumFrån('');
                         setDatumTill('');
                         setVikarieFilter('');
+                        setSnabbFilter('alla');
                       }}
                       className="rounded-lg border px-3 py-2 text-sm font-semibold sm:col-span-2"
                       style={{ borderColor: 'var(--border)', color: 'var(--text)', background: 'var(--bg)' }}
@@ -2032,21 +2130,14 @@ export default function Bemanning() {
           </div>
 
           <div className="mt-3 flex min-w-0 snap-x gap-1.5 overflow-x-auto pb-1 sm:gap-2">
-              {[
-                { id: 'atgard', label: 'Att göra', count: filterCounts.atgard },
-                { id: 'alla', label: döljPasserade ? 'Aktiva' : 'Alla', count: filterCounts.alla },
-                { id: 'lediga', label: 'Lediga', count: filterCounts.lediga },
-                { id: 'bokade', label: 'Bokade', count: filterCounts.bokade },
-                { id: 'ej_publicerade', label: 'Ej publicerade', count: filterCounts.ej_publicerade },
-                { id: 'arkiv', label: 'Arkiv', count: filterCounts.arkiv },
-              ].map(f => {
+              {SNABBFILTER.filter((filter) => synligaSnabbfilter.has(filter.id)).map(f => {
                 const aktiv = snabbFilter === f.id;
                 return (
                   <button
                     key={f.id}
                     type="button"
                     aria-pressed={aktiv}
-                    onClick={() => setSnabbFilter(f.id as typeof snabbFilter)}
+                    onClick={() => setSnabbFilter(f.id)}
                     className="flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3"
                     style={{
                       background: aktiv ? 'var(--blue)' : 'var(--bg-card)',
@@ -2054,9 +2145,9 @@ export default function Bemanning() {
                       color: aktiv ? '#fff' : 'var(--text-muted)',
                     }}
                   >
-                    <span>{f.label}</span>
+                    <span>{snabbfilterLabel(f.id)}</span>
                     <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: aktiv ? 'rgba(255,255,255,0.22)' : 'var(--hover)' }}>
-                      {f.count}
+                      {filterCounts[f.id]}
                     </span>
                   </button>
                 );
