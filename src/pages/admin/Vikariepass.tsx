@@ -1031,11 +1031,6 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
               className="rounded-md border px-2 py-2 text-sm"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
             />
-            <div className="sm:col-span-2">
-              <Button size="sm" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar}>
-                Spara ändringar
-              </Button>
-            </div>
           </div>
 
           
@@ -1127,15 +1122,6 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
-              Skicka förfrågan
-            </Button>
-            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
-              Boka direkt
-            </Button>
           </div>
 
           {valdVikarieId && bokadeVikarier[valdVikarieId] && (
@@ -1270,13 +1256,6 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
         </section>
 
         <section>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Övrigt</p>
-          <Button size="sm" variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
-            Arkivera pass
-          </Button>
-        </section>
-
-        <section>
           <button
             type="button"
             onClick={() => setVisaHistorik(!visaHistorik)}
@@ -1313,7 +1292,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
             Spara ändringar
           </Button>
           <Button variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
-            Arkivera
+            Arkivera pass
           </Button>
         </div>
       </div>
