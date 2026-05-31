@@ -6,6 +6,9 @@ import {
   Button, Input, Select, Textarea, Modal, Confirm, TomtTillstånd, LaddaSida, Alert
 } from '../../components/ui';
 
+const STANDARD_TID_FRÅN = '08:00';
+const STANDARD_TID_TILL = '16:30';
+
 function datumIdag() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -334,8 +337,8 @@ function FrånvaroModal({
   const [datumTill, setDatumTill] = useState(datumIdag());
   const [helDag, setHelDag] = useState(true);
   const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
-  const [tidFrån, setTidFrån] = useState('08:00');
-  const [tidTill, setTidTill] = useState('17:00');
+  const [tidFrån, setTidFrån] = useState(STANDARD_TID_FRÅN);
+  const [tidTill, setTidTill] = useState(STANDARD_TID_TILL);
   const [orsak, setOrsak] = useState('');
   const [anteckning, setAnteckning] = useState('');
   const [steg, setSteg] = useState<'formulär' | 'pass'>('formulär');
@@ -553,8 +556,8 @@ function FrånvaroModal({
           personal_id: skapadFrånvaro.personal_id,
           vikarie_id: bokarDirekt ? valdVikarieId : null,
           datum,
-          tid_från: helDag ? '08:00' : tidFrån,
-          tid_till: helDag ? '17:00' : tidTill,
+          tid_från: helDag ? STANDARD_TID_FRÅN : tidFrån,
+          tid_till: helDag ? STANDARD_TID_TILL : tidTill,
           typ: helDag ? 'hel_dag' : 'del_av_dag',
           ämne: null,
           grupp: null,
@@ -734,8 +737,8 @@ function RedigeraFrånvaroModal({
   const [datumTill, setDatumTill] = useState(datumIdag());
   const [helDag, setHelDag] = useState(true);
   const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
-  const [tidFrån, setTidFrån] = useState('08:00');
-  const [tidTill, setTidTill] = useState('17:00');
+  const [tidFrån, setTidFrån] = useState(STANDARD_TID_FRÅN);
+  const [tidTill, setTidTill] = useState(STANDARD_TID_TILL);
   const [orsak, setOrsak] = useState('');
   const [anteckning, setAnteckning] = useState('');
   const [sparar, setSparar] = useState(false);
@@ -756,8 +759,8 @@ function RedigeraFrånvaroModal({
     setDatumTill(frånvaro.datum_till);
     setHelDag(frånvaro.hel_dag);
     setIngenVikarieBehövs(markeradIngenVikarie);
-    setTidFrån(tid(frånvaro.tid_från) || '08:00');
-    setTidTill(tid(frånvaro.tid_till) || '17:00');
+    setTidFrån(tid(frånvaro.tid_från) || STANDARD_TID_FRÅN);
+    setTidTill(tid(frånvaro.tid_till) || STANDARD_TID_TILL);
     setOrsak(frånvaro.orsak ?? '');
     setAnteckning(synligAnteckning);
     setFel('');
@@ -981,8 +984,8 @@ export default function Franvaro() {
             personal_id: frånvaro.personal_id,
             vikarie_id: null,
             datum,
-            tid_från: frånvaro.hel_dag ? '08:00' : tid(frånvaro.tid_från) || '08:00',
-            tid_till: frånvaro.hel_dag ? '17:00' : tid(frånvaro.tid_till) || '17:00',
+            tid_från: frånvaro.hel_dag ? STANDARD_TID_FRÅN : tid(frånvaro.tid_från) || STANDARD_TID_FRÅN,
+            tid_till: frånvaro.hel_dag ? STANDARD_TID_TILL : tid(frånvaro.tid_till) || STANDARD_TID_TILL,
             typ: frånvaro.hel_dag ? 'hel_dag' : 'del_av_dag',
             ämne: null,
             grupp: null,

@@ -54,6 +54,11 @@ function passSort(a: Vikariepass, b: Vikariepass) {
   );
 }
 
+function ärVardag(datum: string) {
+  const dag = new Date(`${datum}T12:00:00`).getDay();
+  return dag >= 1 && dag <= 5;
+}
+
 function frånvaroSort(a: Frånvaro, b: Frånvaro) {
   return a.datum_från.localeCompare(b.datum_från) || personNamn(null, a).localeCompare(personNamn(null, b), 'sv');
 }
@@ -252,8 +257,8 @@ export default function Dashboard() {
       .filter((f) => f.datum_till > idag)
       .filter((f) => !(f.datum_från <= idag && f.datum_till >= idag))
       .sort(frånvaroSort);
-    const obokade = pass.filter((p) => p.status === 'obokat').sort(passSort);
-    const förfrågningar = pass.filter((p) => p.status === 'notifierat').sort(passSort);
+    const obokade = pass.filter((p) => p.status === 'obokat' && ärVardag(p.datum)).sort(passSort);
+    const förfrågningar = pass.filter((p) => p.status === 'notifierat' && ärVardag(p.datum)).sort(passSort);
     const bokade = pass.filter((p) => p.status === 'bokat' || p.status === 'bekräftat').sort(passSort);
 
     return {

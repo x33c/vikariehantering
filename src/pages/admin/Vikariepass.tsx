@@ -7,6 +7,8 @@ import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, M
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
+const STANDARD_TID_FRÅN = '08:00';
+const STANDARD_TID_TILL = '16:30';
 
 function minuter(tid?: string | null) {
   const [h, m] = (tid?.slice(0, 5) ?? '00:00').split(':').map(Number);
@@ -1282,7 +1284,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
-    tid_från: '08:00', tid_till: '17:00', grupp: '', anteckning: '', publicerad: false,
+    tid_från: STANDARD_TID_FRÅN, tid_till: STANDARD_TID_TILL, grupp: '', anteckning: '', publicerad: false,
     veckopass: false,
     registreraFrånvaro: false, frånvaroOrsak: '', frånvaroHelDag: true,
   });
