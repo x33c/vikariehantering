@@ -374,7 +374,7 @@ export default function Dashboard() {
             )}
           </Panel>
 
-          <Panel>
+          <Panel className="hidden md:block">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>Bokade pass</h2>
