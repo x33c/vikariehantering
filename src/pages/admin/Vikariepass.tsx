@@ -894,6 +894,10 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
     : vikarier;
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
+  const valdVikarieHarKrock = !!valdVikarieId && !!bokadeVikarier[valdVikarieId];
+  const valdVikarieÄrRedanBokadPåPasset = harAktivBokning && pass.vikarie_id === valdVikarieId;
+  const kanBemannaMedValdVikarie = !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieÄrRedanBokadPåPasset && pass.status !== 'avbokat';
+  const kanSkickaFörfrågan = !!valdVikarieId && !valdVikarieHarKrock && pass.status !== 'avbokat';
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
@@ -1126,10 +1130,10 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
+            <Button size="sm" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
               Skicka förfrågan
             </Button>
-            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!valdVikarieId || !!bokadeVikarier[valdVikarieId]}>
+            <Button size="sm" variant="secondary" onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
               Boka direkt
             </Button>
           </div>
@@ -1295,6 +1299,23 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
             </div>
           )}
         </section>
+      </div>
+
+      <div className="border-t p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+          <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
+            Boka vald vikarie
+          </Button>
+          <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
+            Skicka förfrågan
+          </Button>
+          <Button variant="secondary" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar || pass.status === 'avbokat'}>
+            Spara ändringar
+          </Button>
+          <Button variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
+            Arkivera
+          </Button>
+        </div>
       </div>
     </div>
   );

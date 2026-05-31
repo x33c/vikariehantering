@@ -343,7 +343,7 @@ function normaliseraVikarieRadbrytningar(text: string) {
     .split('\n')
     .map((rad) => rad.trimEnd())
     .join('\n')
-    .replace(/\n{2,}/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
