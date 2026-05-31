@@ -1782,9 +1782,25 @@ export default function Bemanning() {
   const passIdFrånUrl = searchParams.get('pass');
 
   useEffect(() => {
-    if (!passIdFrånUrl || pass.length === 0) return;
+    if (!passIdFrånUrl) return;
+
     const hittatPass = pass.find(p => p.id === passIdFrånUrl);
-    if (hittatPass) setValtPass(hittatPass);
+    if (hittatPass) {
+      setValtPass(hittatPass);
+      return;
+    }
+
+    let aktiv = true;
+    passApi.hämta(passIdFrånUrl).then((res) => {
+      if (!aktiv || res.error || !res.data) return;
+      const hämtatPass = res.data as Bemanning;
+      setValtPass(hämtatPass);
+      setPass(prev => prev.some(p => p.id === hämtatPass.id) ? prev : [...prev, hämtatPass]);
+    });
+
+    return () => {
+      aktiv = false;
+    };
   }, [passIdFrånUrl, pass]);
 
   function stängPassModal() {
@@ -1948,6 +1964,9 @@ export default function Bemanning() {
   function öppnaPassDetaljer(pass: Bemanning, element?: HTMLElement | null) {
     element?.blur();
     setValtPass(pass);
+    const nästa = new URLSearchParams(searchParams);
+    nästa.set('pass', pass.id);
+    setSearchParams(nästa, { replace: true });
   }
 
 
