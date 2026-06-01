@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
@@ -1066,8 +1066,8 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-2 pb-28 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
-      <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
+      <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
             Planering
@@ -1079,12 +1079,12 @@ export default function Franvaro() {
             {antalSaknarPass > 0 ? `${antalSaknarPass} frånvaro saknar pass` : 'Alla synliga dagar är hanterade'}
           </p>
         </div>
-        <Button onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
+        <Button size="sm" onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <div className="sticky top-0 z-10 mb-3 rounded-xl border p-2 backdrop-blur sm:static sm:p-3" style={{ background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)', borderColor: 'var(--border)' }}>
+      <div className="sticky top-1 z-10 mb-3 rounded-xl border p-2 shadow-sm backdrop-blur sm:static sm:p-3 sm:shadow-none" style={{ background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)', borderColor: 'var(--border)' }}>
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto] lg:items-center">
           <label className="min-w-0">
             <span className="sr-only">Sök frånvaro</span>
@@ -1098,7 +1098,7 @@ export default function Franvaro() {
             />
           </label>
 
-          <div className="flex min-w-0 snap-x gap-1.5 overflow-x-auto pb-1 text-xs sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0">
+          <div className="-mx-2 flex min-w-0 snap-x gap-1.5 overflow-x-auto px-2 pb-1 text-xs sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
               <span>{filtrerade.length} frånvaro</span>
             </span>
@@ -1131,8 +1131,8 @@ export default function Franvaro() {
       </div>
 
 
-      <section className="mb-4 rounded-2xl border p-2 sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <div className="mb-3 grid gap-3 lg:grid-cols-[minmax(190px,240px)_auto] lg:items-center lg:justify-between">
+      <section className="mb-4 rounded-xl border p-2 sm:rounded-2xl sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="mb-3 grid gap-2 lg:grid-cols-[minmax(190px,240px)_auto] lg:items-center lg:justify-between">
           <div className="rounded-lg px-2 py-1.5" style={{ background: 'var(--bg)' }}>
             <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -1167,7 +1167,7 @@ export default function Franvaro() {
               return (
                 <section
                   key={dag}
-                  className="rounded-xl border p-3"
+                  className="rounded-xl border p-2.5"
                   style={{
                     background: 'var(--bg)',
                     borderColor: ärIdag ? 'var(--accent)' : dagensSaknarPass ? '#f97316' : 'var(--border)',
@@ -1201,7 +1201,7 @@ export default function Franvaro() {
                         return (
                           <article
                             key={`${dag}-${frånvaro.id}`}
-                            className="rounded-xl border p-3"
+                            className="rounded-xl border p-2.5"
                             style={{
                               background: 'var(--bg-card)',
                               borderColor: löst ? '#22c55e' : pass.length === 0 ? '#f97316' : 'var(--border)',
@@ -1222,7 +1222,7 @@ export default function Franvaro() {
                               {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
                             </p>
 
-                            <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="mt-3 grid grid-cols-2 gap-1.5 min-[420px]:gap-2">
                               {pass.length > 0 ? (
                                 <Button size="sm" variant="secondary" onClick={() => navigate(pass.length === 1 ? `/admin/vikariepass?pass=${pass[0].id}` : '/admin/vikariepass')}>
                                   Öppna pass
@@ -1255,7 +1255,7 @@ export default function Franvaro() {
             return (
               <div
                 key={dag}
-                className="scroll-mt-32 rounded-2xl border p-2 transition-all duration-200 ease-out md:min-h-[240px]"
+                className="scroll-mt-32 rounded-xl border p-2 transition-all duration-200 ease-out md:min-h-[240px] xl:rounded-2xl"
                 style={{
                   background: 'var(--bg)',
                   borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
@@ -1365,7 +1365,7 @@ export default function Franvaro() {
             {filtrerade.map((f) => (
               <article
                 key={f.id}
-                className="rounded-xl border p-4"
+                className="rounded-xl border p-3"
                 style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
@@ -1413,7 +1413,7 @@ export default function Franvaro() {
                     );
                   })()}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-1.5 min-[420px]:flex min-[420px]:flex-wrap min-[420px]:gap-2">
                   <Button size="sm" variant="secondary" loading={löserFrånvaroId === f.id} onClick={() => växlaLöstFrånvaro(f)}>
                     {ärLöstFrånvaro(f) ? 'Ångra löst' : 'Markera löst'}
                   </Button>

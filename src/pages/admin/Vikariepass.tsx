@@ -960,7 +960,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
         </section>
 
         <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Ersätter</p>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
@@ -1970,8 +1970,8 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full">
-      <div className={`flex flex-col flex-1 px-2 pb-28 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
-        <div className="mb-3 flex items-start justify-between gap-3">
+      <div className={`flex min-w-0 flex-col flex-1 px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+        <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Veckoplanering</p>
             <h1 className="text-xl font-semibold leading-tight" style={{ color: 'var(--text)' }}>Bemanning</h1>
@@ -1988,7 +1988,7 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="sticky top-0 z-10 mb-3 rounded-xl border p-2 backdrop-blur sm:static sm:p-3" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)' }}>
+        <div className="sticky top-1 z-10 mb-3 rounded-xl border p-2 shadow-sm backdrop-blur sm:static sm:p-3 sm:shadow-none" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)' }}>
           <div className="grid gap-3 xl:grid-cols-[minmax(190px,240px)_minmax(260px,1fr)_auto] xl:items-center">
             <div className="rounded-lg px-2 py-1.5" style={{ background: 'var(--bg)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>
@@ -2011,12 +2011,12 @@ export default function Bemanning() {
               />
             </label>
 
-            <div className="grid grid-cols-[auto_1fr] gap-1.5 sm:grid-cols-[auto_1fr] sm:items-center">
+            <div className="grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
               <details className="relative">
                 <summary className="flex h-full cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: aktivaFilterAntal ? 'var(--blue)' : 'var(--text)', background: 'var(--bg)' }}>
                   Filter{aktivaFilterAntal ? ` (${aktivaFilterAntal})` : ''}
                 </summary>
-                <div className="fixed inset-x-3 top-28 z-50 grid gap-3 rounded-xl border p-3 shadow-xl sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,640px)] sm:grid-cols-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                <div className="fixed inset-x-3 top-24 z-50 grid max-h-[72vh] gap-3 overflow-y-auto rounded-xl border p-3 shadow-xl sm:absolute sm:inset-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[min(92vw,640px)] sm:grid-cols-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
                   <div className="grid gap-2 sm:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
                       Visa
@@ -2097,7 +2097,7 @@ export default function Bemanning() {
                 </div>
               </details>
 
-              <div className="grid grid-cols-3 gap-1.5 justify-self-center sm:flex sm:justify-center sm:gap-2">
+              <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-center sm:gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
                   <PeriodIkon typ="föregående" />
                   <span className="hidden min-[390px]:inline">Föregående</span>
@@ -2114,7 +2114,7 @@ export default function Bemanning() {
             </div>
           </div>
 
-          <div className="mt-3 flex min-w-0 snap-x gap-1.5 overflow-x-auto pb-1 sm:gap-2">
+          <div className="-mx-2 mt-3 flex min-w-0 snap-x gap-1.5 overflow-x-auto px-2 pb-1 sm:mx-0 sm:px-0 sm:gap-2">
               {SNABBFILTER.filter((filter) => synligaSnabbfilter.has(filter.id)).map(f => {
                 const aktiv = snabbFilter === f.id;
                 return (
@@ -2185,7 +2185,7 @@ export default function Bemanning() {
                   return (
                     <section
                       key={datum}
-                      className="bemanning-dag rounded-xl border p-2.5"
+                      className="bemanning-dag rounded-xl border p-2"
                       style={{
                         borderColor: datum === idag ? 'var(--blue)' : dagHarÅtgärd ? '#f97316' : 'var(--border)',
                         background: 'var(--bg-card)',
@@ -2233,7 +2233,7 @@ export default function Bemanning() {
                             return (
                               <article
                                 key={`${grupp.personal_id}_${grupp.datum}`}
-                                className="rounded-xl border p-3"
+                                className="rounded-xl border p-2.5"
                                 style={{
                                   borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)',
                                   background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)',
@@ -2245,7 +2245,7 @@ export default function Bemanning() {
                                     aria-pressed={alleMarkerade}
                                     aria-label={alleMarkerade ? 'Avmarkera pass' : 'Markera pass'}
                                     onClick={(e) => { e.stopPropagation(); sättGruppMarkerad(grupp, !alleMarkerade, Math.max(globalIndex, 0), e.shiftKey); }}
-                                    className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     style={{
                                       background: alleMarkerade ? 'var(--blue)' : 'var(--input-bg)',
                                       borderColor: alleMarkerade ? 'var(--blue)' : 'var(--border)',
@@ -2258,7 +2258,7 @@ export default function Bemanning() {
                                   <button
                                     type="button"
                                     onClick={(e) => öppnaPassDetaljer(grupp.pass[0], e.currentTarget)}
-                                    className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    className="min-w-0 flex-1 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                   >
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
