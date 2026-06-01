@@ -93,13 +93,13 @@ function datumÖverlappar(startA: string, slutA: string, startB: string, slutB: 
 
 function frånvaroPassStatus(pass: Vikariepass[], löst: boolean) {
   if (löst) return { text: 'löst', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
-  if (pass.length === 0) return { text: '0 pass skapade', färg: '#fb923c', bg: 'rgba(249,115,22,0.14)' };
+  if (pass.length === 0) return { text: 'Inget pass', färg: 'var(--text-muted)', bg: 'var(--hover)' };
 
   const allaBemannade = pass.every((p) => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
   if (allaBemannade) return { text: 'bemannat', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
 
   const saknarVikarie = pass.some((p) => !p.vikarie_id && p.status !== 'avbokat');
-  if (saknarVikarie) return { text: 'saknar vikarie', färg: '#fb923c', bg: 'rgba(249,115,22,0.14)' };
+  if (saknarVikarie) return { text: 'utan vikarie', färg: '#fb923c', bg: 'rgba(249,115,22,0.14)' };
 
   return {
     text: pass.length === 1 ? '1 pass skapat' : `${pass.length} pass skapade`,
@@ -1059,12 +1059,6 @@ export default function Franvaro() {
     return map;
   }, [filtrerade, kalenderDagar]);
   const totaltIKalendern = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag)?.length ?? 0), 0);
-  const antalSaknarPass = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag) ?? [])
-    .filter((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0)
-    .length, 0);
-  const antalLösta = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag) ?? [])
-    .filter((frånvaro) => ärLöstFrånvaro(frånvaro, dag))
-    .length, 0);
   const antalMedPass = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag) ?? [])
     .filter((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).some((pass) => pass.datum === dag))
     .length, 0);
@@ -1096,31 +1090,14 @@ export default function Franvaro() {
           <h1 className="text-xl font-semibold leading-tight" style={{ color: 'var(--text)' }}>
             Frånvaro
           </h1>
-          <p className="mt-1 text-sm" style={{ color: antalSaknarPass > 0 ? '#f97316' : 'var(--text-muted)' }}>
-            {antalSaknarPass > 0 ? `${antalSaknarPass} frånvaro saknar pass` : 'Alla synliga dagar är hanterade'}
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Registrera frånvaro och skapa vikariepass vid behov.
           </p>
         </div>
         <Button size="sm" onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
-
-      <div className="mb-3 grid gap-2 sm:grid-cols-3">
-        {[
-          { label: 'Saknar pass', value: antalSaknarPass, color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-          { label: 'Har pass', value: antalMedPass, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-          { label: 'Markerade lösta', value: antalLösta, color: 'var(--text-muted)', bg: 'var(--hover)' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-xl border px-3 py-2.5"
-            style={{ background: stat.bg, borderColor: 'var(--border)' }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
-            <p className="mt-1 text-2xl font-semibold leading-none" style={{ color: stat.color }}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
 
       <div className="sticky top-1 z-10 mb-3 rounded-xl border p-2 shadow-sm backdrop-blur sm:static sm:p-3 sm:shadow-none" style={{ background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)', borderColor: 'var(--border)' }}>
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto] lg:items-center">
@@ -1140,9 +1117,12 @@ export default function Franvaro() {
             <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
               <span>{filtrerade.length} frånvaro</span>
             </span>
-            {antalSaknarPass > 0 && (
-              <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'rgba(249,115,22,0.14)', borderColor: 'rgba(249,115,22,0.34)', color: '#fb923c' }}>
-                {antalSaknarPass} saknar pass
+            <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+              {totaltIKalendern} i veckan
+            </span>
+            {antalMedPass > 0 && (
+              <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+                {antalMedPass} med pass
               </span>
             )}
             {sök && (
@@ -1200,7 +1180,6 @@ export default function Franvaro() {
             .map((dag) => {
               const dagensFrånvaro = sorteraDagensFrånvaro(dag);
               const ärIdag = dag === datumIdag();
-              const dagensSaknarPass = dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0);
 
               return (
                 <section
@@ -1208,26 +1187,21 @@ export default function Franvaro() {
                   className="rounded-2xl border p-2.5"
                   style={{
                     background: 'var(--bg)',
-                    borderColor: ärIdag ? 'var(--accent)' : dagensSaknarPass ? '#f97316' : 'var(--border)',
+                    borderColor: ärIdag ? 'var(--accent)' : 'var(--border)',
                   }}
                 >
-                  <div className="mb-3 flex items-center justify-between gap-2 rounded-xl px-2 py-1.5" style={{ background: dagensSaknarPass ? 'rgba(249,115,22,0.08)' : 'var(--bg-card)' }}>
+                  <div className="mb-3 flex items-center justify-between gap-2 rounded-xl px-2 py-1.5" style={{ background: 'var(--bg-card)' }}>
                     <div>
                       <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</h2>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         {dagensFrånvaro.length > 0 ? `${dagensFrånvaro.length} frånvaro` : 'Ingen frånvaro'}
                       </p>
                     </div>
-                    {dagensSaknarPass && (
-                      <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
-                        Åtgärd
-                      </span>
-                    )}
                   </div>
 
                   {dagensFrånvaro.length === 0 ? (
                     <div className="rounded-lg border border-dashed px-3 py-6 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
-                      Inget att hantera idag.
+                      Ingen frånvaro.
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1242,7 +1216,7 @@ export default function Franvaro() {
                             className="rounded-2xl border p-3 shadow-sm"
                             style={{
                               background: 'var(--bg-card)',
-                              borderColor: löst ? '#22c55e' : pass.length === 0 ? '#f97316' : 'var(--border)',
+                              borderColor: löst ? '#22c55e' : 'var(--border)',
                             }}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -1288,7 +1262,6 @@ export default function Franvaro() {
           {kalenderDagar.map((dag) => {
             const dagensFrånvaro = sorteraDagensFrånvaro(dag);
             const ärIdag = dag === datumIdag();
-            const dagensSaknarPass = dagensFrånvaro.some((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag).length === 0);
 
             return (
               <div
@@ -1300,16 +1273,11 @@ export default function Franvaro() {
                   boxShadow: ärIdag ? '0 0 0 1px var(--accent)' : 'none',
                 }}
               >
-                <div className="mb-2 flex items-center justify-between gap-2 rounded-xl px-2 py-1.5" style={{ background: dagensSaknarPass ? 'rgba(249,115,22,0.08)' : 'var(--bg-card)' }}>
+                <div className="mb-2 flex items-center justify-between gap-2 rounded-xl px-2 py-1.5" style={{ background: 'var(--bg-card)' }}>
                   <div>
                     <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
                   </div>
-                  {dagensSaknarPass && (
-                    <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'rgba(249,115,22,0.14)', color: '#fb923c' }}>
-                      Åtgärd
-                    </span>
-                  )}
                 </div>
 
                 {dagensFrånvaro.length === 0 ? (
@@ -1322,7 +1290,6 @@ export default function Franvaro() {
                       const pass = aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag);
                       const harPass = pass.length > 0;
                       const löst = ärLöstFrånvaro(frånvaro, dag);
-                      const behöverÅtgärd = !löst && !harPass;
                       const status = frånvaroPassStatus(pass, löst);
 
                       return (
@@ -1331,7 +1298,7 @@ export default function Franvaro() {
                           className="rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-sm"
                           style={{
                             background: 'var(--bg-card)',
-                            borderColor: löst ? '#22c55e' : behöverÅtgärd ? '#f97316' : 'var(--border)',
+                            borderColor: löst ? '#22c55e' : 'var(--border)',
                           }}
                         >
                           <div className="flex items-start justify-between gap-2">
