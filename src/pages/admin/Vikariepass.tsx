@@ -1969,8 +1969,8 @@ export default function Bemanning() {
 
 
   return (
-    <div className="flex h-full">
-      <div className={`flex min-w-0 flex-col flex-1 px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 overflow-y-auto ${valtPass ? 'hidden lg:flex' : ''}`}>
+    <div className="flex h-full min-h-0">
+      <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Veckoplanering</p>
@@ -2179,21 +2179,27 @@ export default function Bemanning() {
           </div>
         ) : (
           <>
-              <div className="space-y-3 md:hidden">
+              <div className="space-y-5 md:hidden">
                 {synligaDagar.map(({ datum, grupper }) => {
                   const dagHarÅtgärd = grupper.some(grupp => gruppInfo(grupp).atgard);
                   return (
                     <section
                       key={datum}
-                      className="bemanning-dag rounded-xl border p-2"
+                      className="bemanning-dag"
                       style={{
-                        borderColor: datum === idag ? 'var(--blue)' : dagHarÅtgärd ? '#f97316' : 'var(--border)',
-                        background: 'var(--bg-card)',
+                        borderColor: 'transparent',
+                        background: 'transparent',
                       }}
                     >
-                      <div className="mb-2 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1">
-                        <div>
-                          <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
+                      <div
+                        className="mb-2 flex items-center justify-between gap-2 rounded-2xl border px-3 py-2"
+                        style={{
+                          borderColor: datum === idag ? 'var(--blue)' : dagHarÅtgärd ? '#f97316' : 'var(--border)',
+                          background: 'var(--bg-card)',
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <h2 className="truncate text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2233,13 +2239,13 @@ export default function Bemanning() {
                             return (
                               <article
                                 key={`${grupp.personal_id}_${grupp.datum}`}
-                                className="rounded-xl border p-2.5"
+                                className="rounded-2xl border p-3 shadow-sm"
                                 style={{
                                   borderColor: alleMarkerade ? 'var(--blue)' : info.atgard ? '#f97316' : 'var(--border)',
-                                  background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg))' : 'var(--bg)',
+                                  background: alleMarkerade ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
                                 }}
                               >
-                                <div className="flex items-start gap-3">
+                                <div className="flex items-start gap-2.5">
                                   <button
                                     type="button"
                                     aria-pressed={alleMarkerade}
@@ -2258,9 +2264,9 @@ export default function Bemanning() {
                                   <button
                                     type="button"
                                     onClick={(e) => öppnaPassDetaljer(grupp.pass[0], e.currentTarget)}
-                                    className="min-w-0 flex-1 rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    className="min-w-0 flex-1 rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                   >
-                                    <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start justify-between gap-2">
                                       <div className="min-w-0">
                                         {vikarieNamn ? (
                                           <>
@@ -2274,7 +2280,7 @@ export default function Bemanning() {
                                       <StatusBadge status={dominerandStatus as PassStatus} />
                                     </div>
 
-                                    <div className="mt-3 flex items-end justify-between gap-3">
+                                    <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-2">
                                       <div>
                                         <p className="text-lg font-semibold leading-tight" style={{ color: 'var(--text)' }}>{tidFrån}–{tidTill}</p>
                                         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupp.arbetslagNamn || grupp.pass[0].grupp || 'Ingen grupp'}</p>

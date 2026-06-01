@@ -153,11 +153,23 @@ interface ModalProps {
 const bredder = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' };
 
 export function Modal({ öppen, onStäng, titel, children, bredd = 'md' }: ModalProps) {
+  useEffect(() => {
+    if (!öppen) return;
+
+    const tidigareOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = tidigareOverflow;
+    };
+  }, [öppen]);
+
   if (!öppen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onStäng} />
-      <div className={`relative w-full ${bredder[bredd]} rounded-xl shadow-xl`} style={{ background: 'var(--bg-card)' }}>
+      <div className={`relative max-h-[100dvh] w-full ${bredder[bredd]} overflow-hidden rounded-t-2xl shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-xl`} style={{ background: 'var(--bg-card)' }}>
         {titel && (
           <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: 'var(--border)' }}>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{titel}</h2>
@@ -168,7 +180,7 @@ export function Modal({ öppen, onStäng, titel, children, bredd = 'md' }: Modal
             </button>
           </div>
         )}
-        <div className="px-6 py-4">{children}</div>
+        <div className="max-h-[100dvh] overflow-y-auto px-4 py-4 sm:max-h-[calc(100dvh-6rem)] sm:px-6">{children}</div>
       </div>
     </div>
   );
