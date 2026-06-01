@@ -898,6 +898,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
   const valdVikarieÄrRedanBokadPåPasset = harAktivBokning && pass.vikarie_id === valdVikarieId;
   const kanBemannaMedValdVikarie = !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieÄrRedanBokadPåPasset && pass.status !== 'avbokat';
   const kanSkickaFörfrågan = !!valdVikarieId && !valdVikarieHarKrock && pass.status !== 'avbokat';
+  const bemanningsKnappText = harAktivBokning ? 'Byt vikarie' : 'Boka vald vikarie';
 
   return (
     <div className="flex max-h-[88vh] flex-col overflow-hidden">
@@ -1281,9 +1282,21 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
       </div>
 
       <div className="border-t p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        {(harAktivBokning || pass.frånvaro_id) && (
+          <div className="mb-3 rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text-muted)' }}>
+            {harAktivBokning && valdVikarie && !valdVikarieÄrRedanBokadPåPasset && (
+              <p>
+                Byter från <strong style={{ color: 'var(--text)' }}>{tillsattVikarie?.namn ?? 'nuvarande vikarie'}</strong> till <strong style={{ color: 'var(--text)' }}>{valdVikarie.namn}</strong>.
+              </p>
+            )}
+            {pass.frånvaro_id && (
+              <p>Kopplad frånvaro behålls när passet arkiveras.</p>
+            )}
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
-            Boka vald vikarie
+            {bemanningsKnappText}
           </Button>
           <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
             Skicka förfrågan
@@ -1892,6 +1905,7 @@ export default function Bemanning() {
     ? grupperPerDag.filter(({ grupper }) => grupper.length > 0)
     : grupperPerDag;
   const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
+  const kalenderKolumnerMd = Math.max(1, Math.min(synligaDagar.length, 2));
   const veckaSlut = veckodagar[4];
   const idag = new Date().toLocaleDateString('sv-SE');
   const aktivaFilterAntal = [
@@ -1902,6 +1916,11 @@ export default function Bemanning() {
     vikarieFilter,
     snabbFilter !== 'alla' ? snabbFilter : '',
   ].filter(Boolean).length;
+  const valdaPass = pass.filter(p => valda.has(p.id));
+  const valdaPassMedFrånvaro = valdaPass.filter(p => !!p.frånvaro_id).length;
+  const arkiveringsText = valdaPassMedFrånvaro > 0
+    ? `Arkivera ${valda.size} markerade pass? ${valdaPassMedFrånvaro} av passen är kopplade till frånvaro. Passen flyttas till Arkiv och frånvaron behålls.`
+    : `Arkivera ${valda.size} markerade pass? Passen flyttas till Arkiv. Historik, notiser och meddelanden behålls.`;
 
   function snabbfilterLabel(filterId: SnabbFilterTyp) {
     const filter = SNABBFILTER.find((f) => f.id === filterId);
@@ -2166,7 +2185,7 @@ export default function Bemanning() {
                   return (
                     <section
                       key={datum}
-                      className="rounded-xl border p-2.5"
+                      className="bemanning-dag rounded-xl border p-2.5"
                       style={{
                         borderColor: datum === idag ? 'var(--blue)' : dagHarÅtgärd ? '#f97316' : 'var(--border)',
                         background: 'var(--bg-card)',
@@ -2279,8 +2298,8 @@ export default function Bemanning() {
               </div>
 
               <div
-                className="bemanning-kalender-grid hidden gap-2 transition-[grid-template-columns,opacity] duration-300 ease-out md:grid md:grid-cols-2 xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
-                style={{ ['--bemanning-kolumner']: kalenderKolumner } as any}
+                className="bemanning-kalender-grid hidden gap-2 transition-[grid-template-columns,opacity] duration-300 ease-out md:grid md:[grid-template-columns:repeat(var(--bemanning-kolumner-md),minmax(0,1fr))] xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
+                style={{ ['--bemanning-kolumner']: kalenderKolumner, ['--bemanning-kolumner-md']: kalenderKolumnerMd } as any}
               >
                 {synligaDagar.map(({ datum, grupper }) => (
                   <section key={datum} className="bemanning-dag scroll-mt-32 rounded-xl border p-2 transition-[border-color,background-color,box-shadow,transform,opacity] duration-300 ease-out md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
@@ -2393,7 +2412,7 @@ export default function Bemanning() {
       <Confirm
         öppen={arkiveraValda}
         titel="Arkivera pass"
-        text={`Arkivera ${valda.size} markerade pass? Passen flyttas till Arkiv. Frånvaro, historik, notiser och meddelanden behålls.`}
+        text={arkiveringsText}
         bekräftaText={arkiverar ? 'Arkiverar…' : `Arkivera ${valda.size} pass`}
         farlig
         onBekräfta={arkiveraMånga}
