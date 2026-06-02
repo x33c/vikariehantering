@@ -331,25 +331,6 @@ tbody tr:nth-child(even) {
 
 
 @media (prefers-reduced-motion: no-preference) {
-  html.tema-vaxlar,
-  html.tema-vaxlar * {
-    transition:
-      background 300ms ease,
-      background-color 300ms ease,
-      color 300ms ease,
-      border-color 300ms ease,
-      box-shadow 300ms ease,
-      fill 300ms ease,
-      stroke 300ms ease !important;
-  }
-
-  html.tema-vaxlar body {
-    transition:
-      background 300ms ease,
-      background-color 300ms ease,
-      color 300ms ease !important;
-  }
-
   .bemanning-kalender-grid {
     transition:
       grid-template-columns 240ms ease,
