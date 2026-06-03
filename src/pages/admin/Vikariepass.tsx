@@ -286,6 +286,10 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     return `Synlighet ändrad: dolt för ${namn}`;
   }
 
+  if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'tog_tillbaka_förfrågan') {
+    return vikarieNamn ? `Förfrågan togs tillbaka från ${vikarieNamn}` : 'Förfrågan togs tillbaka';
+  }
+
   if (h.händelse === 'pass_uppdaterat' && metadata['åtgärd'] === 'ändrade_grupp') {
     const tidigare = typeof metadata.tidigare_grupp === 'string' && metadata.tidigare_grupp.trim() ? metadata.tidigare_grupp : 'Ingen grupp';
     const ny = typeof metadata.grupp === 'string' && metadata.grupp.trim() ? metadata.grupp : 'Ingen grupp';
@@ -662,6 +666,33 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
     });
   }
 
+  async function taTillbakaFörfrågan() {
+    if (!pass.riktad_till_vikarie_id || pass.status !== 'notifierat') {
+      setFel('Det finns ingen aktiv förfrågan att ta tillbaka.');
+      return;
+    }
+
+    const tillfrågadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
+    const ok = await uppdateraPass(
+      {
+        status: 'obokat',
+        publicerad: false,
+        vikarie_id: null,
+        riktad_till_vikarie_id: null,
+      } as Partial<Bemanning>,
+      {
+        åtgärd: 'tog_tillbaka_förfrågan',
+        vikarie_id: pass.riktad_till_vikarie_id,
+        vikarie_namn: tillfrågadVikarie?.namn,
+      }
+    );
+
+    if (ok) {
+      setValdVikarieId('');
+      await laddaHistorikFörPass();
+    }
+  }
+
   async function bokaDirekt() {
     if (!valdVikarieId) {
       setFel('Välj en vikarie först.');
@@ -893,11 +924,12 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
     ? vikarier.filter(v => `${v.namn} ${v.epost ?? ''}`.toLowerCase().includes(exkluderingSökText))
     : vikarier;
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
+  const harAktivFörfrågan = pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id;
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
   const valdVikarieHarKrock = !!valdVikarieId && !!bokadeVikarier[valdVikarieId];
   const valdVikarieÄrRedanBokadPåPasset = harAktivBokning && pass.vikarie_id === valdVikarieId;
   const kanBemannaMedValdVikarie = !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieÄrRedanBokadPåPasset && pass.status !== 'avbokat';
-  const kanSkickaFörfrågan = !!valdVikarieId && !valdVikarieHarKrock && pass.status !== 'avbokat';
+  const kanSkickaFörfrågan = !!valdVikarieId && !valdVikarieHarKrock && !harAktivFörfrågan && pass.status !== 'avbokat';
   const bemanningsKnappText = harAktivBokning ? 'Byt vikarie' : 'Boka vald vikarie';
 
   return (
@@ -1043,6 +1075,12 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
               {valdVikarie ? valdVikarie.namn : 'Välj vikarie'}
             </p>
           </div>
+
+          {harAktivFörfrågan && (
+            <p className="mb-3 rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              Förfrågan är skickad till <strong style={{ color: 'var(--text)' }}>{riktadVikarie?.namn ?? 'vald vikarie'}</strong>.
+            </p>
+          )}
 
           {rekommenderadeSynliga.length > 0 && (
             <div className="mb-3">
@@ -1298,9 +1336,15 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
             {bemanningsKnappText}
           </Button>
-          <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
-            Skicka förfrågan
-          </Button>
+          {harAktivFörfrågan ? (
+            <Button variant="secondary" onClick={taTillbakaFörfrågan} loading={sparar}>
+              Ta tillbaka förfrågan
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
+              Skicka förfrågan
+            </Button>
+          )}
           <Button variant="secondary" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar || pass.status === 'avbokat'}>
             Spara ändringar
           </Button>
