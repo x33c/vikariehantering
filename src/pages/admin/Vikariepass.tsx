@@ -2105,7 +2105,7 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full min-h-0">
-      <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 ${valtPass ? 'hidden lg:flex' : ''}`}>
+      <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Veckoplanering</p>
