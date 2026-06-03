@@ -301,10 +301,9 @@ serve(async (req) => {
       });
     }
 
-    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
-    const passNamn = kortNamn(pass.personal?.namn) ?? 'Fristående pass';
-    const klass = arskurs(pass.grupp);
-    const bodyText = `${passNamn} · ${klass} · ${pass.datum} ${tid}`;
+    const bodyText = typ === 'bokat_pass_andrat'
+      ? 'Ett bokat pass har ändrats. Öppna appen för detaljer.'
+      : 'Ett nytt ledigt pass finns att boka. Öppna appen för detaljer.';
 
     if (typ === 'bokat_pass_andrat') {
       if (!vikarie_id) {
@@ -478,11 +477,8 @@ serve(async (req) => {
       .eq('roll', 'admin')
       .eq('aktiv', true);
 
-    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
-    const vikarieNamn = vikarie?.namn ?? 'Vikarie';
-    const passNamn = pass.personal?.namn ?? 'Fristående pass';
     const title = svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej';
-    const bodyText = `${vikarieNamn} ${svar === 'ja' ? 'tackade ja' : 'tackade nej'} · ${passNamn} · ${pass.datum} ${tid}`;
+    const bodyText = 'En vikarie har svarat på en förfrågan. Öppna appen för detaljer.';
 
     for (const admin of admins ?? []) {
       await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
@@ -517,8 +513,6 @@ serve(async (req) => {
       });
     }
 
-    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
-
     if (avsandare_roll === 'admin') {
       if (!pass.vikarie_id) {
         return new Response(JSON.stringify({ ok: true, skickat: false, orsak: 'Passet saknar bokad vikarie.' }), {
@@ -535,8 +529,7 @@ serve(async (req) => {
       if (vikarie) {
         const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
         const title = 'Nytt meddelande från admin';
-        const passNamn = kortNamn(pass.personal?.namn) ?? 'Fristående pass';
-        const pushBody = `${passNamn} · ${pass.datum} ${tid} · ${kortMeddelande}`;
+        const pushBody = 'Du har fått ett nytt meddelande om ett pass. Öppna appen för detaljer.';
 
         await supabase.from('notiser').insert({
           pass_id,
@@ -564,8 +557,7 @@ serve(async (req) => {
       .eq('aktiv', true);
 
     const title = 'Nytt meddelande från vikarie';
-    const passNamn = pass.personal?.namn ?? 'Fristående pass';
-    const pushBody = `${passNamn} · ${pass.datum} ${tid} · ${kortMeddelande}`;
+    const pushBody = 'En vikarie har skrivit ett nytt meddelande om ett pass. Öppna appen för detaljer.';
 
     for (const admin of admins ?? []) {
       await supabase.from('notiser').insert({
@@ -612,9 +604,8 @@ serve(async (req) => {
       .eq('roll', 'admin')
       .eq('aktiv', true);
 
-    const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
     const title = 'Avbokningsförfrågan';
-    const bodyText = `En vikarie vill avboka pass ${pass.datum} ${tid}.`;
+    const bodyText = 'En vikarie vill avboka ett pass. Öppna appen för detaljer.';
 
     for (const admin of admins ?? []) {
       await supabase.from('notiser').insert({
@@ -667,7 +658,7 @@ serve(async (req) => {
     const namn = kortNamn(pass.personal?.namn) ?? 'personal';
     const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
     const årskurs = arskurs(pass.grupp);
-    const ämne = `Vikariepass ${pass.datum} ${tid}`;
+    const ämne = 'Ny vikariefråga';
     const rader = [
       `Hej ${vikarie.namn},`,
       '',
@@ -684,7 +675,7 @@ serve(async (req) => {
 
     const pushProfilId = await hittaProfilIdForVikarie(supabase, vikarie);
     const pushPrenumerationer = await raknaPushPrenumerationer(supabase, pushProfilId);
-    await skickaPush(supabase, pushProfilId, ämne, `${namn} · ${årskurs} · ${tid}`, '/vikarie');
+    await skickaPush(supabase, pushProfilId, ämne, 'Du har en ny förfrågan. Öppna appen för detaljer.', '/vikarie');
 
     const { data: notis } = await supabase.from('notiser').insert({
       pass_id, vikarie_id: vikarie.id, kanal: 'epost',
