@@ -144,8 +144,8 @@ export const frånvaroApi = {
   async lista(datumFrån?: string, datumTill?: string) {
     let q = supabase.from('frånvaro').select('*, personal(*, arbetslag(*))')
       .order('datum_från', { ascending: false });
-    if (datumFrån) q = q.gte('datum_från', datumFrån);
-    if (datumTill) q = q.lte('datum_till', datumTill);
+    if (datumTill) q = q.lte('datum_från', datumTill);
+    if (datumFrån) q = q.gte('datum_till', datumFrån);
     return q;
   },
   async hämta(id: string) {

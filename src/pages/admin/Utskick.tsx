@@ -416,7 +416,7 @@ function byggHtml({
 
   return `
 <div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:11pt;line-height:1.25;">
-<div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replace(/\n/g, '<br>')}<br><br></div>  
+<div style="margin:0 0 24px 0;white-space:normal;">${esc(ingressText).replace(/\n/g, '<br>')}<br><br></div>
   <table width="1160" cellpadding="0" cellspacing="0" style="border-collapse:collapse;table-layout:fixed;font-family:Aptos,Calibri,Arial,sans-serif;">
     ${rows}
   </table>
@@ -606,7 +606,7 @@ export default function Utskick() {
         const key = cellKey(datum, typ);
         const gammalText = nästa[key] ?? '';
         const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
-        const uppdateradText = slåIhopText(gammalText, nyText, typ);
+        const uppdateradText = typ === 'franvaro' ? nyText : slåIhopText(gammalText, nyText, typ);
         if (uppdateradText !== gammalText) {
           ändrade += 1;
           detaljer.push(`${kortDatum(dag)} · ${typ === 'franvaro' ? 'Frånvaro' : 'Vikarie'}`);

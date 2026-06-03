@@ -1089,7 +1089,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
             />
           </div>
 
-          
+
         </section>
         <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
           <div className="mb-3">
@@ -1379,8 +1379,8 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
     </div>
   );
 }
-function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: {
-  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void; förvaltDatum?: string;
+function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, förvaldFrånvaro }: {
+  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void; förvaltDatum?: string; förvaldFrånvaro?: Frånvaro | null;
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
@@ -1395,10 +1395,27 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
   const [fel, setFel] = useState('');
 
   useEffect(() => {
-    if (!öppen || !förvaltDatum) return;
-    setForm(prev => ({ ...prev, datum: förvaltDatum }));
-    setVeckopassTider({});
-  }, [öppen, förvaltDatum]);
+    if (!öppen) return;
+
+    if (förvaldFrånvaro) {
+      setForm(prev => ({
+        ...prev,
+        personal_id: förvaldFrånvaro.personal_id,
+        datum: förvaltDatum ?? förvaldFrånvaro.datum_från,
+        grupp: förvaldFrånvaro.personal?.arbetslag?.namn ?? prev.grupp,
+        frånvaroOrsak: förvaldFrånvaro.orsak ?? '',
+        frånvaroHelDag: förvaldFrånvaro.hel_dag,
+        registreraFrånvaro: false,
+      }));
+      setVeckopassTider({});
+      return;
+    }
+
+    if (förvaltDatum) {
+      setForm(prev => ({ ...prev, datum: förvaltDatum }));
+      setVeckopassTider({});
+    }
+  }, [öppen, förvaltDatum, förvaldFrånvaro]);
 
   const veckopassDatum = form.veckopass && form.datum ? veckodagarFörVecka(form.datum) : [];
 
@@ -1498,9 +1515,9 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
     }
 
     for (const dag of passSomSkaSkapas) {
-      let frånvaroId: string | null = null;
+      let frånvaroId: string | null = förvaldFrånvaro?.id ?? null;
 
-      if (form.registreraFrånvaro && form.personal_id) {
+      if (!frånvaroId && form.registreraFrånvaro && form.personal_id) {
         const frånvaroRes = await frånvaroApi.skapa({
           personal_id: form.personal_id,
           datum_från: dag.datum,
@@ -1552,7 +1569,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
       if (res.data) {
         await historikApi.skapa(res.data.id, 'pass_skapat', {
           ...(form.veckopass ? { typ: 'veckopass', datum: dag.datum } : {}),
-          ...(frånvaroId ? { frånvaro_id: frånvaroId, åtgärd: 'skapade_pass_med_frånvaro' } : {}),
+          ...(frånvaroId ? { frånvaro_id: frånvaroId, åtgärd: förvaldFrånvaro ? 'skapade_pass_från_befintlig_frånvaro' : 'skapade_pass_med_frånvaro' } : {}),
         });
       }
     }
@@ -1768,12 +1785,15 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum }: 
 export default function Bemanning() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [pass, setPass] = useState<Bemanning[]>([]);
+  const [veckansPass, setVeckansPass] = useState<Bemanning[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
+  const [frånvaron, setFrånvaron] = useState<Frånvaro[]>([]);
   const [laddar, setLaddar] = useState(true);
   const [valtPass, setValtPass] = useState<Bemanning | null>(null);
   const [skapaModal, setSkapaModal] = useState(false);
   const [skapaDatum, setSkapaDatum] = useState<string | undefined>(undefined);
+  const [förvaldFrånvaroFörPass, setFörvaldFrånvaroFörPass] = useState<Frånvaro | null>(null);
   const [statusFilter, setStatusFilter] = useState<PassStatus | ''>('');
   const [vikarieFilter, setVikarieFilter] = useState('');
   const [snabbFilter, setSnabbFilter] = useState<SnabbFilterTyp>('alla');
@@ -1807,7 +1827,8 @@ export default function Bemanning() {
   }, [synligaSnabbfilter]);
 
   const ladda = useCallback(async () => {
-    const [pRes, vRes, perRes] = await Promise.all([
+    const veckaSlutFörFrånvaro = läggTillDagarIso(veckaStart, 4);
+    const [pRes, vRes, perRes, fRes, veckaPassRes] = await Promise.all([
       passApi.lista({
         status: statusFilter ? [statusFilter] : undefined,
         datumFrån: datumFrån || undefined,
@@ -1815,11 +1836,15 @@ export default function Bemanning() {
       }),
       vikariApi.lista(),
       personalApi.lista(),
+      frånvaroApi.lista(veckaStart, veckaSlutFörFrånvaro),
+      passApi.lista({ datumFrån: veckaStart, datumTill: veckaSlutFörFrånvaro }),
     ]);
     const passLista = (pRes.data ?? []) as Bemanning[];
     setPass(passLista);
     setVikarier((vRes.data ?? []) as Vikarie[]);
     setPersonal((perRes.data ?? []) as Personal[]);
+    setFrånvaron((fRes.data ?? []) as Frånvaro[]);
+    setVeckansPass((veckaPassRes.data ?? []) as Bemanning[]);
 
     const avbokningsIds = new Set<string>();
     await Promise.all(passLista.map(async (passrad) => {
@@ -1833,7 +1858,7 @@ export default function Bemanning() {
     setAvbokningsPassIds(avbokningsIds);
 
     setLaddar(false);
-  }, [statusFilter, datumFrån, datumTill]);
+  }, [statusFilter, datumFrån, datumTill, veckaStart]);
 
   useEffect(() => { ladda(); }, [ladda]);
   useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser']);
@@ -1968,8 +1993,27 @@ export default function Bemanning() {
     datum,
     grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
   }));
+  function frånvaroTäckerDatum(frånvaro: Frånvaro, datum: string) {
+    return frånvaro.datum_från <= datum && frånvaro.datum_till >= datum;
+  }
+
+  function passFinnsFörFrånvaroDag(frånvaro: Frånvaro, datum: string) {
+    return veckansPass.some(p =>
+      p.status !== 'avbokat' &&
+      p.datum === datum &&
+      (p.frånvaro_id === frånvaro.id || (!p.frånvaro_id && p.personal_id === frånvaro.personal_id))
+    );
+  }
+
+  const frånvaroFörslagPerDag = new Map(veckodagar.map((datum) => [
+    datum,
+    frånvaron
+      .filter(frånvaro => frånvaroTäckerDatum(frånvaro, datum) && !frånvaro.ingen_vikarie_behövs)
+      .filter(frånvaro => !passFinnsFörFrånvaroDag(frånvaro, datum))
+      .sort((a, b) => (a.personal?.arbetslag?.namn ?? '').localeCompare(b.personal?.arbetslag?.namn ?? '', 'sv') || (a.personal?.namn ?? '').localeCompare(b.personal?.namn ?? '', 'sv')),
+  ]));
   const synligaDagar = döljPasserade && snabbFilter !== 'arkiv'
-    ? grupperPerDag.filter(({ grupper }) => grupper.length > 0)
+    ? grupperPerDag.filter(({ datum, grupper }) => grupper.length > 0 || (frånvaroFörslagPerDag.get(datum)?.length ?? 0) > 0)
     : grupperPerDag;
   const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
   const kalenderKolumnerMd = Math.max(1, Math.min(synligaDagar.length, 2));
@@ -2021,9 +2065,20 @@ export default function Bemanning() {
     setSenastMarkeradIndex(index);
   }
 
-  function öppnaSkapaPass(datum?: string) {
+  function öppnaSkapaPass(datum?: string, frånvaro?: Frånvaro | null) {
     setSkapaDatum(datum);
+    setFörvaldFrånvaroFörPass(frånvaro ?? null);
     setSkapaModal(true);
+  }
+
+  function stängSkapaPass() {
+    setSkapaModal(false);
+    setFörvaldFrånvaroFörPass(null);
+  }
+
+  function efterSkapatPass() {
+    setFörvaldFrånvaroFörPass(null);
+    ladda();
   }
 
   function öppnaPassDetaljer(pass: Bemanning, element?: HTMLElement | null) {
@@ -2248,7 +2303,8 @@ export default function Bemanning() {
           <>
               <div className="space-y-5 md:hidden">
                 {synligaDagar.map(({ datum, grupper }) => {
-                  const dagHarÅtgärd = grupper.some(grupp => gruppInfo(grupp).atgard);
+                  const passförslag = frånvaroFörslagPerDag.get(datum) ?? [];
+                  const dagHarÅtgärd = grupper.some(grupp => gruppInfo(grupp).atgard) || passförslag.length > 0;
                   return (
                     <section
                       key={datum}
@@ -2267,7 +2323,7 @@ export default function Bemanning() {
                       >
                         <div className="min-w-0">
                           <h2 className="truncate text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass{passförslag.length > 0 ? ` · ${passförslag.length} förslag` : ''}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {dagHarÅtgärd && (
@@ -2285,6 +2341,23 @@ export default function Bemanning() {
                           </button>
                         </div>
                       </div>
+
+                      {passförslag.length > 0 && (
+                        <div className="mb-2 rounded-2xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                          <p className="mb-2 text-xs font-semibold uppercase" style={{ color: 'var(--text-muted)' }}>Frånvaro utan pass</p>
+                          <div className="space-y-1.5">
+                            {passförslag.slice(0, 4).map((frånvaro) => (
+                              <button key={`${frånvaro.id}_${datum}`} type="button" onClick={() => öppnaSkapaPass(datum, frånvaro)} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left" style={{ background: 'var(--bg)' }}>
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{frånvaro.personal?.namn ?? 'Okänd person'}</span>
+                                  <span className="block truncate text-xs" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Ingen grupp'} · {frånvaro.hel_dag ? 'Heldag' : `${frånvaro.tid_från?.slice(0, 5) ?? ''}-${frånvaro.tid_till?.slice(0, 5) ?? ''}`}</span>
+                                </span>
+                                <span className="shrink-0 text-xs font-semibold" style={{ color: 'var(--blue)' }}>Skapa pass</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {grupper.length === 0 ? (
                         <div className="rounded-lg border border-dashed px-3 py-6 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
@@ -2374,12 +2447,15 @@ export default function Bemanning() {
                 className="bemanning-kalender-grid hidden gap-2 transition-[grid-template-columns,opacity] duration-300 ease-out md:grid md:[grid-template-columns:repeat(var(--bemanning-kolumner-md),minmax(0,1fr))] xl:[grid-template-columns:repeat(var(--bemanning-kolumner),minmax(0,1fr))]"
                 style={{ ['--bemanning-kolumner']: kalenderKolumner, ['--bemanning-kolumner-md']: kalenderKolumnerMd } as any}
               >
-                {synligaDagar.map(({ datum, grupper }) => (
+                {synligaDagar.map(({ datum, grupper }) => {
+                  const passförslag = frånvaroFörslagPerDag.get(datum) ?? [];
+
+                  return (
                   <section key={datum} className="bemanning-dag scroll-mt-32 rounded-xl border p-2 transition-[border-color,background-color,box-shadow,transform,opacity] duration-300 ease-out md:min-h-[240px] xl:min-h-[300px]" style={{ borderColor: datum === idag ? 'var(--blue)' : 'var(--border)', background: 'var(--bg-card)', boxShadow: datum === idag ? 'inset 0 0 0 2px color-mix(in srgb, var(--blue) 55%, transparent)' : 'none' }}>
                     <div className="mb-2 flex items-center justify-between gap-2 rounded-lg px-1.5 py-1" style={{ background: grupper.some(grupp => gruppInfo(grupp).atgard) ? 'rgba(249, 115, 22, 0.08)' : 'transparent' }}>
                       <div>
                         <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortVeckodag(datum)}</h2>
-                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass</p>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{grupper.length} pass{passförslag.length > 0 ? ` · ${passförslag.length} förslag` : ''}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {grupper.some(grupp => gruppInfo(grupp).atgard) && (
@@ -2395,6 +2471,24 @@ export default function Bemanning() {
                         </button>
                       </div>
                     </div>
+
+                    {passförslag.length > 0 && (
+                      <details className="mb-2 rounded-lg border px-2.5 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                        <summary className="cursor-pointer text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Frånvaro utan pass ({passförslag.length})</summary>
+                        <div className="mt-2 space-y-1.5">
+                          {passförslag.slice(0, 5).map((frånvaro) => (
+                            <button key={`${frånvaro.id}_${datum}`} type="button" onClick={() => öppnaSkapaPass(datum, frånvaro)} className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left" style={{ background: 'var(--bg-card)' }}>
+                              <span className="min-w-0">
+                                <span className="block truncate text-xs font-semibold" style={{ color: 'var(--text)' }}>{frånvaro.personal?.namn ?? 'Okänd person'}</span>
+                                <span className="block truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>{frånvaro.personal?.arbetslag?.namn ?? 'Ingen grupp'}</span>
+                              </span>
+                              <span className="shrink-0 text-[11px] font-semibold" style={{ color: 'var(--blue)' }}>Skapa</span>
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
 
                     {grupper.length === 0 ? (
                       <div className="rounded-lg border border-dashed px-3 py-8 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-subtle)' }}>
@@ -2459,7 +2553,8 @@ export default function Bemanning() {
                       </div>
                     )}
                   </section>
-                ))}
+                  );
+                })}
               </div>
           </>
         )}
@@ -2480,7 +2575,7 @@ export default function Bemanning() {
         </Modal>
       )}
 
-      <NyttPassModal öppen={skapaModal} onStäng={() => setSkapaModal(false)} personal={personal} onSkapad={ladda} förvaltDatum={skapaDatum} />
+      <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} />
 
       <Confirm
         öppen={arkiveraValda}
