@@ -1306,7 +1306,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
               value={nyttMeddelande}
               onChange={e => setNyttMeddelande(e.target.value)}
               rows={3}
-              placeholder={pass.vikarie_id ? 'Skriv meddelande till vikarien...' : 'Meddelanden kan skickas när passet är bokat.'}
+              placeholder={pass.vikarie_id ? 'Skriv meddelande till vikarien. Undvik känsliga uppgifter.' : 'Meddelanden kan skickas när passet är bokat.'}
               disabled={!pass.vikarie_id}
               className="mb-2 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}

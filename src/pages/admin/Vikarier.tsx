@@ -1060,7 +1060,7 @@ export default function Vikarier() {
                 value={massText}
                 onChange={e => setMassText(e.target.value)}
                 rows={4}
-                placeholder="Exempel: Appen har uppdaterats. Starta gärna om appen om du inte ser nya pass."
+                placeholder="Exempel: Appen har uppdaterats. Undvik känsliga uppgifter."
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
               />

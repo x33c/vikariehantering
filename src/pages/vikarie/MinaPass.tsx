@@ -334,7 +334,7 @@ export default function MinaPass() {
               value={nyttMeddelande}
               onChange={e => setNyttMeddelande(e.target.value)}
               rows={3}
-              placeholder="Skriv meddelande till admin..."
+              placeholder="Skriv meddelande till admin. Undvik känsliga uppgifter."
               className="mb-2 w-full rounded-xl border px-3 py-2 text-sm"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
             />
