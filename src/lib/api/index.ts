@@ -151,6 +151,16 @@ export const frånvaroApi = {
   async hämta(id: string) {
     return supabase.from('frånvaro').select('*, personal(*, arbetslag(*))').eq('id', id).single();
   },
+  async hämtaFörPersonalDatum(personalId: string, datum: string) {
+    return supabase.from('frånvaro')
+      .select('*, personal(*, arbetslag(*))')
+      .eq('personal_id', personalId)
+      .lte('datum_från', datum)
+      .gte('datum_till', datum)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  },
   async skapa(data: NyFrånvaro) {
     return supabase.from('frånvaro').insert(data).select('*').single();
   },

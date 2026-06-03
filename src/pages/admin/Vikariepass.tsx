@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi } from '../../lib/api';
-import type { Bemanning, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
+import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
@@ -340,6 +340,7 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
   const [exkluderingSök, setExkluderingSök] = useState('');
   const [spararExkluderingar, setSpararExkluderingar] = useState(false);
   const [visaExkluderingar, setVisaExkluderingar] = useState(false);
+  const [matchandeFrånvaro, setMatchandeFrånvaro] = useState<Frånvaro | null>(null);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -373,6 +374,25 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
     }
     laddaPassdata();
   }, [pass.id]);
+
+  useEffect(() => {
+    let aktiv = true;
+
+    async function laddaMatchandeFrånvaro() {
+      if (!pass.personal_id) {
+        setMatchandeFrånvaro(null);
+        return;
+      }
+
+      const res = await frånvaroApi.hämtaFörPersonalDatum(pass.personal_id, pass.datum);
+      if (!aktiv) return;
+      setMatchandeFrånvaro((res.data ?? null) as Frånvaro | null);
+    }
+
+    laddaMatchandeFrånvaro();
+    return () => { aktiv = false; };
+  }, [pass.personal_id, pass.datum]);
+
   useEffect(() => {
     async function laddaBokade() {
       const res = await passApi.lista({ datumFrån: pass.datum, datumTill: pass.datum, status: ["bokat", "bekräftat"] });
@@ -923,6 +943,11 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
   const filtreradeExkluderingVikarier = exkluderingSökText
     ? vikarier.filter(v => `${v.namn} ${v.epost ?? ''}`.toLowerCase().includes(exkluderingSökText))
     : vikarier;
+  const visadFrånvaro = pass.frånvaro ?? matchandeFrånvaro;
+  const harFrånvaro = !!pass.frånvaro_id || !!visadFrånvaro;
+  const frånvaroText = visadFrånvaro
+    ? `${visadFrånvaro.hel_dag ? 'Heldag' : `${visadFrånvaro.tid_från?.slice(0, 5) ?? ''}-${visadFrånvaro.tid_till?.slice(0, 5) ?? ''}`}${visadFrånvaro.orsak ? ` · ${visadFrånvaro.orsak}` : ''}`
+    : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro';
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAktivFörfrågan = pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id;
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
@@ -982,10 +1007,8 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
             </div>
             <div className="rounded-lg px-3 py-2" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
               Frånvaro<br />
-              <span className="font-semibold" style={{ color: pass.frånvaro_id ? '#22c55e' : '#f97316' }}>
-                {pass.frånvaro
-                  ? `${pass.frånvaro.hel_dag ? 'Heldag' : `${pass.frånvaro.tid_från?.slice(0, 5) ?? ''}-${pass.frånvaro.tid_till?.slice(0, 5) ?? ''}`}${pass.frånvaro.orsak ? ` · ${pass.frånvaro.orsak}` : ''}`
-                  : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro'}
+              <span className="font-semibold" style={{ color: harFrånvaro ? '#22c55e' : '#f97316' }}>
+                {frånvaroText}
               </span>
             </div>
           </div>
