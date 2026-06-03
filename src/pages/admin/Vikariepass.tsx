@@ -1398,16 +1398,29 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
     if (!öppen) return;
 
     if (förvaldFrånvaro) {
+      const datum = förvaltDatum ?? förvaldFrånvaro.datum_från;
+      const frånvaroStart = förvaldFrånvaro.tid_från?.slice(0, 5);
+      const frånvaroSlut = förvaldFrånvaro.tid_till?.slice(0, 5);
+      const harFrånvaroTid = !förvaldFrånvaro.hel_dag && !!frånvaroStart && !!frånvaroSlut;
+
       setForm(prev => ({
         ...prev,
         personal_id: förvaldFrånvaro.personal_id,
-        datum: förvaltDatum ?? förvaldFrånvaro.datum_från,
+        datum,
+        tid_från: harFrånvaroTid ? frånvaroStart : prev.tid_från,
+        tid_till: harFrånvaroTid ? frånvaroSlut : prev.tid_till,
         grupp: förvaldFrånvaro.personal?.arbetslag?.namn ?? prev.grupp,
         frånvaroOrsak: förvaldFrånvaro.orsak ?? '',
         frånvaroHelDag: förvaldFrånvaro.hel_dag,
         registreraFrånvaro: false,
       }));
       setVeckopassTider({});
+
+      if (harFrånvaroTid) {
+        setSchemaInfo(`Tider hämtade från frånvaron: ${frånvaroStart}-${frånvaroSlut}.`);
+      } else {
+        void hämtaSchemaTid(förvaldFrånvaro.personal_id, datum);
+      }
       return;
     }
 
