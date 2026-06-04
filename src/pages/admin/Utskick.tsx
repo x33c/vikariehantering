@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { frånvaroApi, passApi, vikariApi } from '../../lib/api';
+import { frånvaroApi, passApi, vikariApi, personalApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import type { Frånvaro, Vikariepass, Vikarie } from '../../types';
+import type { Frånvaro, Personal, Vikariepass, Vikarie } from '../../types';
 import { Button, LaddaSida } from '../../components/ui';
 
 type CellTyp = 'franvaro' | 'vikarie' | 'ovrigt';
@@ -241,16 +241,18 @@ function sorteraPass(a: Vikariepass, b: Vikariepass) {
 
 type NamnFormatter = (namn?: string | null, fallback?: string) => string;
 
-function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarier: Vikarie[]): NamnFormatter {
+function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarier: Vikarie[], personal: Personal[] = []): NamnFormatter {
   const namn = [
     ...frånvaro.map((f) => f.personal?.namn),
     ...pass.map((p) => p.personal?.namn),
     ...pass.map((p) => p.vikarie?.namn),
     ...vikarier.map((v) => v.namn),
+    ...personal.map((p) => p.namn),
   ].filter(Boolean) as string[];
+  const unikaNamn = [...new Map(namn.map((heltNamn) => [heltNamn.trim().toLowerCase(), heltNamn.trim()])).values()];
 
   const antalFörnamn = new Map<string, number>();
-  for (const heltNamn of namn) {
+  for (const heltNamn of unikaNamn) {
     const förnamn = heltNamn.trim().split(/\s+/)[0]?.toLowerCase();
     if (förnamn) antalFörnamn.set(förnamn, (antalFörnamn.get(förnamn) ?? 0) + 1);
   }
@@ -268,14 +270,10 @@ function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarie
   };
 }
 
-function baraFörnamn(namn?: string | null, fallback = 'Okänd') {
-  const text = namn?.trim();
-  return text ? text.split(/\s+/)[0] : fallback;
-}
 
-function frånvaroText(f: Frånvaro, _formatNamn: NamnFormatter) {
+function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
   const tidText = f.hel_dag ? '' : ` (${tid(f.tid_från)}-${tid(f.tid_till)})`;
-  return `${baraFörnamn(f.personal?.namn)}${tidText}`;
+  return `${formatNamn(f.personal?.namn)}${tidText}`;
 }
 
 function utskickGruppText(grupp?: string | null) {
@@ -432,6 +430,7 @@ export default function Utskick() {
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
+  const [personal, setPersonal] = useState<Personal[]>([]);
   const [celler, setCeller] = useState<Record<string, string>>({});
   const [laddar, setLaddar] = useState(true);
   const [sparar, setSparar] = useState(false);
@@ -446,7 +445,6 @@ export default function Utskick() {
   const dagar = useMemo(() => [0, 1, 2, 3, 4].map((i) => läggTillDagar(start, i)), [start]);
   const startIso = iso(dagar[0]);
   const slutIso = iso(dagar[4]);
-  const formatNamn = useMemo(() => skapaNamnFormatter(frånvaro, pass, vikarier), [frånvaro, pass, vikarier]);
   const vikarierById = useMemo(() => new Map(vikarier.map((v) => [v.id, v])), [vikarier]);
 
   const rutaStorlekKlasser = {
@@ -461,10 +459,11 @@ export default function Utskick() {
       setLaddar(true);
       setFel('');
 
-      const [fRes, pRes, vRes, cRes, eRes] = await Promise.all([
+      const [fRes, pRes, vRes, perRes, cRes, eRes] = await Promise.all([
         frånvaroApi.lista(startIso, slutIso),
         passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
         vikariApi.lista(),
+        personalApi.lista(),
         supabase.from('utskick_celler').select('*').gte('datum', startIso).lte('datum', slutIso),
         supabase.from('utskick_celler').select('*').eq('datum', GLOBAL_CELL_DATE).in('typ', extraTyper),
       ]);
@@ -472,10 +471,12 @@ export default function Utskick() {
       const frånvaroData = (fRes.data ?? []) as Frånvaro[];
       const passData = (pRes.data ?? []) as Vikariepass[];
       const vikarieData = (vRes.data ?? []) as Vikarie[];
+      const personalData = (perRes.data ?? []) as Personal[];
 
       setFrånvaro(frånvaroData);
       setPass(passData);
       setVikarier(vikarieData);
+      setPersonal(personalData);
 
       if (cRes.error || eRes.error) {
         setFel('Redigering kan inte sparas förrän databasmigrationen är körd.');
@@ -498,9 +499,10 @@ export default function Utskick() {
     typ: CellTyp,
     frånvaroKälla = frånvaro,
     passKälla = pass,
-    vikarierKälla = vikarier
+    vikarierKälla = vikarier,
+    personalKälla = personal
   ) {
-    const namnFormatter = skapaNamnFormatter(frånvaroKälla, passKälla, vikarierKälla);
+    const namnFormatter = skapaNamnFormatter(frånvaroKälla, passKälla, vikarierKälla, personalKälla);
     const vikarieMap = new Map(vikarierKälla.map((v) => [v.id, v]));
 
     if (typ === 'franvaro') {
@@ -577,14 +579,15 @@ export default function Utskick() {
     setUppdateringsInfo('');
     setUppdateringsDetaljer([]);
 
-    const [fRes, pRes, vRes] = await Promise.all([
+    const [fRes, pRes, vRes, perRes] = await Promise.all([
       frånvaroApi.lista(startIso, slutIso),
       passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
       vikariApi.lista(),
+      personalApi.lista(),
     ]);
 
-    if (fRes.error || pRes.error || vRes.error) {
-      setFel(fRes.error?.message ?? pRes.error?.message ?? vRes.error?.message ?? 'Kunde inte uppdatera utskicket.');
+    if (fRes.error || pRes.error || vRes.error || perRes.error) {
+      setFel(fRes.error?.message ?? pRes.error?.message ?? vRes.error?.message ?? perRes.error?.message ?? 'Kunde inte uppdatera utskicket.');
       setUppdaterar(false);
       return;
     }
@@ -592,10 +595,12 @@ export default function Utskick() {
     const nyFrånvaro = (fRes.data ?? []) as Frånvaro[];
     const nyaPass = (pRes.data ?? []) as Vikariepass[];
     const nyaVikarier = (vRes.data ?? []) as Vikarie[];
+    const nyPersonal = (perRes.data ?? []) as Personal[];
 
     setFrånvaro(nyFrånvaro);
     setPass(nyaPass);
     setVikarier(nyaVikarier);
+    setPersonal(nyPersonal);
     const nästa = { ...celler };
     let ändrade = 0;
     const detaljer: string[] = [];
@@ -605,7 +610,7 @@ export default function Utskick() {
       for (const typ of ['franvaro', 'vikarie'] as const) {
         const key = cellKey(datum, typ);
         const gammalText = nästa[key] ?? '';
-        const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier);
+        const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier, nyPersonal);
         const uppdateradText = typ === 'franvaro' ? nyText : slåIhopText(gammalText, nyText, typ);
         if (uppdateradText !== gammalText) {
           ändrade += 1;
