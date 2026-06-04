@@ -5,6 +5,7 @@ import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal,
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
+import { supabase } from '../../lib/supabase';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -311,12 +312,13 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
   return notisText ? `${bastext} · ${notisText}` : bastext;
 }
 
-function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
+function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad, onRaderad }: {
   pass: Bemanning;
   vikarier: Vikarie[];
   personal: Personal[];
   onStäng: () => void;
   onUppdaterad: (p: Bemanning) => void;
+  onRaderad: (id: string) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
   const [valdVikarieId, setValdVikarieId] = useState(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
@@ -742,6 +744,22 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
       } as Partial<Bemanning>,
       { åtgärd: 'avbokade_pass' }
     );
+  }
+
+  async function taBortAvbokatPass() {
+    if (!window.confirm('Ta bort det avbokade passet permanent? Kopplad frånvaro behålls.')) return;
+
+    setSparar(true);
+    setFel('');
+    const res = await supabase.from('vikariepass').delete().eq('id', pass.id);
+    setSparar(false);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    onRaderad(pass.id);
   }
 
   async function skickaMeddelande() {
@@ -1371,9 +1389,15 @@ function PassDetaljer({ pass, vikarier, personal, onStäng, onUppdaterad }: {
           <Button variant="secondary" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar || pass.status === 'avbokat'}>
             Spara ändringar
           </Button>
-          <Button variant="danger" onClick={avbokaPass} loading={sparar} disabled={pass.status === 'avbokat'}>
-            Arkivera pass
-          </Button>
+          {pass.status === 'avbokat' ? (
+            <Button variant="danger" onClick={taBortAvbokatPass} loading={sparar}>
+              Ta bort pass
+            </Button>
+          ) : (
+            <Button variant="danger" onClick={avbokaPass} loading={sparar}>
+              Arkivera pass
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -2583,6 +2607,10 @@ export default function Bemanning() {
             onUppdaterad={uppdaterad => {
               setPass(prev => prev.map(p => p.id === uppdaterad.id ? { ...p, ...uppdaterad } : p));
               setValtPass(uppdaterad);
+            }}
+            onRaderad={id => {
+              setPass(prev => prev.filter(p => p.id !== id));
+              stängPassModal();
             }}
           />
         </Modal>
