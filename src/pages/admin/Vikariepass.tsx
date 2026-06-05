@@ -1633,7 +1633,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
 
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
-      <div className="space-y-4">
+      <div className="max-h-[calc(100dvh-5.5rem)] space-y-4 overflow-y-auto pb-2 pr-1 sm:max-h-[calc(100dvh-9rem)]">
         {fel && <Alert typ="error">{fel}</Alert>}
 
         <Select
@@ -1808,7 +1808,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
           />
           Publicera direkt för vikarier
         </label>
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 border-t px-1 py-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={spara}>
             {form.veckopass ? 'Skapa veckopass' : 'Skapa pass'}

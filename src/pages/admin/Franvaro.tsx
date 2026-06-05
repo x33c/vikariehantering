@@ -1081,7 +1081,7 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-24 pt-2 overscroll-contain sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
       <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
@@ -1149,7 +1149,7 @@ export default function Franvaro() {
       </div>
 
 
-      <section className="mb-4 rounded-xl border p-2 sm:rounded-2xl sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <section className="mb-4 min-h-0 rounded-xl border p-2 sm:rounded-2xl sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="mb-3 grid gap-2 lg:grid-cols-[minmax(190px,240px)_auto] lg:items-center lg:justify-between">
           <div className="rounded-lg px-2 py-1.5" style={{ background: 'var(--bg)' }}>
             <h2 className="mt-1 text-lg font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</h2>
