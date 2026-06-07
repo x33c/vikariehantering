@@ -219,7 +219,7 @@ export default function AdminLayout() {
           </div>
 
           <div className={`grid gap-2 ${sidopanelKollapsad ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            <AdminNotiser placement="up" />
+            <AdminNotiser placement="up" compact={sidopanelKollapsad} />
             <button
               onClick={toggla}
               className="flex min-h-10 items-center justify-center rounded-xl border px-3 transition-all hover:opacity-85"

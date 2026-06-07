@@ -66,7 +66,7 @@ function notisTone(notis: AdminNotis) {
   return { color: 'var(--text-muted)', bg: 'var(--hover)' };
 }
 
-export default function AdminNotiser({ placement = 'down' }: { placement?: 'down' | 'up' }) {
+export default function AdminNotiser({ placement = 'down', compact = false }: { placement?: 'down' | 'up'; compact?: boolean }) {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [notiser, setNotiser] = useState<AdminNotis[]>([]);
@@ -143,11 +143,11 @@ export default function AdminNotiser({ placement = 'down' }: { placement?: 'down
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={`relative ${compact ? 'flex justify-center' : ''}`}>
       <button
         type="button"
         onClick={() => setOppen(v => !v)}
-        className="flex items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition"
+        className={`flex items-center justify-center rounded-xl border text-sm font-semibold transition ${compact ? 'h-10 w-10 p-0' : 'px-3 py-2'}`}
         style={{
           borderColor: olasta.length > 0 ? 'var(--blue)' : 'var(--border)',
           color: olasta.length > 0 ? 'var(--blue)' : 'var(--text)',
