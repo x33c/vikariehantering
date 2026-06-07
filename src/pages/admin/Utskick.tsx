@@ -256,15 +256,14 @@ function sorteraPass(a: Vikariepass, b: Vikariepass) {
 
 type NamnFormatter = (namn?: string | null, fallback?: string) => string;
 
-function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarier: Vikarie[], personal: Personal[] = []): NamnFormatter {
-  const namn = [
-    ...frånvaro.map((f) => f.personal?.namn),
-    ...pass.map((p) => p.personal?.namn),
-    ...pass.map((p) => p.vikarie?.namn),
-    ...vikarier.map((v) => v.namn),
-    ...personal.map((p) => p.namn),
-  ].filter(Boolean) as string[];
-  const unikaNamn = [...new Map(namn.map((heltNamn) => [heltNamn.trim().toLowerCase(), heltNamn.trim()])).values()];
+function skapaNamnFormatter(namn: Array<string | null | undefined>): NamnFormatter {
+  const unikaNamn = [
+    ...new Map(
+      namn
+        .filter(Boolean)
+        .map((heltNamn) => [heltNamn!.trim().toLowerCase(), heltNamn!.trim()])
+    ).values(),
+  ];
 
   const antalFörnamn = new Map<string, number>();
   for (const heltNamn of unikaNamn) {
@@ -283,6 +282,21 @@ function skapaNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarie
     const efternamn = delar[delar.length - 1];
     return `${förnamn} ${efternamn[0]?.toUpperCase()}.`;
   };
+}
+
+function skapaUtskickNamnFormatter(frånvaro: Frånvaro[], pass: Vikariepass[], vikarier: Vikarie[], personal: Personal[] = []) {
+  const personalNamn = skapaNamnFormatter([
+    ...personal.map((p) => p.namn),
+    ...frånvaro.map((f) => f.personal?.namn),
+    ...pass.map((p) => p.personal?.namn),
+  ]);
+
+  const vikarieNamn = skapaNamnFormatter([
+    ...vikarier.map((v) => v.namn),
+    ...pass.map((p) => p.vikarie?.namn),
+  ]);
+
+  return { personalNamn, vikarieNamn };
 }
 
 
@@ -517,19 +531,19 @@ export default function Utskick() {
     vikarierKälla = vikarier,
     personalKälla = personal
   ) {
-    const namnFormatter = skapaNamnFormatter(frånvaroKälla, passKälla, vikarierKälla, personalKälla);
+    const namnFormatter = skapaUtskickNamnFormatter(frånvaroKälla, passKälla, vikarierKälla, personalKälla);
     const vikarieMap = new Map(vikarierKälla.map((v) => [v.id, v]));
 
     if (typ === 'franvaro') {
       return frånvaroFörDag(frånvaroKälla, datum)
-        .map((f) => frånvaroText(f, namnFormatter))
+        .map((f) => frånvaroText(f, namnFormatter.personalNamn))
         .join('\n');
     }
 
     if (typ === 'vikarie') {
       return passFörDag(passKälla, datum)
         .sort(sorteraPass)
-        .map((p) => vikarieText(p, namnFormatter, vikarieMap))
+        .map((p) => vikarieText(p, namnFormatter.vikarieNamn, vikarieMap))
         .join('\n\n');
     }
 
