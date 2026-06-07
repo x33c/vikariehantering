@@ -45,6 +45,19 @@ function läggTillDagarIso(datum: string, dagar: number) {
   return isoDatum(d);
 }
 
+function standardVeckaStartIso() {
+  const idag = new Date();
+  const veckodag = idag.getDay();
+
+  if (veckodag === 6 || veckodag === 0) {
+    const nastaMandag = new Date(idag);
+    nastaMandag.setDate(idag.getDate() + (veckodag === 6 ? 2 : 1));
+    return isoDatum(nastaMandag);
+  }
+
+  return veckaStartIso(isoDatum(idag));
+}
+
 function datumIntervall(start: string, slut: string) {
   const datum: string[] = [];
   const aktuell = new Date(`${start}T12:00:00`);
@@ -1848,7 +1861,7 @@ export default function Bemanning() {
   const [datumFrån, setDatumFrån] = useState('');
   const [datumTill, setDatumTill] = useState('');
   const [döljPasserade, setDöljPasserade] = useState(false);
-  const [veckaStart, setVeckaStart] = useState(() => veckaStartIso(new Date().toISOString().slice(0, 10)));
+  const [veckaStart, setVeckaStart] = useState(() => standardVeckaStartIso());
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
   const [arkiveraValda, setArkiveraValda] = useState(false);
@@ -2261,7 +2274,7 @@ export default function Bemanning() {
                   <PeriodIkon typ="föregående" />
                   <span className="hidden min-[390px]:inline">Föregående</span>
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(veckaStartIso(new Date().toISOString().slice(0, 10)))}>
+                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(standardVeckaStartIso())}>
                   <PeriodIkon typ="idag" />
                   <span>Idag</span>
                 </Button>

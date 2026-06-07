@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
@@ -68,6 +68,19 @@ function läggTillDagar(datum: string, dagar: number) {
   const d = new Date(`${datum}T12:00:00`);
   d.setDate(d.getDate() + dagar);
   return isoDatum(d);
+}
+
+function standardKalenderDatum() {
+  const idag = new Date();
+  const veckodag = idag.getDay();
+
+  if (veckodag === 6 || veckodag === 0) {
+    const nastaMandag = new Date(idag);
+    nastaMandag.setDate(idag.getDate() + (veckodag === 6 ? 2 : 1));
+    return isoDatum(nastaMandag);
+  }
+
+  return isoDatum(idag);
 }
 
 function veckonummer(datum: string) {
@@ -887,7 +900,7 @@ export default function Franvaro() {
   const [sidFel, setSidFel] = useState('');
   const [sök, setSök] = useState('');
   const [visaLista, setVisaLista] = useState(false);
-  const [kalenderDatum, setKalenderDatum] = useState(datumIdag());
+  const [kalenderDatum, setKalenderDatum] = useState(standardKalenderDatum());
 
   useEffect(() => { ladda(); }, []);
 
@@ -1163,7 +1176,7 @@ export default function Franvaro() {
               <PeriodIkon typ="föregående" />
               <span className="hidden min-[390px]:inline">Föregående</span>
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(datumIdag())}>
+            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(standardKalenderDatum())}>
               <PeriodIkon typ="idag" />
               <span>Idag</span>
             </Button>
