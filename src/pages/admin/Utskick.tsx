@@ -71,7 +71,7 @@ function standardIngress() {
     'God morgon,',
     'här är frånvaron för {datum}',
     '',
-    'Vi påminner om rutinen att medarbetares frånvaroanmälan vid VAB och sjukdom görs till Nima (+ närmsta chef) via sms till nummer: 070-087 63 05 före kl. 07.00. Du återkommer till mig senast kl. 14.00 dagen innan du beräknar vara i tjänst eller fortsatt sjuk.',
+    'Vi påminner om gällande rutin för frånvaroanmälan. Anpassa den här texten under Fasta uppgifter innan utskicket används.',
   ].join('\n');
 }
 

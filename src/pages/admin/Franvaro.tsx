@@ -688,8 +688,21 @@ function FrånvaroModal({
               <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
             </div>
           )}
-          <Input label="Orsak" value={orsak} onChange={(e) => setOrsak(e.target.value)} placeholder="Sjuk, VAB, ledig..." />
-          <Textarea label="Anteckning" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} />
+          <Input
+            label="Kategori, valfri"
+            value={orsak}
+            onChange={(e) => setOrsak(e.target.value)}
+            placeholder="Frånvaro, ledig eller annan kort kategori"
+          />
+          <Textarea
+            label="Intern anteckning, valfri"
+            value={anteckning}
+            onChange={(e) => setAnteckning(e.target.value)}
+            placeholder="Skriv bara det som behövs för bemanningen."
+          />
+          <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}>
+            Dataminimering: skriv inte diagnoser, detaljer om hälsa eller andra känsliga uppgifter här om det inte är absolut nödvändigt.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
             <Button loading={laddar} onClick={registreraFrånvaro}>Spara</Button>
@@ -872,8 +885,21 @@ function RedigeraFrånvaroModal({
           </div>
         )}
 
-        <Input label="Orsak, valfritt" value={orsak} onChange={(e) => setOrsak(e.target.value)} />
-        <Textarea label="Anteckning, valfritt" value={anteckning} onChange={(e) => setAnteckning(e.target.value)} />
+        <Input
+          label="Kategori, valfri"
+          value={orsak}
+          onChange={(e) => setOrsak(e.target.value)}
+          placeholder="Frånvaro, ledig eller annan kort kategori"
+        />
+        <Textarea
+          label="Intern anteckning, valfri"
+          value={anteckning}
+          onChange={(e) => setAnteckning(e.target.value)}
+          placeholder="Skriv bara det som behövs för bemanningen."
+        />
+        <p className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)', background: 'var(--bg-card)' }}>
+          Dataminimering: skriv inte diagnoser, detaljer om hälsa eller andra känsliga uppgifter här om det inte är absolut nödvändigt.
+        </p>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
