@@ -5,7 +5,6 @@ import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
 
 const huvudNavItems = [
-  { to: '/admin', label: 'Start', icon: 'home', end: true },
   { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
   { to: '/admin/vikariepass', label: 'Bemanning', icon: 'board' },
   { to: '/admin/utskick', label: 'Utskick', icon: 'mail' },

@@ -12,7 +12,6 @@ import Login from './pages/auth/Login';
 import NyttLosenord from './pages/auth/NyttLosenord';
 
 // Admin pages
-import Dashboard from './pages/admin/Dashboard';
 import Register from './pages/admin/Register';
 import Arbetslag from './pages/admin/Arbetslag';
 import Vikarier from './pages/admin/Vikarier';
@@ -80,7 +79,7 @@ export default function App() {
               </AdminGuard>
             }
           >
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/admin/vikariepass" replace />} />
             <Route path="register" element={<Register />}>
               <Route index element={<Navigate to="/admin/register/vikarier" replace />} />
               <Route path="vikarier" element={<Vikarier />} />
