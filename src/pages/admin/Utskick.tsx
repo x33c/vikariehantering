@@ -30,6 +30,21 @@ function läggTillDagar(datum: Date, dagar: number) {
   return d;
 }
 
+function standardVeckaStart() {
+  const idag = new Date();
+  const veckodag = idag.getDay() || 7;
+  const start = new Date(idag);
+
+  if (veckodag >= 6) {
+    start.setDate(idag.getDate() + (8 - veckodag));
+  } else {
+    start.setDate(idag.getDate() - veckodag + 1);
+  }
+
+  start.setHours(12, 0, 0, 0);
+  return iso(start);
+}
+
 function veckaNummer(datum: Date) {
   const d = new Date(Date.UTC(datum.getFullYear(), datum.getMonth(), datum.getDate()));
   const dag = d.getUTCDay() || 7;
@@ -426,7 +441,7 @@ function byggHtml({
 }
 
 export default function Utskick() {
-  const [veckaStart, setVeckaStart] = useState(() => iso(startPåVecka(new Date())));
+  const [veckaStart, setVeckaStart] = useState(() => standardVeckaStart());
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
@@ -712,7 +727,7 @@ export default function Utskick() {
             <PeriodIkon typ="föregående" />
             <span className="hidden min-[390px]:inline">Föregående</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setVeckaStart(iso(startPåVecka(new Date())))}>
+          <Button variant="secondary" size="sm" onClick={() => setVeckaStart(standardVeckaStart())}>
             <PeriodIkon typ="idag" />
             <span>Idag</span>
           </Button>
