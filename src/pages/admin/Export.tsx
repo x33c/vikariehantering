@@ -8,7 +8,7 @@ type ExportTyp = 'franvaro' | 'pass';
 type ExportFormat = 'csv' | 'json';
 
 const EXPORT_TYPER: { id: ExportTyp; titel: string; text: string }[] = [
-  { id: 'franvaro', titel: 'Frånvaro', text: 'Personal, datum, typ, orsak och anteckningar.' },
+  { id: 'franvaro', titel: 'Frånvaro', text: 'Personal, datum, typ och anteckningar.' },
   { id: 'pass', titel: 'Vikariepass', text: 'Datum, tider, grupp, status och tillsatt vikarie.' },
 ];
 
@@ -78,7 +78,7 @@ function passVikarie(pass: Vikariepass, vikarier: Vikarie[]) {
 
 function frånvaroCsv(frånvaro: Frånvaro[]) {
   return byggCsv(
-    ['Personal', 'Arbetslag', 'Från', 'Till', 'Typ', 'Tid', 'Orsak', 'Anteckning'],
+    ['Personal', 'Arbetslag', 'Från', 'Till', 'Typ', 'Tid', 'Anteckning'],
     frånvaro.map((f) => [
       personalNamn(f),
       f.personal?.arbetslag?.namn ?? '',
@@ -86,7 +86,6 @@ function frånvaroCsv(frånvaro: Frånvaro[]) {
       f.datum_till,
       f.hel_dag ? 'Heldag' : 'Del av dag',
       f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`,
-      f.orsak ?? '',
       f.anteckning ?? '',
     ])
   );
@@ -321,7 +320,7 @@ export default function Export() {
                         <div key={f.id} className="text-sm">
                           <p className="font-semibold" style={{ color: 'var(--text)' }}>{personalNamn(f)}</p>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`} {f.orsak ? `· ${f.orsak}` : ''}
+                            {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
                           </p>
                         </div>
                       ))}

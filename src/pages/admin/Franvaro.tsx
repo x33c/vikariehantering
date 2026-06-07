@@ -369,7 +369,6 @@ function FrånvaroModal({
   const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
   const [tidFrån, setTidFrån] = useState(STANDARD_TID_FRÅN);
   const [tidTill, setTidTill] = useState(STANDARD_TID_TILL);
-  const [orsak, setOrsak] = useState('');
   const [anteckning, setAnteckning] = useState('');
   const [steg, setSteg] = useState<'formulär' | 'pass'>('formulär');
   const [schemarader, setSchemarader] = useState<Schemarad[]>([]);
@@ -464,7 +463,7 @@ function FrånvaroModal({
       hel_dag: helDag,
       tid_från: helDag ? null : tidFrån,
       tid_till: helDag ? null : tidTill,
-      orsak: orsak || null,
+      orsak: null,
       anteckning: [
         anteckning.trim() || null,
         ingenVikarieBehövs ? 'Ingen vikarie behövs' : null,
@@ -688,12 +687,6 @@ function FrånvaroModal({
               <Input label="Till" type="time" value={tidTill} onChange={(e) => setTidTill(e.target.value)} />
             </div>
           )}
-          <Input
-            label="Kategori, valfri"
-            value={orsak}
-            onChange={(e) => setOrsak(e.target.value)}
-            placeholder="Frånvaro, ledig eller annan kort kategori"
-          />
           <Textarea
             label="Intern anteckning, valfri"
             value={anteckning}
@@ -784,7 +777,6 @@ function RedigeraFrånvaroModal({
   const [ingenVikarieBehövs, setIngenVikarieBehövs] = useState(false);
   const [tidFrån, setTidFrån] = useState(STANDARD_TID_FRÅN);
   const [tidTill, setTidTill] = useState(STANDARD_TID_TILL);
-  const [orsak, setOrsak] = useState('');
   const [anteckning, setAnteckning] = useState('');
   const [sparar, setSparar] = useState(false);
   const [fel, setFel] = useState('');
@@ -806,7 +798,6 @@ function RedigeraFrånvaroModal({
     setIngenVikarieBehövs(markeradIngenVikarie);
     setTidFrån(tid(frånvaro.tid_från) || STANDARD_TID_FRÅN);
     setTidTill(tid(frånvaro.tid_till) || STANDARD_TID_TILL);
-    setOrsak(frånvaro.orsak ?? '');
     setAnteckning(synligAnteckning);
     setFel('');
   }, [frånvaro]);
@@ -828,7 +819,7 @@ function RedigeraFrånvaroModal({
       hel_dag: helDag,
       tid_från: helDag ? null : tidFrån,
       tid_till: helDag ? null : tidTill,
-      orsak: orsak || null,
+      orsak: null,
       anteckning: [
         anteckning.trim() || null,
         ingenVikarieBehövs ? 'Ingen vikarie behövs' : null,
@@ -885,12 +876,6 @@ function RedigeraFrånvaroModal({
           </div>
         )}
 
-        <Input
-          label="Kategori, valfri"
-          value={orsak}
-          onChange={(e) => setOrsak(e.target.value)}
-          placeholder="Frånvaro, ledig eller annan kort kategori"
-        />
         <Textarea
           label="Intern anteckning, valfri"
           value={anteckning}
@@ -1080,7 +1065,7 @@ export default function Franvaro() {
         return (
           f.personal?.namn.toLowerCase().includes(term) ||
           f.personal?.arbetslag?.namn.toLowerCase().includes(term) ||
-          f.orsak?.toLowerCase().includes(term)
+          synligFrånvaroAnteckning(f.anteckning).toLowerCase().includes(term)
         );
       })
     : frånvaron;
@@ -1144,7 +1129,7 @@ export default function Franvaro() {
             <span className="sr-only">Sök frånvaro</span>
             <input
               type="search"
-              placeholder="Sök personal, arbetslag eller orsak"
+              placeholder="Sök personal, arbetslag eller anteckning"
               value={sök}
               onChange={(e) => setSök(e.target.value)}
               className="min-h-10 w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2"
@@ -1270,7 +1255,6 @@ export default function Franvaro() {
 
                             <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                               {frånvaro.hel_dag ? 'Heldag' : `${tid(frånvaro.tid_från)}-${tid(frånvaro.tid_till)}`}
-                              {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
                             </p>
 
                             <div className="mt-3 grid grid-cols-2 gap-1.5 min-[420px]:gap-2">
@@ -1355,7 +1339,6 @@ export default function Franvaro() {
 
                           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
                             {frånvaro.hel_dag ? 'Heldag' : `${tid(frånvaro.tid_från)}-${tid(frånvaro.tid_till)}`}
-                            {frånvaro.orsak ? ` · ${frånvaro.orsak}` : ''}
                           </p>
 
                           <div className="mt-3 grid grid-cols-2 gap-1.5 2xl:flex 2xl:flex-wrap 2xl:items-center">
@@ -1450,12 +1433,6 @@ export default function Franvaro() {
                       {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
                     </span>
                   </div>
-                  {f.orsak && (
-                    <div className="flex justify-between gap-3">
-                      <span>Orsak</span>
-                      <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{f.orsak}</span>
-                    </div>
-                  )}
                   {(() => {
                     const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f));
                     return (
@@ -1492,7 +1469,6 @@ export default function Franvaro() {
                   <th className="px-4 py-3 text-left font-medium">Datum</th>
                   <th className="px-4 py-3 text-left font-medium">Typ</th>
                   <th className="px-4 py-3 text-left font-medium">Bemanning</th>
-                  <th className="hidden px-4 py-3 text-left font-medium lg:table-cell">Orsak</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -1515,7 +1491,6 @@ export default function Franvaro() {
                         );
                       })()}
                     </td>
-                    <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{f.orsak ?? '-'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button size="sm" variant="secondary" loading={löserFrånvaroId === f.id} onClick={() => växlaLöstFrånvaro(f)}>

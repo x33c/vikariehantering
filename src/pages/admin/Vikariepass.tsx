@@ -1006,7 +1006,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const visadFrånvaro = pass.frånvaro ?? matchandeFrånvaro;
   const harFrånvaro = !!pass.frånvaro_id || !!visadFrånvaro;
   const frånvaroText = visadFrånvaro
-    ? `${visadFrånvaro.hel_dag ? 'Heldag' : `${visadFrånvaro.tid_från?.slice(0, 5) ?? ''}-${visadFrånvaro.tid_till?.slice(0, 5) ?? ''}`}${visadFrånvaro.orsak ? ` · ${visadFrånvaro.orsak}` : ''}`
+    ? (visadFrånvaro.hel_dag ? 'Heldag' : `${visadFrånvaro.tid_från?.slice(0, 5) ?? ''}-${visadFrånvaro.tid_till?.slice(0, 5) ?? ''}`)
     : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro';
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const harAktivFörfrågan = pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id;
@@ -1455,7 +1455,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
     tid_från: STANDARD_TID_FRÅN, tid_till: STANDARD_TID_TILL, grupp: '', anteckning: '', publicerad: false,
     veckopass: false,
-    registreraFrånvaro: false, frånvaroOrsak: '', frånvaroHelDag: true,
+    registreraFrånvaro: false, frånvaroHelDag: true,
   });
   const [laddar, setLaddar] = useState(false);
   const [hämtarSchema, setHämtarSchema] = useState(false);
@@ -1479,7 +1479,6 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
         tid_från: harFrånvaroTid ? frånvaroStart : prev.tid_från,
         tid_till: harFrånvaroTid ? frånvaroSlut : prev.tid_till,
         grupp: förvaldFrånvaro.personal?.arbetslag?.namn ?? prev.grupp,
-        frånvaroOrsak: förvaldFrånvaro.orsak ?? '',
         frånvaroHelDag: förvaldFrånvaro.hel_dag,
         registreraFrånvaro: false,
       }));
@@ -1614,7 +1613,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
           hel_dag: form.frånvaroHelDag,
           tid_från: form.frånvaroHelDag ? null : dag.tid_från,
           tid_till: form.frånvaroHelDag ? null : dag.tid_till,
-          orsak: form.frånvaroOrsak || null,
+          orsak: null,
           anteckning: form.anteckning || null,
           skapad_av: null,
         });
@@ -1821,14 +1820,8 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
             </label>
 
             {form.registreraFrånvaro && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
-                <Input
-                  label="Orsak, valfritt"
-                  value={form.frånvaroOrsak}
-                  onChange={e => setForm({ ...form, frånvaroOrsak: e.target.value })}
-                  placeholder="Sjuk, VAB, ledig..."
-                />
-                <label className="flex items-center gap-2 self-end rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
+              <div className="mt-3">
+                <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--text)' }}>
                   <input
                     type="checkbox"
                     checked={form.frånvaroHelDag}
