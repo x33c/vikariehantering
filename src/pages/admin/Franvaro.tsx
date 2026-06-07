@@ -1094,7 +1094,7 @@ export default function Franvaro() {
   if (laddar) return <LaddaSida />;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto px-2 pb-24 pt-2 overscroll-contain sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
+    <div className="flex min-h-full flex-col px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5">
       <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>
