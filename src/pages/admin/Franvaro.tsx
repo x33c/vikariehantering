@@ -924,7 +924,7 @@ export default function Franvaro() {
       vikariApi.lista(),
       passApi.lista(),
     ]);
-    setFrånvaron((fRes.data ?? []) as Frånvaro[]);
+    setFrånvaron(((fRes.data ?? []) as Frånvaro[]).filter((f) => !ärLöstFrånvaro(f)));
     setPersonal((pRes.data ?? []) as Personal[]);
     setVikarier((vRes.data ?? []) as Vikarie[]);
     setVikariepass((passRes.data ?? []) as Vikariepass[]);

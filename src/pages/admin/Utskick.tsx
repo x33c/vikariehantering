@@ -118,8 +118,36 @@ function cellKey(datum: string, typ: UtskickTyp) {
   return `${datum}:${typ}`;
 }
 
+const LOST_FRANVARO_MARKER = '[admin:franvaro-lost]';
+const LOST_FRANVARO_DATUM_PREFIX = '[admin:franvaro-lost:';
+
+function datumIntervall(start: string, slut: string) {
+  const datum: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    datum.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 1);
+  }
+
+  return datum;
+}
+
+function frånvaroÄrLöstFörDag(frånvaro: Frånvaro, dag: string) {
+  const rader = (frånvaro.anteckning ?? '').split('\n').map((rad) => rad.trim());
+  if (rader.includes(`${LOST_FRANVARO_DATUM_PREFIX}${dag}]`)) return true;
+
+  const helArkiverad = rader.includes(LOST_FRANVARO_MARKER);
+  if (!helArkiverad) return false;
+
+  return datumIntervall(frånvaro.datum_från, frånvaro.datum_till).every((datum) =>
+    rader.includes(`${LOST_FRANVARO_DATUM_PREFIX}${datum}]`)
+  );
+}
+
 function frånvaroFörDag(frånvaro: Frånvaro[], dag: string) {
-  return frånvaro.filter((f) => f.datum_från <= dag && f.datum_till >= dag);
+  return frånvaro.filter((f) => f.datum_från <= dag && f.datum_till >= dag && !frånvaroÄrLöstFörDag(f, dag));
 }
 
 function passFörDag(pass: Vikariepass[], dag: string) {
