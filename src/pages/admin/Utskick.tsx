@@ -560,6 +560,8 @@ export default function Utskick() {
   }
 
   function textFörCell(datum: string, typ: CellTyp) {
+    if (typ === 'franvaro') return grundText(datum, typ);
+
     const key = cellKey(datum, typ);
     return key in celler ? celler[key] : grundText(datum, typ);
   }
