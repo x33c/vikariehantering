@@ -254,6 +254,14 @@ function sorteraPass(a: Vikariepass, b: Vikariepass) {
   );
 }
 
+function sorteraFrånvaro(a: Frånvaro, b: Frånvaro) {
+  return (
+    arbetslagSortIndex(a.personal?.arbetslag?.namn) - arbetslagSortIndex(b.personal?.arbetslag?.namn) ||
+    (a.personal?.namn ?? '').localeCompare(b.personal?.namn ?? '', 'sv') ||
+    tid(a.tid_från).localeCompare(tid(b.tid_från))
+  );
+}
+
 type NamnFormatter = (namn?: string | null, fallback?: string) => string;
 
 function skapaNamnFormatter(namn: Array<string | null | undefined>): NamnFormatter {
@@ -536,6 +544,7 @@ export default function Utskick() {
 
     if (typ === 'franvaro') {
       return frånvaroFörDag(frånvaroKälla, datum)
+        .sort(sorteraFrånvaro)
         .map((f) => frånvaroText(f, namnFormatter.personalNamn))
         .join('\n');
     }
