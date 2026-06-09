@@ -595,7 +595,7 @@ export default function Utskick() {
   }
 
   function textFörCell(datum: string, typ: CellTyp) {
-    if (typ === 'franvaro') return grundText(datum, typ);
+    if (typ === 'franvaro' || typ === 'vikarie') return grundText(datum, typ);
 
     const key = cellKey(datum, typ);
     return key in celler ? celler[key] : grundText(datum, typ);
@@ -686,7 +686,7 @@ export default function Utskick() {
         const key = cellKey(datum, typ);
         const gammalText = nästa[key] ?? '';
         const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier, nyPersonal);
-        const uppdateradText = typ === 'franvaro' ? nyText : slåIhopText(gammalText, nyText, typ);
+        const uppdateradText = nyText;
         if (uppdateradText !== gammalText) {
           ändrade += 1;
           detaljer.push(`${kortDatum(dag)} · ${typ === 'franvaro' ? 'Frånvaro' : 'Vikarie'}`);
