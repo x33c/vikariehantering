@@ -183,9 +183,16 @@ function slåIhopText(befintlig: string, nyText: string, typ: CellTyp) {
             (nyttHarGrupp || vikarieBlockHarGrupp(block))
           )
         : -1;
+      const personGruppIndex = nyttNyckel && !nyttBlock.toLowerCase().startsWith('vikarie saknas')
+        ? befintligaBlock.findIndex((block) =>
+            !block.toLowerCase().startsWith('vikarie saknas') && vikarieBlockNyckel(block) === nyttNyckel
+          )
+        : -1;
 
       if (ersättIndex !== -1) {
         befintligaBlock[ersättIndex] = nyttBlock;
+      } else if (personGruppIndex !== -1) {
+        befintligaBlock[personGruppIndex] = nyttBlock;
       } else if (dubblettIndex !== -1) {
         if (nyttHarGrupp || !vikarieBlockHarGrupp(befintligaBlock[dubblettIndex])) {
           befintligaBlock[dubblettIndex] = nyttBlock;
