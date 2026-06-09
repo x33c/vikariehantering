@@ -351,7 +351,7 @@ function SchemaVal({
 }
 
 function FrånvaroModal({
-  öppen, onStäng, personal, vikarier, frånvaron, valtPersonalId, onRegistrerad,
+  öppen, onStäng, personal, vikarier, frånvaron, valtPersonalId, förvaltDatum, onRegistrerad,
 }: {
   öppen: boolean;
   onStäng: () => void;
@@ -359,6 +359,7 @@ function FrånvaroModal({
   vikarier: Vikarie[];
   frånvaron: Frånvaro[];
   valtPersonalId?: string;
+  förvaltDatum?: string;
   onRegistrerad: () => void;
 }) {
   const [personalId, setPersonalId] = useState(valtPersonalId ?? '');
@@ -383,8 +384,9 @@ function FrånvaroModal({
     if (!öppen) return;
     setPersonalId(valtPersonalId ?? '');
     setEgenPersonalNamn('');
-    setDatumFrån(datumIdag());
-    setDatumTill(datumIdag());
+    const startDatum = förvaltDatum ?? datumIdag();
+    setDatumFrån(startDatum);
+    setDatumTill(startDatum);
     setHelDag(true);
     setIngenVikarieBehövs(false);
     setSteg('formulär');
@@ -392,7 +394,7 @@ function FrånvaroModal({
     setSchemarader([]);
     setValda(new Set());
     setValdVikarieId('');
-  }, [öppen, valtPersonalId]);
+  }, [öppen, valtPersonalId, förvaltDatum]);
 
   async function registreraFrånvaro() {
     const egetNamn = egenPersonalNamn.trim();
@@ -903,7 +905,7 @@ export default function Franvaro() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [vikariepass, setVikariepass] = useState<Vikariepass[]>([]);
   const [laddar, setLaddar] = useState(true);
-  const [modal, setModal] = useState<{ öppen: boolean; personalId?: string }>({ öppen: false });
+  const [modal, setModal] = useState<{ öppen: boolean; personalId?: string; datum?: string }>({ öppen: false });
   const [raderaId, setRaderaId] = useState<string | null>(null);
   const [skaparPassId, setSkaparPassId] = useState<string | null>(null);
   const [löserFrånvaroId, setLöserFrånvaroId] = useState<string | null>(null);
@@ -1221,6 +1223,15 @@ export default function Franvaro() {
                         {dagensFrånvaro.length > 0 ? `${dagensFrånvaro.length} frånvaro` : 'Ingen frånvaro'}
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setModal({ öppen: true, datum: dag })}
+                      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2"
+                      style={{ background: 'var(--accent)' }}
+                      aria-label={`Registrera frånvaro ${kortDatum(dag)}`}
+                    >
+                      + Frånvaro
+                    </button>
                   </div>
 
                   {dagensFrånvaro.length === 0 ? (
@@ -1301,6 +1312,15 @@ export default function Franvaro() {
                     <p className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(dag)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{dagensFrånvaro.length} frånvaro</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setModal({ öppen: true, datum: dag })}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-white opacity-80 shadow-sm transition hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2"
+                    style={{ background: 'var(--accent)' }}
+                    aria-label={`Registrera frånvaro ${kortDatum(dag)}`}
+                  >
+                    + Frånvaro
+                  </button>
                 </div>
 
                 {dagensFrånvaro.length === 0 ? (
@@ -1529,6 +1549,7 @@ export default function Franvaro() {
         vikarier={vikarier}
         frånvaron={frånvaron}
         valtPersonalId={modal.personalId}
+        förvaltDatum={modal.datum}
         onRegistrerad={ladda}
       />
 
