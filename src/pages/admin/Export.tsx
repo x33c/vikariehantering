@@ -4,13 +4,8 @@ import type { Frånvaro, PassStatus, Vikarie, Vikariepass } from '../../types';
 import { PASS_STATUS_LABELS } from '../../types';
 import { Alert, Button, Input, LaddaSida } from '../../components/ui';
 
-type ExportTyp = 'franvaro' | 'pass';
-type ExportFormat = 'csv' | 'json';
-
-const EXPORT_TYPER: { id: ExportTyp; titel: string; text: string }[] = [
-  { id: 'franvaro', titel: 'Frånvaro', text: 'Personal, datum, typ och anteckningar.' },
-  { id: 'pass', titel: 'Vikariepass', text: 'Datum, tider, grupp, status och tillsatt vikarie.' },
-];
+const LOST_FRANVARO_MARKER = '[admin:franvaro-lost]';
+const LOST_FRANVARO_DATUM_PREFIX = '[admin:franvaro-lost:';
 
 function datumIdag() {
   return new Date().toISOString().slice(0, 10);
@@ -20,6 +15,30 @@ function läggTillDagar(datum: string, dagar: number) {
   const d = new Date(`${datum}T12:00:00`);
   d.setDate(d.getDate() + dagar);
   return d.toISOString().slice(0, 10);
+}
+
+function startPåVecka(datum: string) {
+  const d = new Date(`${datum}T12:00:00`);
+  const dag = d.getDay() || 7;
+  d.setDate(d.getDate() - dag + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function slutPåVecka(datum: string) {
+  return läggTillDagar(startPåVecka(datum), 4);
+}
+
+function datumIntervall(start: string, slut: string) {
+  const datum: string[] = [];
+  const aktuell = new Date(`${start}T12:00:00`);
+  const sista = new Date(`${slut}T12:00:00`);
+
+  while (aktuell <= sista) {
+    datum.push(aktuell.toISOString().slice(0, 10));
+    aktuell.setDate(aktuell.getDate() + 1);
+  }
+
+  return datum;
 }
 
 function svDatum(datum?: string | null) {
@@ -47,8 +66,8 @@ function byggCsv(headers: string[], rows: unknown[][]) {
     .join('\n');
 }
 
-function laddaNerFil(namn: string, innehåll: string, mime: string) {
-  const blob = new Blob([innehåll], { type: `${mime};charset=utf-8` });
+function laddaNerFil(namn: string, innehåll: string) {
+  const blob = new Blob([`\uFEFF${innehåll}`], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -63,6 +82,27 @@ function statusText(status: PassStatus) {
   return PASS_STATUS_LABELS[status] ?? status;
 }
 
+function frånvaroÄrLöstFörDag(frånvaro: Frånvaro, dag: string) {
+  const rader = (frånvaro.anteckning ?? '').split('\n').map((rad) => rad.trim());
+  if (rader.includes(`${LOST_FRANVARO_DATUM_PREFIX}${dag}]`)) return true;
+
+  const helArkiverad = rader.includes(LOST_FRANVARO_MARKER);
+  if (!helArkiverad) return false;
+
+  return datumIntervall(frånvaro.datum_från, frånvaro.datum_till).every((datum) =>
+    rader.includes(`${LOST_FRANVARO_DATUM_PREFIX}${datum}]`)
+  );
+}
+
+function frånvaroFörPeriod(frånvaro: Frånvaro[], datumFrån: string, datumTill: string) {
+  const dagar = datumIntervall(datumFrån, datumTill);
+  return frånvaro.flatMap((f) =>
+    dagar
+      .filter((dag) => f.datum_från <= dag && f.datum_till >= dag && !frånvaroÄrLöstFörDag(f, dag))
+      .map((dag) => ({ ...f, exportDatum: dag }))
+  );
+}
+
 function personalNamn(frånvaro: Frånvaro) {
   return frånvaro.personal?.namn ?? 'Okänd personal';
 }
@@ -73,51 +113,71 @@ function passPersonal(pass: Vikariepass) {
 
 function passVikarie(pass: Vikariepass, vikarier: Vikarie[]) {
   if (!pass.vikarie_id) return '';
-  return vikarier.find((v) => v.id === pass.vikarie_id)?.namn ?? pass.vikarie_id;
+  return vikarier.find((v) => v.id === pass.vikarie_id)?.namn ?? pass.vikarie?.namn ?? '';
 }
 
-function frånvaroCsv(frånvaro: Frånvaro[]) {
+function passGrupp(pass: Vikariepass) {
+  return pass.grupp ?? pass.personal?.arbetslag?.namn ?? '';
+}
+
+function arbetslagSortIndex(value?: string | null) {
+  const text = (value ?? '').toLowerCase().replace(/\s+/g, '');
+  if (!text) return 99;
+  if (text.includes('fsk') || text.includes('förskole') || text.includes('forskole')) return 0;
+  const match = text.match(/(?:åk\.?|ak\.?)?([1-6])/) ?? text.match(/^([1-6])/);
+  if (match) return Number(match[1]);
+  if (text.includes('prest')) return 7;
+  return 99;
+}
+
+function sorteraFrånvaro(a: Frånvaro & { exportDatum: string }, b: Frånvaro & { exportDatum: string }) {
+  return a.exportDatum.localeCompare(b.exportDatum)
+    || arbetslagSortIndex(a.personal?.arbetslag?.namn) - arbetslagSortIndex(b.personal?.arbetslag?.namn)
+    || personalNamn(a).localeCompare(personalNamn(b), 'sv');
+}
+
+function sorteraPass(a: Vikariepass, b: Vikariepass) {
+  return a.datum.localeCompare(b.datum)
+    || arbetslagSortIndex(passGrupp(a)) - arbetslagSortIndex(passGrupp(b))
+    || tid(a.tid_från).localeCompare(tid(b.tid_från))
+    || passPersonal(a).localeCompare(passPersonal(b), 'sv');
+}
+
+function frånvaroCsv(frånvaro: Array<Frånvaro & { exportDatum: string }>) {
   return byggCsv(
-    ['Personal', 'Arbetslag', 'Från', 'Till', 'Typ', 'Tid', 'Anteckning'],
-    frånvaro.map((f) => [
+    ['Datum', 'Personal', 'Arbetslag', 'Omfattning', 'Tid'],
+    frånvaro.sort(sorteraFrånvaro).map((f) => [
+      f.exportDatum,
       personalNamn(f),
       f.personal?.arbetslag?.namn ?? '',
-      f.datum_från,
-      f.datum_till,
       f.hel_dag ? 'Heldag' : 'Del av dag',
-      f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`,
-      f.anteckning ?? '',
+      f.hel_dag ? '' : `${tid(f.tid_från)}-${tid(f.tid_till)}`,
     ])
   );
 }
 
 function passCsv(pass: Vikariepass[], vikarier: Vikarie[]) {
   return byggCsv(
-    ['Datum', 'Tid', 'Ersätter', 'Grupp', 'Ämne', 'Vikarie', 'Status', 'Publicerad', 'Anteckning'],
-    pass.map((p) => [
+    ['Datum', 'Tid', 'Ersätter', 'Grupp', 'Vikarie', 'Status'],
+    pass.sort(sorteraPass).map((p) => [
       p.datum,
       `${tid(p.tid_från)}-${tid(p.tid_till)}`,
       passPersonal(p),
-      p.grupp ?? p.personal?.arbetslag?.namn ?? '',
-      p.ämne ?? '',
+      passGrupp(p),
       passVikarie(p, vikarier),
       statusText(p.status),
-      p.publicerad ? 'Ja' : 'Nej',
-      p.anteckning ?? '',
     ])
   );
 }
 
 export default function Export() {
-  const [datumFrån, setDatumFrån] = useState(() => datumIdag());
-  const [datumTill, setDatumTill] = useState(() => läggTillDagar(datumIdag(), 14));
-  const [valdaTyper, setValdaTyper] = useState<Set<ExportTyp>>(() => new Set(['franvaro', 'pass']));
-  const [format, setFormat] = useState<ExportFormat>('csv');
+  const [datumFrån, setDatumFrån] = useState(() => startPåVecka(datumIdag()));
+  const [datumTill, setDatumTill] = useState(() => slutPåVecka(datumIdag()));
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
-  const [exporterar, setExporterar] = useState(false);
+  const [exporterar, setExporterar] = useState<'franvaro' | 'pass' | null>(null);
   const [fel, setFel] = useState('');
 
   useEffect(() => {
@@ -149,67 +209,65 @@ export default function Export() {
     return () => { aktiv = false; };
   }, [datumFrån, datumTill]);
 
-  const grupperat = useMemo(() => {
-    const dagar = new Map<string, { frånvaro: Frånvaro[]; pass: Vikariepass[] }>();
-
-    function säkerDag(datum: string) {
-      if (!dagar.has(datum)) dagar.set(datum, { frånvaro: [], pass: [] });
-      return dagar.get(datum)!;
-    }
-
-    frånvaro.forEach((f) => {
-      säkerDag(f.datum_från).frånvaro.push(f);
-    });
-
-    pass.forEach((p) => {
-      säkerDag(p.datum).pass.push(p);
-    });
-
-    return [...dagar.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [frånvaro, pass]);
-
+  const aktivFrånvaro = useMemo(
+    () => frånvaroFörPeriod(frånvaro, datumFrån, datumTill).sort(sorteraFrånvaro),
+    [frånvaro, datumFrån, datumTill]
+  );
+  const aktivaPass = useMemo(
+    () => pass.filter((p) => p.status !== 'avbokat').sort(sorteraPass),
+    [pass]
+  );
+  const bokadePass = useMemo(() => aktivaPass.filter((p) => !!p.vikarie_id), [aktivaPass]);
+  const saknarVikarie = aktivaPass.length - bokadePass.length;
   const exportNamn = `export_${datumFrån}_${datumTill}`;
-  const ingaVal = valdaTyper.size === 0;
 
-  function växlaTyp(typ: ExportTyp) {
-    setValdaTyper((prev) => {
-      const nästa = new Set(prev);
-      if (nästa.has(typ)) nästa.delete(typ);
-      else nästa.add(typ);
-      return nästa;
-    });
+  const dagar = useMemo(() => {
+    const map = new Map<string, { frånvaro: number; pass: number }>();
+    for (const dag of datumIntervall(datumFrån, datumTill)) map.set(dag, { frånvaro: 0, pass: 0 });
+    for (const f of aktivFrånvaro) {
+      const nu = map.get(f.exportDatum) ?? { frånvaro: 0, pass: 0 };
+      map.set(f.exportDatum, { ...nu, frånvaro: nu.frånvaro + 1 });
+    }
+    for (const p of aktivaPass) {
+      const nu = map.get(p.datum) ?? { frånvaro: 0, pass: 0 };
+      map.set(p.datum, { ...nu, pass: nu.pass + 1 });
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [aktivFrånvaro, aktivaPass, datumFrån, datumTill]);
+
+  function väljDennaVecka() {
+    const start = startPåVecka(datumIdag());
+    setDatumFrån(start);
+    setDatumTill(slutPåVecka(start));
   }
 
-  async function exportera() {
-    if (ingaVal) {
-      setFel('Välj minst en exporttyp.');
-      return;
-    }
+  function väljNästaVecka() {
+    const start = läggTillDagar(startPåVecka(datumIdag()), 7);
+    setDatumFrån(start);
+    setDatumTill(slutPåVecka(start));
+  }
 
-    setExporterar(true);
+  function exporteraFrånvaro() {
+    setExporterar('franvaro');
     setFel('');
-
     try {
-      if (format === 'json') {
-        const data = {
-          datum_från: datumFrån,
-          datum_till: datumTill,
-          frånvaro: valdaTyper.has('franvaro') ? frånvaro : undefined,
-          vikariepass: valdaTyper.has('pass') ? pass : undefined,
-        };
-        laddaNerFil(`${exportNamn}.json`, JSON.stringify(data, null, 2), 'application/json');
-      } else {
-        if (valdaTyper.has('franvaro')) {
-          laddaNerFil(`${exportNamn}_franvaro.csv`, frånvaroCsv(frånvaro), 'text/csv');
-        }
-        if (valdaTyper.has('pass')) {
-          laddaNerFil(`${exportNamn}_vikariepass.csv`, passCsv(pass, vikarier), 'text/csv');
-        }
-      }
+      laddaNerFil(`${exportNamn}_franvaro.csv`, frånvaroCsv([...aktivFrånvaro]));
     } catch (error) {
-      setFel(error instanceof Error ? error.message : 'Exporten kunde inte skapas.');
+      setFel(error instanceof Error ? error.message : 'Frånvaroexporten kunde inte skapas.');
     } finally {
-      setExporterar(false);
+      setExporterar(null);
+    }
+  }
+
+  function exporteraPass() {
+    setExporterar('pass');
+    setFel('');
+    try {
+      laddaNerFil(`${exportNamn}_bemanning.csv`, passCsv([...aktivaPass], vikarier));
+    } catch (error) {
+      setFel(error instanceof Error ? error.message : 'Bemanningsexporten kunde inte skapas.');
+    } finally {
+      setExporterar(null);
     }
   }
 
@@ -222,133 +280,91 @@ export default function Export() {
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Mer</p>
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--text)' }}>Export</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Hämta ut frånvaro och vikariepass som organiserade filer för arkiv, uppföljning eller vidare bearbetning.
+            Exportera det som behövs: frånvaro eller bemanning som CSV för Excel.
           </p>
         </div>
-        <Button onClick={exportera} loading={exporterar} disabled={ingaVal}>
-          Exportera
-        </Button>
       </div>
 
       {fel && <div className="mb-4"><Alert typ="error">{fel}</Alert></div>}
 
       <section className="mb-4 rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+        <div className="grid gap-3 xl:grid-cols-[1fr_auto] xl:items-end">
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="Från datum" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />
             <Input label="Till datum" type="date" value={datumTill} onChange={(e) => setDatumTill(e.target.value)} />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium" style={{ color: 'var(--text)' }}>Format</label>
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              className="w-full rounded-xl border px-3 py-2 text-sm"
-              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-            >
-              <option value="csv">CSV för Excel</option>
-              <option value="json">JSON</option>
-            </select>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+            <Button variant="secondary" onClick={väljDennaVecka}>Denna vecka</Button>
+            <Button variant="secondary" onClick={väljNästaVecka}>Nästa vecka</Button>
           </div>
-          <Button variant="secondary" onClick={() => { setDatumFrån(datumIdag()); setDatumTill(läggTillDagar(datumIdag(), 14)); }}>
-            Återställ datum
-          </Button>
         </div>
       </section>
 
-      <section className="mb-4 grid gap-3 md:grid-cols-2">
-        {EXPORT_TYPER.map((typ) => {
-          const aktiv = valdaTyper.has(typ.id);
-          const antal = typ.id === 'franvaro' ? frånvaro.length : pass.length;
+      <section className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Frånvaro</p>
+          <p className="mt-1 text-3xl font-semibold" style={{ color: 'var(--text)' }}>{aktivFrånvaro.length}</p>
+        </div>
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bemannade pass</p>
+          <p className="mt-1 text-3xl font-semibold" style={{ color: '#22c55e' }}>{bokadePass.length}</p>
+        </div>
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Saknar vikarie</p>
+          <p className="mt-1 text-3xl font-semibold" style={{ color: saknarVikarie > 0 ? '#f97316' : 'var(--text)' }}>{saknarVikarie}</p>
+        </div>
+      </section>
 
-          return (
-            <button
-              key={typ.id}
-              type="button"
-              onClick={() => växlaTyp(typ.id)}
-              className="rounded-2xl border p-4 text-left transition"
-              style={{
-                borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
-                background: aktiv ? 'color-mix(in srgb, var(--blue) 9%, var(--bg-card))' : 'var(--bg-card)',
-                color: 'var(--text)',
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{typ.titel}</p>
-                  <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{typ.text}</p>
-                </div>
-                <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: 'var(--hover)', color: aktiv ? 'var(--blue)' : 'var(--text-muted)' }}>
-                  {antal}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+      <section className="mb-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Frånvaro</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Datum, personal, arbetslag och omfattning. Löst/arkiverat tas inte med.
+          </p>
+          <div className="mt-4">
+            <Button onClick={exporteraFrånvaro} loading={exporterar === 'franvaro'}>
+              Exportera frånvaro
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Bemanning</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Datum, tid, ersätter, grupp, vikarie och status. Avbokade pass tas inte med.
+          </p>
+          <div className="mt-4">
+            <Button onClick={exporteraPass} loading={exporterar === 'pass'}>
+              Exportera bemanning
+            </Button>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Förhandsvisning</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Period</h2>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {svDatum(datumFrån)} till {svDatum(datumTill)}
           </p>
         </div>
 
-        {grupperat.length === 0 ? (
+        {dagar.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
             Ingen frånvaro eller bemanning hittades för perioden.
           </p>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {grupperat.map(([datum, dag]) => (
-              <div key={datum} className="grid gap-3 px-4 py-4 xl:grid-cols-[180px_1fr_1fr]">
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{svDatum(datum)}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {dag.frånvaro.length} frånvaro · {dag.pass.length} pass
-                  </p>
-                </div>
-
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Frånvaro</p>
-                  {dag.frånvaro.length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--text-subtle)' }}>Ingen frånvaro.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {dag.frånvaro.slice(0, 6).map((f) => (
-                        <div key={f.id} className="text-sm">
-                          <p className="font-semibold" style={{ color: 'var(--text)' }}>{personalNamn(f)}</p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {f.hel_dag ? 'Heldag' : `${tid(f.tid_från)}-${tid(f.tid_till)}`}
-                          </p>
-                        </div>
-                      ))}
-                      {dag.frånvaro.length > 6 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>+ {dag.frånvaro.length - 6} fler</p>}
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Vikariepass</p>
-                  {dag.pass.length === 0 ? (
-                    <p className="text-sm" style={{ color: 'var(--text-subtle)' }}>Inga pass.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {dag.pass.slice(0, 6).map((p) => (
-                        <div key={p.id} className="text-sm">
-                          <p className="font-semibold" style={{ color: 'var(--text)' }}>
-                            {passVikarie(p, vikarier) || 'Ingen vikarie'}
-                            <span className="font-normal" style={{ color: 'var(--text-muted)' }}> · {passPersonal(p)}</span>
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {tid(p.tid_från)}-{tid(p.tid_till)} · {p.grupp ?? 'Ingen grupp'} · {statusText(p.status)}
-                          </p>
-                        </div>
-                      ))}
-                      {dag.pass.length > 6 && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>+ {dag.pass.length - 6} fler</p>}
-                    </div>
-                  )}
+            {dagar.map(([datum, dag]) => (
+              <div key={datum} className="grid gap-2 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{svDatum(datum)}</p>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="rounded-full px-2.5 py-1" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+                    {dag.frånvaro} frånvaro
+                  </span>
+                  <span className="rounded-full px-2.5 py-1" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+                    {dag.pass} pass
+                  </span>
                 </div>
               </div>
             ))}
