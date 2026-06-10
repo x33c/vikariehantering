@@ -3,7 +3,7 @@ import { passApi, vikariApi, passmeddelandeApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie, Passmeddelande } from '../../types';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS } from '../../types';
-import { visaArskurs, visaKommentar, visaKortNamn } from '../../lib/display';
+import { visaGruppInfo, visaKommentar, visaKortNamn } from '../../lib/display';
 
 function idagIso() {
   const d = new Date();
@@ -50,6 +50,7 @@ function PassKort({
   onClick: () => void;
 }) {
   const kommentar = visaKommentar(pass.anteckning);
+  const gruppInfo = visaGruppInfo([pass.grupp]);
 
   return (
     <button
@@ -80,10 +81,10 @@ function PassKort({
             </span>
           </div>
         )}
-        <div className="flex justify-between gap-3">
-          <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
-          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>
-            {visaArskurs([pass.grupp])}
+        <div className="flex items-start justify-between gap-3">
+          <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>{gruppInfo.etikett}</span>
+          <span className="whitespace-pre-line text-right font-semibold" style={{ color: 'var(--text)' }}>
+            {gruppInfo.text}
           </span>
         </div>
       </div>
@@ -292,9 +293,9 @@ export default function MinaPass() {
                   <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{visaKortNamn(valtPass.personal?.namn)}</span>
                 </div>
               )}
-              <div className="flex justify-between gap-3">
-                <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
-                <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{visaArskurs([valtPass.grupp])}</span>
+              <div className="flex items-start justify-between gap-3">
+                <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>{visaGruppInfo([valtPass.grupp]).etikett}</span>
+                <span className="whitespace-pre-line text-right font-semibold" style={{ color: 'var(--text)' }}>{visaGruppInfo([valtPass.grupp]).text}</span>
               </div>
               {visaKommentar(valtPass.anteckning) && (
                 <p className="pt-2 text-sm" style={{ color: 'var(--text)' }}>{visaKommentar(valtPass.anteckning)}</p>

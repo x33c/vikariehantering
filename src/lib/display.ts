@@ -39,6 +39,16 @@ export function visaArskurs(grupper: Array<string | null | undefined>) {
   return 'Ej angiven årskurs';
 }
 
+export function visaGruppInfo(grupper: Array<string | null | undefined>) {
+  const unika = [...new Set(grupper.map((grupp) => grupp?.trim()).filter((grupp): grupp is string => !!grupp))];
+  const råtext = unika.join(' | ');
+  const detaljerad = unika.length > 1 || /[:|;\n]|\b(?:f\.?m\.?|e\.?m\.?|fr\.)\b/i.test(råtext);
+
+  return detaljerad
+    ? { etikett: 'Placering under dagen', text: råtext }
+    : { etikett: 'Årskurs', text: visaArskurs(grupper) };
+}
+
 export function visaKommentar(anteckning?: string | null) {
   const text = anteckning?.trim();
   if (!text) return null;

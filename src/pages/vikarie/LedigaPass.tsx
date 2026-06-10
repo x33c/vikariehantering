@@ -3,7 +3,7 @@ import { passApi, vikariApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import type { Vikariepass, Vikarie } from '../../types';
-import { visaArskurs, visaKortNamn } from '../../lib/display';
+import { visaGruppInfo, visaKortNamn } from '../../lib/display';
 
 interface Passgrupp {
   personal_id: string;
@@ -112,7 +112,7 @@ function PassKort({
 }) {
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
-  const arskurs = visaArskurs(grupp.pass.map(p => p.grupp));
+  const gruppInfo = visaGruppInfo(grupp.pass.map(p => p.grupp));
 
   return (
     <article
@@ -162,9 +162,9 @@ function PassKort({
             <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{grupp.personalNamn}</span>
           </div>
         )}
-        <div className="flex justify-between gap-3">
-          <span style={{ color: 'var(--text-muted)' }}>Årskurs</span>
-          <span className="text-right font-semibold" style={{ color: 'var(--text)' }}>{arskurs}</span>
+        <div className="flex items-start justify-between gap-3">
+          <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>{gruppInfo.etikett}</span>
+          <span className="whitespace-pre-line text-right font-semibold" style={{ color: 'var(--text)' }}>{gruppInfo.text}</span>
         </div>
       </div>
 
@@ -467,8 +467,12 @@ export default function LedigaPass() {
               <p className="mt-1 text-xl font-semibold" style={{ color: 'var(--text)' }}>
                 {bekräftaBokning.pass[0].tid_från.slice(0, 5)}-{bekräftaBokning.pass[bekräftaBokning.pass.length - 1].tid_till.slice(0, 5)}
               </p>
+              <div className="mt-3 rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{visaGruppInfo(bekräftaBokning.pass.map(p => p.grupp)).etikett}</p>
+                <p className="mt-1 whitespace-pre-line font-semibold" style={{ color: 'var(--text)' }}>{visaGruppInfo(bekräftaBokning.pass.map(p => p.grupp)).text}</p>
+              </div>
               {bekräftaBokning.personalNamn !== 'Okänd personal' && bekräftaBokning.personalNamn !== 'Fristående pass' && (
-                <p className="mt-1" style={{ color: 'var(--text-muted)' }}>
+                <p className="mt-2" style={{ color: 'var(--text-muted)' }}>
                   Vikarierar för <span className="font-semibold" style={{ color: 'var(--text)' }}>{bekräftaBokning.personalNamn}</span>
                 </p>
               )}
