@@ -280,10 +280,19 @@ function arbetslagSortIndex(value?: string | null) {
   return 99;
 }
 
+function arDetaljeradGrupptext(grupp?: string | null) {
+  const text = (grupp ?? '').trim();
+  return /[:|;\n]|\b(?:f\.?m\.?|e\.?m\.?|fr\.)\b/i.test(text);
+}
+
+function gruppForUtskick(pass: Vikariepass) {
+  if (arDetaljeradGrupptext(pass.grupp)) return pass.grupp;
+  return pass.personal?.arbetslag?.namn ?? pass.grupp;
+}
+
 function sorteraPass(a: Vikariepass, b: Vikariepass) {
   return (
-    arbetslagSortIndex(a.grupp ?? a.personal?.arbetslag?.namn) -
-      arbetslagSortIndex(b.grupp ?? b.personal?.arbetslag?.namn) ||
+    arbetslagSortIndex(gruppForUtskick(a)) - arbetslagSortIndex(gruppForUtskick(b)) ||
     (a.vikarie?.namn ?? a.personal?.namn ?? '').localeCompare(b.vikarie?.namn ?? b.personal?.namn ?? '', 'sv') ||
     tid(a.tid_från).localeCompare(tid(b.tid_från))
   );
@@ -381,7 +390,7 @@ function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById:
       ? `Tillfrågad: ${formatNamn(riktadVikarie)}`
       : 'Vikarie saknas';
 
-  const grupp = utskickGruppText(pass.grupp ?? pass.personal?.arbetslag?.namn);
+  const grupp = utskickGruppText(gruppForUtskick(pass));
   const gruppText = grupp ? ` - ${grupp}` : '';
   return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }
