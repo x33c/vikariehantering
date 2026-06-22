@@ -25,7 +25,7 @@ import type {
   VikarieTillgänglighet,
   Frånvaro, NyFrånvaro,
   Vikariepass, NyttVikariepass, UppdateraVikariepass, VikariepassExkludering,
-  PassStatus, HändelsTyp, Passmeddelande,
+  PassStatus, HändelsTyp, Passmeddelande, Tidsändringsstatus,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
 } from '../../types';
@@ -504,5 +504,76 @@ export const importApi = {
       if (res.error) return res;
     }
     return { data: null, error: null };
+  },
+};
+
+export const passTidsändringApi = {
+  async listaFörPass(passId: string) {
+    return supabase
+      .from('pass_tidsandringar')
+      .select('*, vikarie:vikarier(*)')
+      .eq('pass_id', passId)
+      .order('created_at', { ascending: false });
+  },
+  async hämtaSenasteFörPass(passId: string) {
+    return supabase
+      .from('pass_tidsandringar')
+      .select('*, vikarie:vikarier(*)')
+      .eq('pass_id', passId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  },
+  async sparaFörslag(data: {
+    pass_id: string;
+    vikarie_id: string;
+    foreslagen_tid_fran: string;
+    foreslagen_tid_till: string;
+    anledning: string;
+  }) {
+    const befintlig = await supabase
+      .from('pass_tidsandringar')
+      .select('id')
+      .eq('pass_id', data.pass_id)
+      .eq('vikarie_id', data.vikarie_id)
+      .eq('status', 'vantar')
+      .maybeSingle();
+
+    if (befintlig.error) return befintlig;
+
+    if (befintlig.data?.id) {
+      return supabase
+        .from('pass_tidsandringar')
+        .update({
+          foreslagen_tid_fran: data.foreslagen_tid_fran,
+          foreslagen_tid_till: data.foreslagen_tid_till,
+          anledning: data.anledning,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', befintlig.data.id)
+        .select('*, vikarie:vikarier(*)')
+        .single();
+    }
+
+    return supabase
+      .from('pass_tidsandringar')
+      .insert(data)
+      .select('*, vikarie:vikarier(*)')
+      .single();
+  },
+  async besluta(id: string, status: Exclude<Tidsändringsstatus, 'vantar'>) {
+    const { data: userRes } = await supabase.auth.getUser();
+    return supabase
+      .from('pass_tidsandringar')
+      .update({
+        status,
+        beslutad_av: userRes.user?.id ?? null,
+        beslutad_kl: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'vantar')
+      .select('*, vikarie:vikarier(*)')
+      .single();
   },
 };

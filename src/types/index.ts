@@ -16,6 +16,7 @@ export type NotisStatus = 'väntande' | 'skickat' | 'misslyckat';
 export type PassTyp = 'hel_dag' | 'del_av_dag';
 export type Matchningsstatus = 'matchad' | 'osäker' | 'omatchad' | 'ignorerad';
 export type UserRoll = 'admin' | 'vikarie';
+export type Tidsändringsstatus = 'vantar' | 'godkand' | 'avslagen';
 
 // ============================================================
 // Database row types
@@ -191,6 +192,21 @@ export interface Passmeddelande {
   meddelande: string;
   created_at: string;
   avsandare?: Profil;
+}
+
+export interface PassTidsändring {
+  id: string;
+  pass_id: string;
+  vikarie_id: string;
+  foreslagen_tid_fran: string;
+  foreslagen_tid_till: string;
+  anledning: string;
+  status: Tidsändringsstatus;
+  beslutad_av: string | null;
+  beslutad_kl: string | null;
+  created_at: string;
+  updated_at: string;
+  vikarie?: Vikarie;
 }
 
 export interface Notis {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi } from '../../lib/api';
-import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande } from '../../types';
+import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi, passTidsändringApi } from '../../lib/api';
+import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande, PassTidsändring } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
@@ -286,6 +286,18 @@ function notisHistorikText(metadata: Record<string, unknown>) {
 
 function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
   const metadata = h.metadata ?? {};
+  if (metadata.åtgärd === 'tidsändring_föreslagen') {
+    const namn = String(metadata.vikarie_namn ?? 'Vikarien');
+    const från = `${String(metadata.tidigare_tid_från ?? '')}-${String(metadata.tidigare_tid_till ?? '')}`;
+    const till = `${String(metadata.föreslagen_tid_från ?? '')}-${String(metadata.föreslagen_tid_till ?? '')}`;
+    return `${namn} föreslog tidsändring: ${från} -> ${till}`;
+  }
+  if (metadata.åtgärd === 'tidsändring_godkänd') {
+    return `Tidsförslag godkänt: ${String(metadata.tid_från ?? '')}-${String(metadata.tid_till ?? '')}`;
+  }
+  if (metadata.åtgärd === 'tidsändring_avslagen') {
+    return `Tidsförslag avslogs: ${String(metadata.föreslagen_tid_från ?? '')}-${String(metadata.föreslagen_tid_till ?? '')}`;
+  }
   const vikarieId = typeof metadata.vikarie_id === 'string' ? metadata.vikarie_id : null;
   const uppslagetVikarieNamn = vikarieId ? vikarier.find(v => v.id === vikarieId)?.namn ?? null : null;
   const vikarieNamn = typeof metadata.vikarie_namn === 'string' ? metadata.vikarie_namn : uppslagetVikarieNamn;
@@ -370,6 +382,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const [spararExkluderingar, setSpararExkluderingar] = useState(false);
   const [visaExkluderingar, setVisaExkluderingar] = useState(false);
   const [matchandeFrånvaro, setMatchandeFrånvaro] = useState<Frånvaro | null>(null);
+  const [tidsändringsförslag, setTidsändringsförslag] = useState<PassTidsändring | null>(null);
+  const [beslutarTidsändring, setBeslutarTidsändring] = useState(false);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -392,12 +406,15 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
   useEffect(() => {
     async function laddaPassdata() {
-      const [historikRes, meddelandeRes] = await Promise.all([
+      const [historikRes, meddelandeRes, tidsändringsRes] = await Promise.all([
         historikApi.listaFörPass(pass.id),
         passmeddelandeApi.lista(pass.id),
+        passTidsändringApi.listaFörPass(pass.id),
       ]);
       setHistorik((historikRes.data ?? []) as Passhistorik[]);
       setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+      const förslag = (tidsändringsRes.data ?? []) as PassTidsändring[];
+      setTidsändringsförslag(förslag.find(rad => rad.status === 'vantar') ?? förslag[0] ?? null);
       await laddaExkluderingar();
       setLaddar(false);
     }
@@ -550,6 +567,79 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
     onUppdaterad({ ...pass, ...data, personal: uppdateradPersonal });
     return true;
+  }
+
+  async function godkännTidsändring() {
+    if (!tidsändringsförslag || tidsändringsförslag.status !== 'vantar') return;
+
+    const nyFrån = tidsändringsförslag.foreslagen_tid_fran.slice(0, 5);
+    const nyTill = tidsändringsförslag.foreslagen_tid_till.slice(0, 5);
+    setBeslutarTidsändring(true);
+
+    const ok = await uppdateraPass(
+      { tid_från: nyFrån, tid_till: nyTill } as Partial<Bemanning>,
+      {
+        åtgärd: 'tidsändring_godkänd',
+        tidsändrings_id: tidsändringsförslag.id,
+        vikarie_id: tidsändringsförslag.vikarie_id,
+        tid_från: nyFrån,
+        tid_till: nyTill,
+      }
+    );
+
+    if (!ok) {
+      setBeslutarTidsändring(false);
+      return;
+    }
+
+    const beslut = await passTidsändringApi.besluta(tidsändringsförslag.id, 'godkand');
+    if (beslut.error) {
+      setFel(`Passet uppdaterades, men förslaget kunde inte markeras som godkänt: ${beslut.error.message}`);
+      setBeslutarTidsändring(false);
+      return;
+    }
+
+    const text = `Ditt förslag på ny arbetstid godkändes. Passet är nu ${nyFrån}-${nyTill}.`;
+    await passmeddelandeApi.skapa(pass.id, text, 'admin');
+    setTidsändringsförslag(beslut.data as PassTidsändring);
+    const meddelandeRes = await passmeddelandeApi.lista(pass.id);
+    setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+    setBeslutarTidsändring(false);
+  }
+
+  async function avslåTidsändring() {
+    if (!tidsändringsförslag || tidsändringsförslag.status !== 'vantar') return;
+
+    setBeslutarTidsändring(true);
+    setFel('');
+    const beslut = await passTidsändringApi.besluta(tidsändringsförslag.id, 'avslagen');
+    if (beslut.error) {
+      setFel(beslut.error.message);
+      setBeslutarTidsändring(false);
+      return;
+    }
+
+    const föreslagenTid = `${tidsändringsförslag.foreslagen_tid_fran.slice(0, 5)}-${tidsändringsförslag.foreslagen_tid_till.slice(0, 5)}`;
+    const text = `Ditt förslag på arbetstid ${föreslagenTid} avslogs. Passets tid är fortfarande ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}.`;
+    await Promise.all([
+      passmeddelandeApi.skapa(pass.id, text, 'admin'),
+      notisApi.skickaMeddelandeNotifiering(pass.id, 'admin', text),
+      historikApi.skapa(pass.id, 'pass_uppdaterat', {
+        åtgärd: 'tidsändring_avslagen',
+        tidsändrings_id: tidsändringsförslag.id,
+        vikarie_id: tidsändringsförslag.vikarie_id,
+        föreslagen_tid_från: tidsändringsförslag.foreslagen_tid_fran.slice(0, 5),
+        föreslagen_tid_till: tidsändringsförslag.foreslagen_tid_till.slice(0, 5),
+      }, tidsändringsförslag.anledning),
+    ]);
+
+    setTidsändringsförslag(beslut.data as PassTidsändring);
+    const [meddelandeRes] = await Promise.all([
+      passmeddelandeApi.lista(pass.id),
+      laddaHistorikFörPass(),
+    ]);
+    setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+    setBeslutarTidsändring(false);
   }
 
   async function sparaTider() {
@@ -1033,6 +1123,50 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
         {fel && <Alert typ="error">{fel}</Alert>}
         {dagLast && (
           <Alert typ="warning">Dagen är låst. Lås upp dagen innan du publicerar, skickar förfrågan eller bokar pass.</Alert>
+        )}
+
+        {tidsändringsförslag && (
+          <section
+            className="rounded-xl border p-4"
+            style={{
+              borderColor: tidsändringsförslag.status === 'vantar' ? '#f59e0b' : 'var(--border)',
+              background: tidsändringsförslag.status === 'vantar' ? 'rgba(245, 158, 11, 0.10)' : 'var(--bg)',
+            }}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tidsändringsförslag</p>
+                <p className="mt-1 text-base font-semibold" style={{ color: 'var(--text)' }}>
+                  {pass.tid_från.slice(0, 5)}-{pass.tid_till.slice(0, 5)}
+                  <span className="mx-2" style={{ color: 'var(--text-muted)' }}>→</span>
+                  {tidsändringsförslag.foreslagen_tid_fran.slice(0, 5)}-{tidsändringsförslag.foreslagen_tid_till.slice(0, 5)}
+                </p>
+                <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {tidsändringsförslag.vikarie?.namn ?? tillsattVikarie?.namn ?? 'Vikarien'}: {tidsändringsförslag.anledning}
+                </p>
+              </div>
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+                style={{
+                  color: tidsändringsförslag.status === 'vantar' ? '#f59e0b' : tidsändringsförslag.status === 'godkand' ? '#22c55e' : '#ef4444',
+                  background: 'var(--bg-card)',
+                }}
+              >
+                {tidsändringsförslag.status === 'vantar' ? 'Väntar på beslut' : tidsändringsförslag.status === 'godkand' ? 'Godkänt' : 'Avslaget'}
+              </span>
+            </div>
+
+            {tidsändringsförslag.status === 'vantar' && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Button variant="secondary" onClick={avslåTidsändring} loading={beslutarTidsändring}>
+                  Avslå
+                </Button>
+                <Button onClick={godkännTidsändring} loading={beslutarTidsändring}>
+                  Godkänn nya tider
+                </Button>
+              </div>
+            )}
+          </section>
         )}
 
         {harAvbokningsförfrågan && (

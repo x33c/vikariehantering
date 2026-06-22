@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { passApi, vikariApi, passmeddelandeApi, notisApi } from '../../lib/api';
+import { passApi, vikariApi, passmeddelandeApi, passTidsändringApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import type { Vikariepass, Vikarie, Passmeddelande } from '../../types';
+import type { Vikariepass, Vikarie, Passmeddelande, PassTidsändring } from '../../types';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS } from '../../types';
 import { visaGruppInfo, visaKommentar, visaKortNamn } from '../../lib/display';
 
@@ -107,6 +107,7 @@ function PassKort({
 
 export default function MinaPass() {
   const { användare } = useAuth();
+  const [minVikarie, setMinVikarie] = useState<Vikarie | null>(null);
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [meddelandeAntal, setMeddelandeAntal] = useState<Record<string, number>>({});
   const [valtPass, setValtPass] = useState<Vikariepass | null>(null);
@@ -116,6 +117,12 @@ export default function MinaPass() {
   const [laddar, setLaddar] = useState(true);
   const [sparar, setSparar] = useState(false);
   const [visaTidigare, setVisaTidigare] = useState(false);
+  const [tidsändring, setTidsändring] = useState<PassTidsändring | null>(null);
+  const [visaTidsförslag, setVisaTidsförslag] = useState(false);
+  const [föreslagenTidFrån, setFöreslagenTidFrån] = useState('');
+  const [föreslagenTidTill, setFöreslagenTidTill] = useState('');
+  const [tidsändringsAnledning, setTidsändringsAnledning] = useState('');
+  const [modalFel, setModalFel] = useState('');
 
   useEffect(() => {
     async function ladda() {
@@ -123,6 +130,7 @@ export default function MinaPass() {
 
       const vRes = await vikariApi.hämtaViaProfilId(användare.id);
       const vikarie = vRes.data as Vikarie | null;
+      setMinVikarie(vikarie);
       if (!vikarie) {
         setLaddar(false);
         return;
@@ -152,9 +160,85 @@ export default function MinaPass() {
   async function öppnaPass(p: Vikariepass) {
     setValtPass(p);
     setModalInfo('');
+    setModalFel('');
     setNyttMeddelande('');
-    const res = await passmeddelandeApi.lista(p.id);
-    setMeddelanden((res.data ?? []) as Passmeddelande[]);
+    setVisaTidsförslag(false);
+    setFöreslagenTidFrån(p.tid_från.slice(0, 5));
+    setFöreslagenTidTill(p.tid_till.slice(0, 5));
+    setTidsändringsAnledning('');
+
+    const [meddelandeRes, tidsändringsRes] = await Promise.all([
+      passmeddelandeApi.lista(p.id),
+      passTidsändringApi.hämtaSenasteFörPass(p.id),
+    ]);
+    setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+    const senaste = (tidsändringsRes.data ?? null) as PassTidsändring | null;
+    setTidsändring(senaste);
+    if (senaste?.status === 'vantar') {
+      setFöreslagenTidFrån(senaste.foreslagen_tid_fran.slice(0, 5));
+      setFöreslagenTidTill(senaste.foreslagen_tid_till.slice(0, 5));
+      setTidsändringsAnledning(senaste.anledning);
+    }
+  }
+
+  async function skickaTidsförslag() {
+    if (!valtPass || !minVikarie) return;
+    setModalFel('');
+    setModalInfo('');
+
+    if (!föreslagenTidFrån || !föreslagenTidTill || föreslagenTidFrån >= föreslagenTidTill) {
+      setModalFel('Ange en giltig start- och sluttid.');
+      return;
+    }
+
+    if (
+      föreslagenTidFrån === valtPass.tid_från.slice(0, 5) &&
+      föreslagenTidTill === valtPass.tid_till.slice(0, 5)
+    ) {
+      setModalFel('De föreslagna tiderna är samma som passets nuvarande tider.');
+      return;
+    }
+
+    if (!tidsändringsAnledning.trim()) {
+      setModalFel('Beskriv kort varför tiden behöver korrigeras.');
+      return;
+    }
+
+    setSparar(true);
+    const res = await passTidsändringApi.sparaFörslag({
+      pass_id: valtPass.id,
+      vikarie_id: minVikarie.id,
+      foreslagen_tid_fran: föreslagenTidFrån,
+      foreslagen_tid_till: föreslagenTidTill,
+      anledning: tidsändringsAnledning.trim(),
+    });
+
+    if (res.error) {
+      setSparar(false);
+      setModalFel(res.error.message);
+      return;
+    }
+
+    const text = `${minVikarie.namn} föreslår att passets tid ändras från ${valtPass.tid_från.slice(0, 5)}-${valtPass.tid_till.slice(0, 5)} till ${föreslagenTidFrån}-${föreslagenTidTill}.`;
+    await Promise.all([
+      passmeddelandeApi.skapa(valtPass.id, `${text} Anledning: ${tidsändringsAnledning.trim()}`, 'vikarie'),
+      notisApi.skickaMeddelandeNotifiering(valtPass.id, 'vikarie', text),
+      historikApi.skapa(valtPass.id, 'pass_uppdaterat', {
+        åtgärd: 'tidsändring_föreslagen',
+        vikarie_id: minVikarie.id,
+        vikarie_namn: minVikarie.namn,
+        tidigare_tid_från: valtPass.tid_från.slice(0, 5),
+        tidigare_tid_till: valtPass.tid_till.slice(0, 5),
+        föreslagen_tid_från: föreslagenTidFrån,
+        föreslagen_tid_till: föreslagenTidTill,
+      }, tidsändringsAnledning.trim()),
+    ]);
+
+    setTidsändring(res.data as PassTidsändring);
+    setVisaTidsförslag(false);
+    setModalInfo('Ditt tidsförslag är skickat till admin för godkännande.');
+    await uppdateraMeddelanden(valtPass.id);
+    setSparar(false);
   }
 
   async function uppdateraMeddelanden(passId: string) {
@@ -307,6 +391,87 @@ export default function MinaPass() {
                 {modalInfo}
               </p>
             )}
+
+            {modalFel && (
+              <p className="mb-4 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'rgba(239,68,68,0.45)', background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                {modalFel}
+              </p>
+            )}
+
+            <section className="mb-4 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Arbetad tid</p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                    {tidsändring?.status === 'vantar'
+                      ? 'Förslag väntar på admin'
+                      : tidsändring?.status === 'godkand'
+                        ? 'Senaste förslaget godkändes'
+                        : tidsändring?.status === 'avslagen'
+                          ? 'Senaste förslaget avslogs'
+                          : 'Behöver tiden korrigeras?'}
+                  </p>
+                  {tidsändring && (
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Föreslagen tid: {tidsändring.foreslagen_tid_fran.slice(0, 5)}-{tidsändring.foreslagen_tid_till.slice(0, 5)}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVisaTidsförslag(v => !v)}
+                  className="shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold"
+                  style={{ borderColor: 'var(--border)', color: 'var(--blue)' }}
+                >
+                  {visaTidsförslag ? 'Stäng' : tidsändring?.status === 'vantar' ? 'Ändra förslag' : 'Föreslå ändring'}
+                </button>
+              </div>
+
+              {visaTidsförslag && (
+                <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="min-w-0 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Från
+                      <input
+                        type="time"
+                        value={föreslagenTidFrån}
+                        onChange={e => setFöreslagenTidFrån(e.target.value)}
+                        className="mt-1 block min-w-0 w-full rounded-lg border px-2 py-2 text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </label>
+                    <label className="min-w-0 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                      Till
+                      <input
+                        type="time"
+                        value={föreslagenTidTill}
+                        onChange={e => setFöreslagenTidTill(e.target.value)}
+                        className="mt-1 block min-w-0 w-full rounded-lg border px-2 py-2 text-sm"
+                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    value={tidsändringsAnledning}
+                    onChange={e => setTidsändringsAnledning(e.target.value)}
+                    rows={2}
+                    maxLength={300}
+                    placeholder="Kort anledning, exempelvis arbetade över eller började senare."
+                    className="mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={skickaTidsförslag}
+                    disabled={sparar}
+                    className="mt-2 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ background: 'var(--blue)' }}
+                  >
+                    {sparar ? 'Skickar...' : 'Skicka för godkännande'}
+                  </button>
+                </div>
+              )}
+            </section>
 
             <button
               onClick={beOmAvbokning}
