@@ -90,3 +90,5 @@ begin
     null;
   end;
 end $$;
+
+notify pgrst, 'reload schema';
