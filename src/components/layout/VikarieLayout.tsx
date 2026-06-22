@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/vikarie/mina-pass', label: 'Mina pass' },
   { to: '/vikarie/tillganglighet', label: 'Tillgänglighet' },
   { to: '/vikarie/schema', label: 'Schema' },
+  { to: '/vikarie/notiser', label: 'Notiser' },
   { to: '/vikarie/profil', label: 'Profil' },
   { to: '/vikarie/logga-ut', label: 'Logga ut' },
 ];
@@ -140,6 +141,20 @@ export default function VikarieLayout() {
         >
           <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{sidtitel}</span>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Link
+              to="/vikarie/notiser"
+              className="rounded-xl border p-2"
+              style={{
+                color: location.pathname.startsWith('/vikarie/notiser') ? 'var(--blue)' : 'var(--text)',
+                borderColor: location.pathname.startsWith('/vikarie/notiser') ? 'var(--blue)' : 'var(--border)',
+              }}
+              aria-label="Öppna notiser"
+              title="Notiser"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16v12H4zM4 7l8 6 8-6" />
+              </svg>
+            </Link>
             <PushButton compact />
             <button
               onClick={toggla}
@@ -167,7 +182,7 @@ export default function VikarieLayout() {
           className="grid shrink-0 grid-cols-6 gap-1 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          {navItems.map((item) => (
+          {navItems.filter((item) => item.to !== '/vikarie/notiser').map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

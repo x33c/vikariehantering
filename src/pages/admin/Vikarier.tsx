@@ -922,7 +922,11 @@ export default function Vikarier() {
       return;
     }
 
-    setMassOk(`Skickat till ${data?.skickade ?? 0} mottagare. ${data?.utan_push ? `${data.utan_push} saknar aktiva push-notiser.` : ''}`);
+    setMassOk(
+      `Meddelandet sparades för ${data?.sparade ?? data?.matchade ?? 0} mottagare. ` +
+      `Push skickades till ${data?.skickade ?? 0}. ` +
+      (data?.utan_push ? `${data.utan_push} saknar aktiva push-notiser men kan läsa meddelandet i appen.` : '')
+    );
     setMassText('');
   }
 

@@ -211,7 +211,7 @@ export interface PassTidsändring {
 
 export interface Notis {
   id: string;
-  pass_id: string;
+  pass_id: string | null;
   vikarie_id: string | null;
   kanal: NotisKanal;
   status: NotisStatus;
@@ -223,6 +223,7 @@ export interface Notis {
   created_at: string;
   // joined
   vikarie?: Vikarie;
+  pass?: Vikariepass;
 }
 
 // ============================================================

@@ -252,18 +252,48 @@ serve(async (req) => {
 
     let skickade = 0;
     let utanPush = 0;
+    let sparade = 0;
+    const pushText = 'Ny information finns i Passportalen. Öppna appen för att läsa hela meddelandet.';
 
     for (const vikarie of mottagare ?? []) {
       try {
         const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
         const prenumerationer = await raknaPushPrenumerationer(supabase, profilId);
 
+        const { data: sparadNotis, error: notisError } = await supabase
+          .from('notiser')
+          .insert({
+            pass_id: null,
+            vikarie_id: vikarie.id,
+            kanal: 'push',
+            status: prenumerationer > 0 ? 'skickat' : 'misslyckat',
+            mottagare: vikarie.epost ?? 'app',
+            ämne: title,
+            innehåll: text,
+            skickat_kl: prenumerationer > 0 ? new Date().toISOString() : null,
+            felmeddelande: prenumerationer > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
+          })
+          .select('id')
+          .single();
+
+        if (notisError || !sparadNotis) {
+          throw notisError ?? new Error('Meddelandet kunde inte sparas.');
+        }
+
+        sparade += 1;
+
         if (!profilId || prenumerationer === 0) {
           utanPush += 1;
           continue;
         }
 
-        await skickaPush(supabase, profilId, title, text, '/vikarie');
+        await skickaPush(
+          supabase,
+          profilId,
+          title,
+          pushText,
+          `/vikarie/notiser?notis=${sparadNotis.id}`,
+        );
         skickade += 1;
       } catch (error) {
         utanPush += 1;
@@ -275,6 +305,7 @@ serve(async (req) => {
       ok: true,
       valda: ids.length,
       matchade: mottagare?.length ?? 0,
+      sparade,
       skickade,
       utan_push: utanPush,
     }), {

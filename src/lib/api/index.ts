@@ -390,6 +390,14 @@ export const passmeddelandeApi = {
 };
 
 export const notisApi = {
+  async listaMina(vikarieId: string) {
+    return supabase
+      .from('notiser')
+      .select('*, pass:vikariepass(*, personal(namn))')
+      .eq('vikarie_id', vikarieId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+  },
   async listaAdmin() {
     return supabase
       .from('notiser')
