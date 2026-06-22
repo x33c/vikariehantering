@@ -390,6 +390,25 @@ export const passmeddelandeApi = {
 };
 
 export const notisApi = {
+  async skapaAppMeddelanden(
+    vikarieIds: string[],
+    titel: string,
+    innehåll: string,
+    notisIds: Record<string, string>,
+  ) {
+    const skapad = new Date().toISOString();
+    return supabase.from('notiser').insert(vikarieIds.map((vikarieId) => ({
+      id: notisIds[vikarieId],
+      pass_id: null,
+      vikarie_id: vikarieId,
+      kanal: 'push' as const,
+      status: 'skickat' as const,
+      mottagare: 'app',
+      ämne: titel,
+      innehåll,
+      skickat_kl: skapad,
+    })));
+  },
   async listaMina(vikarieId: string) {
     return supabase
       .from('notiser')
@@ -397,6 +416,19 @@ export const notisApi = {
       .eq('vikarie_id', vikarieId)
       .order('created_at', { ascending: false })
       .limit(100);
+  },
+  async raderaMin(notisId: string, vikarieId: string) {
+    return supabase
+      .from('notiser')
+      .delete()
+      .eq('id', notisId)
+      .eq('vikarie_id', vikarieId);
+  },
+  async raderaAllaMina(vikarieId: string) {
+    return supabase
+      .from('notiser')
+      .delete()
+      .eq('vikarie_id', vikarieId);
   },
   async listaAdmin() {
     return supabase

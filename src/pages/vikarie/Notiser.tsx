@@ -28,6 +28,7 @@ export default function VikarieNotiser() {
   const [vald, setVald] = useState<Notis | null>(null);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
+  const [raderarId, setRaderarId] = useState<string | null>(null);
 
   const laddaNotiser = useCallback(async (vikarieId: string) => {
     const res = await notisApi.listaMina(vikarieId);
@@ -66,7 +67,7 @@ export default function VikarieNotiser() {
       .channel(`vikarie-notiser-${vikarie.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notiser', filter: `vikarie_id=eq.${vikarie.id}` },
+        { event: '*', schema: 'public', table: 'notiser', filter: `vikarie_id=eq.${vikarie.id}` },
         () => laddaNotiser(vikarie.id),
       )
       .subscribe();
@@ -84,15 +85,60 @@ export default function VikarieNotiser() {
     setSearchParams({});
   }
 
+  async function raderaNotis(notis: Notis) {
+    if (!vikarie || !window.confirm('Ta bort notisen?')) return;
+    setRaderarId(notis.id);
+    setFel('');
+    const res = await notisApi.raderaMin(notis.id, vikarie.id);
+    setRaderarId(null);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    setNotiser((tidigare) => tidigare.filter((rad) => rad.id !== notis.id));
+    if (vald?.id === notis.id) stäng();
+  }
+
+  async function rensaAlla() {
+    if (!vikarie || notiser.length === 0 || !window.confirm('Ta bort alla dina notiser?')) return;
+    setRaderarId('alla');
+    setFel('');
+    const res = await notisApi.raderaAllaMina(vikarie.id);
+    setRaderarId(null);
+
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    setNotiser([]);
+    stäng();
+  }
+
   if (laddar) {
     return <div className="flex min-h-64 items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Laddar notiser...</div>;
   }
 
   return (
     <div className="mx-auto w-full max-w-3xl px-3 py-5 sm:px-6 sm:py-7">
-      <div className="mb-5">
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Notiser</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Meddelanden och uppdateringar från admin.</p>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Notiser</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Meddelanden och uppdateringar från admin.</p>
+        </div>
+        {notiser.length > 0 && (
+          <button
+            type="button"
+            onClick={rensaAlla}
+            disabled={raderarId !== null}
+            className="shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+            style={{ borderColor: 'var(--border)', color: 'var(--danger)' }}
+          >
+            {raderarId === 'alla' ? 'Rensar...' : 'Rensa alla'}
+          </button>
+        )}
       </div>
 
       {fel && (
@@ -110,19 +156,34 @@ export default function VikarieNotiser() {
       ) : (
         <div className="space-y-2">
           {notiser.map((notis) => (
-            <button
-              key={notis.id}
-              type="button"
-              onClick={() => öppna(notis)}
-              className="w-full rounded-xl border px-4 py-3 text-left transition-colors hover:bg-[var(--hover)]"
-              style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="font-semibold" style={{ color: 'var(--text)' }}>{notis.ämne ?? 'Meddelande'}</span>
-                <span className="shrink-0 text-xs" style={{ color: 'var(--text-subtle)' }}>{formatTid(notis.created_at)}</span>
-              </div>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{förhandsvisning(notis.innehåll) || 'Öppna för detaljer.'}</p>
-            </button>
+            <div key={notis.id} className="flex items-stretch rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => öppna(notis)}
+                className="min-w-0 flex-1 rounded-l-xl px-4 py-3 text-left transition-colors hover:bg-[var(--hover)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-semibold" style={{ color: 'var(--text)' }}>{notis.ämne ?? 'Meddelande'}</span>
+                  <span className="shrink-0 text-xs" style={{ color: 'var(--text-subtle)' }}>{formatTid(notis.created_at)}</span>
+                </div>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{förhandsvisning(notis.innehåll) || 'Öppna för detaljer.'}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => raderaNotis(notis)}
+                disabled={raderarId !== null}
+                className="flex w-12 shrink-0 items-center justify-center rounded-r-xl border-l disabled:opacity-50"
+                style={{ borderColor: 'var(--border)', color: 'var(--danger)' }}
+                aria-label={`Ta bort ${notis.ämne ?? 'notis'}`}
+                title="Ta bort"
+              >
+                {raderarId === notis.id ? '...' : (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" />
+                  </svg>
+                )}
+              </button>
+            </div>
           ))}
         </div>
       )}

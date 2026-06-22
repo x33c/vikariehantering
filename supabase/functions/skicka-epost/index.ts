@@ -231,6 +231,9 @@ serve(async (req) => {
       ? body.titel.trim()
       : 'Meddelande från admin';
     const text = typeof body.meddelande === 'string' ? body.meddelande.trim() : '';
+    const appNotisIds = body.app_notis_ids && typeof body.app_notis_ids === 'object'
+      ? body.app_notis_ids as Record<string, string>
+      : {};
 
     if (ids.length === 0 || !text) {
       return new Response(JSON.stringify({ error: 'Välj mottagare och skriv ett meddelande.' }), {
@@ -260,21 +263,44 @@ serve(async (req) => {
         const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
         const prenumerationer = await raknaPushPrenumerationer(supabase, profilId);
 
-        const { data: sparadNotis, error: notisError } = await supabase
-          .from('notiser')
-          .insert({
-            pass_id: null,
-            vikarie_id: vikarie.id,
-            kanal: 'push',
-            status: prenumerationer > 0 ? 'skickat' : 'misslyckat',
-            mottagare: vikarie.epost ?? 'app',
-            ämne: title,
-            innehåll: text,
-            skickat_kl: prenumerationer > 0 ? new Date().toISOString() : null,
-            felmeddelande: prenumerationer > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
-          })
-          .select('id')
-          .single();
+        const befintligtNotisId = typeof appNotisIds[vikarie.id] === 'string'
+          ? appNotisIds[vikarie.id]
+          : null;
+        let sparadNotis: { id: string } | null = befintligtNotisId
+          ? { id: befintligtNotisId }
+          : null;
+        let notisError: { message?: string } | null = null;
+
+        if (befintligtNotisId) {
+          const uppdatering = await supabase
+            .from('notiser')
+            .update({
+              status: prenumerationer > 0 ? 'skickat' : 'misslyckat',
+              skickat_kl: prenumerationer > 0 ? new Date().toISOString() : null,
+              felmeddelande: prenumerationer > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
+            })
+            .eq('id', befintligtNotisId)
+            .eq('vikarie_id', vikarie.id);
+          notisError = uppdatering.error;
+        } else {
+          const skapad = await supabase
+            .from('notiser')
+            .insert({
+              pass_id: null,
+              vikarie_id: vikarie.id,
+              kanal: 'push',
+              status: prenumerationer > 0 ? 'skickat' : 'misslyckat',
+              mottagare: vikarie.epost ?? 'app',
+              ämne: title,
+              innehåll: text,
+              skickat_kl: prenumerationer > 0 ? new Date().toISOString() : null,
+              felmeddelande: prenumerationer > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
+            })
+            .select('id')
+            .single();
+          sparadNotis = skapad.data;
+          notisError = skapad.error;
+        }
 
         if (notisError || !sparadNotis) {
           throw notisError ?? new Error('Meddelandet kunde inte sparas.');

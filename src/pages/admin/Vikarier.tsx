@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { vikariApi } from '../../lib/api';
+import { notisApi, vikariApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { Alert, Modal } from '../../components/ui';
 import type { Vikarie, NyVikarie, VikarieTillgänglighet } from '../../types';
@@ -893,15 +893,33 @@ export default function Vikarier() {
       return;
     }
 
+    const valdaVikarieIds = [...markeradeIds];
+    const appNotisIds = Object.fromEntries(
+      valdaVikarieIds.map((vikarieId) => [vikarieId, crypto.randomUUID()]),
+    );
+    const appRes = await notisApi.skapaAppMeddelanden(
+      valdaVikarieIds,
+      massTitel.trim() || 'Meddelande från admin',
+      massText.trim(),
+      appNotisIds,
+    );
+
+    if (appRes.error) {
+      setSkickarMass(false);
+      setMassFel(`Meddelandet kunde inte sparas i appen: ${appRes.error.message}`);
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke('skicka-epost', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: {
         typ: 'massmeddelande_vikarier',
-        vikarie_ids: [...markeradeIds],
+        vikarie_ids: valdaVikarieIds,
         titel: massTitel,
         meddelande: massText,
+        app_notis_ids: appNotisIds,
       },
     });
     setSkickarMass(false);
@@ -923,7 +941,7 @@ export default function Vikarier() {
     }
 
     setMassOk(
-      `Meddelandet sparades för ${data?.sparade ?? data?.matchade ?? 0} mottagare. ` +
+      `Meddelandet sparades för ${valdaVikarieIds.length} mottagare. ` +
       `Push skickades till ${data?.skickade ?? 0}. ` +
       (data?.utan_push ? `${data.utan_push} saknar aktiva push-notiser men kan läsa meddelandet i appen.` : '')
     );
