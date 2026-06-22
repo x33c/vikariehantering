@@ -559,18 +559,18 @@ serve(async (req) => {
     const title = 'Nytt meddelande från vikarie';
     const pushBody = 'En vikarie har skrivit ett nytt meddelande om ett pass. Öppna appen för detaljer.';
 
-    for (const admin of admins ?? []) {
-      await supabase.from('notiser').insert({
-        pass_id,
-        vikarie_id: pass.vikarie_id ?? null,
-        kanal: 'push',
-        status: 'skickat',
-        mottagare: 'admin',
-        ämne: title,
-        innehåll: pushBody,
-        skickat_kl: new Date().toISOString(),
-      });
+    await supabase.from('notiser').insert({
+      pass_id,
+      vikarie_id: pass.vikarie_id ?? null,
+      kanal: 'push',
+      status: 'skickat',
+      mottagare: 'admin',
+      ämne: title,
+      innehåll: pushBody,
+      skickat_kl: new Date().toISOString(),
+    });
 
+    for (const admin of admins ?? []) {
       await skickaPush(supabase, admin.id, title, pushBody, '/admin/vikariepass');
     }
 
@@ -607,18 +607,18 @@ serve(async (req) => {
     const title = 'Avbokningsförfrågan';
     const bodyText = 'En vikarie vill avboka ett pass. Öppna appen för detaljer.';
 
-    for (const admin of admins ?? []) {
-      await supabase.from('notiser').insert({
-        pass_id,
-        vikarie_id: pass.vikarie_id ?? null,
-        kanal: 'push',
-        status: 'skickat',
-        mottagare: 'admin',
-        ämne: title,
-        innehåll: bodyText,
-        skickat_kl: new Date().toISOString(),
-      });
+    await supabase.from('notiser').insert({
+      pass_id,
+      vikarie_id: pass.vikarie_id ?? null,
+      kanal: 'push',
+      status: 'skickat',
+      mottagare: 'admin',
+      ämne: title,
+      innehåll: bodyText,
+      skickat_kl: new Date().toISOString(),
+    });
 
+    for (const admin of admins ?? []) {
       await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
     }
 

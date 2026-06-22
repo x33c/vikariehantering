@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { notisApi } from '../lib/api';
-import type { Notis } from '../types';
+import { historikApi, notisApi, passApi, passmeddelandeApi, passTidsändringApi } from '../lib/api';
+import type { Notis, PassTidsändring, Vikariepass } from '../types';
 import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh';
 
 type AdminNotis = Notis & {
@@ -66,6 +66,19 @@ function notisTone(notis: AdminNotis) {
   return { color: 'var(--text-muted)', bg: 'var(--hover)' };
 }
 
+function dedupliceraNotiser(notiser: AdminNotis[]) {
+  const sedda = new Set<string>();
+
+  return notiser.filter(notis => {
+    const tid = new Date(notis.created_at).getTime();
+    const tidsfönster = Number.isFinite(tid) ? Math.floor(tid / 15000) : notis.created_at;
+    const nyckel = [notis.pass_id ?? '', notis.ämne ?? '', notis.innehåll ?? '', tidsfönster].join('|');
+    if (sedda.has(nyckel)) return false;
+    sedda.add(nyckel);
+    return true;
+  });
+}
+
 export default function AdminNotiser({ placement = 'down', compact = false }: { placement?: 'down' | 'up'; compact?: boolean }) {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -73,10 +86,30 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
   const [lasta, setLasta] = useState<Set<string>>(() => hamtaLasta());
   const [dolda, setDolda] = useState<Set<string>>(() => hamtaDolda());
   const [oppen, setOppen] = useState(false);
+  const [tidsförslag, setTidsförslag] = useState<Record<string, PassTidsändring>>({});
+  const [beslutarPassId, setBeslutarPassId] = useState<string | null>(null);
+  const [beslutsFel, setBeslutsFel] = useState<Record<string, string>>({});
+  const [beslutsInfo, setBeslutsInfo] = useState<Record<string, string>>({});
 
   const ladda = useCallback(async () => {
     const res = await notisApi.listaAdmin();
-    setNotiser((res.data ?? []) as AdminNotis[]);
+    const lista = (res.data ?? []) as AdminNotis[];
+    setNotiser(lista);
+
+    const passIds = [...new Set(
+      lista
+        .filter(notis => `${notis.ämne ?? ''} ${notis.innehåll ?? ''}`.toLowerCase().includes('meddelande'))
+        .map(notis => notis.pass_id)
+        .filter((id): id is string => !!id)
+    )].slice(0, 20);
+
+    const förslag = await Promise.all(passIds.map(async passId => {
+      const förslagsRes = await passTidsändringApi.listaFörPass(passId);
+      const väntande = ((förslagsRes.data ?? []) as PassTidsändring[]).find(rad => rad.status === 'vantar');
+      return väntande ? [passId, väntande] as const : null;
+    }));
+
+    setTidsförslag(Object.fromEntries(förslag.filter((rad): rad is readonly [string, PassTidsändring] => !!rad)));
   }, []);
 
   useEffect(() => {
@@ -104,7 +137,10 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
     };
   }, [oppen]);
 
-  const synligaNotiser = useMemo(() => notiser.filter(n => !dolda.has(n.id)), [notiser, dolda]);
+  const synligaNotiser = useMemo(
+    () => dedupliceraNotiser(notiser.filter(n => !dolda.has(n.id))),
+    [notiser, dolda]
+  );
   const olasta = useMemo(() => synligaNotiser.filter(n => !lasta.has(n.id)), [synligaNotiser, lasta]);
   const synliga = synligaNotiser.slice(0, 10);
 
@@ -140,6 +176,81 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
     }
 
     navigate('/admin/vikariepass');
+  }
+
+  function markeraPassnotiserSomLästa(passId: string) {
+    setLasta(prev => {
+      const ny = new Set(prev);
+      notiser.filter(notis => notis.pass_id === passId).forEach(notis => ny.add(notis.id));
+      sparaLasta(ny);
+      return ny;
+    });
+  }
+
+  async function beslutaOmTidsförslag(passId: string, beslut: 'godkand' | 'avslagen') {
+    const förslag = tidsförslag[passId];
+    if (!förslag) return;
+
+    setBeslutarPassId(passId);
+    setBeslutsFel(prev => ({ ...prev, [passId]: '' }));
+    setBeslutsInfo(prev => ({ ...prev, [passId]: '' }));
+
+    const passRes = await passApi.hämta(passId);
+    if (passRes.error || !passRes.data) {
+      setBeslutsFel(prev => ({ ...prev, [passId]: passRes.error?.message ?? 'Passet kunde inte hämtas.' }));
+      setBeslutarPassId(null);
+      return;
+    }
+
+    const pass = passRes.data as Vikariepass;
+    const nyFrån = förslag.foreslagen_tid_fran.slice(0, 5);
+    const nyTill = förslag.foreslagen_tid_till.slice(0, 5);
+
+    if (beslut === 'godkand') {
+      const uppdatering = await passApi.uppdatera(passId, { tid_från: nyFrån, tid_till: nyTill });
+      if (uppdatering.error) {
+        setBeslutsFel(prev => ({ ...prev, [passId]: uppdatering.error.message }));
+        setBeslutarPassId(null);
+        return;
+      }
+    }
+
+    const beslutsRes = await passTidsändringApi.besluta(förslag.id, beslut);
+    if (beslutsRes.error) {
+      setBeslutsFel(prev => ({ ...prev, [passId]: beslutsRes.error.message }));
+      setBeslutarPassId(null);
+      return;
+    }
+
+    const text = beslut === 'godkand'
+      ? `Ditt förslag på ny arbetstid godkändes. Passet är nu ${nyFrån}-${nyTill}.`
+      : `Ditt förslag på arbetstid ${nyFrån}-${nyTill} avslogs. Passets tid är fortfarande ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}.`;
+
+    await Promise.all([
+      passmeddelandeApi.skapa(passId, text, 'admin'),
+      historikApi.skapa(passId, 'pass_uppdaterat', {
+        åtgärd: beslut === 'godkand' ? 'tidsändring_godkänd' : 'tidsändring_avslagen',
+        tidsändrings_id: förslag.id,
+        vikarie_id: förslag.vikarie_id,
+        föreslagen_tid_från: nyFrån,
+        föreslagen_tid_till: nyTill,
+        ...(beslut === 'godkand' ? { tid_från: nyFrån, tid_till: nyTill } : {}),
+      }, förslag.anledning),
+      pass.vikarie_id
+        ? beslut === 'godkand'
+          ? notisApi.skickaPassAndrat(passId, pass.vikarie_id)
+          : notisApi.skickaMeddelandeNotifiering(passId, 'admin', text)
+        : Promise.resolve(),
+    ]);
+
+    setTidsförslag(prev => {
+      const nästa = { ...prev };
+      delete nästa[passId];
+      return nästa;
+    });
+    setBeslutsInfo(prev => ({ ...prev, [passId]: beslut === 'godkand' ? 'Tiderna är uppdaterade.' : 'Förslaget är avslaget.' }));
+    markeraPassnotiserSomLästa(passId);
+    setBeslutarPassId(null);
   }
 
   return (
@@ -215,31 +326,73 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
             ) : synliga.map(notis => {
               const tone = notisTone(notis);
               const arNy = !lasta.has(notis.id);
+              const förslag = notis.pass_id ? tidsförslag[notis.pass_id] : undefined;
+              const beslutar = beslutarPassId === notis.pass_id;
 
               return (
-                <button
+                <div
                   key={notis.id}
-                  type="button"
-                  onClick={() => oppnaNotis(notis)}
-                  className="mb-2 w-full rounded-xl border px-3 py-3 text-left transition hover:opacity-90"
+                  className="mb-2 w-full rounded-xl border text-left transition"
                   style={{
                     borderColor: arNy ? tone.color : 'var(--border)',
                     background: arNy ? tone.bg : 'var(--bg)',
                   }}
                 >
-                  <div className="mb-1 flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                      {notis.ämne ?? 'Ny händelse'}
+                  <button
+                    type="button"
+                    onClick={() => oppnaNotis(notis)}
+                    className="w-full px-3 py-3 text-left hover:opacity-90"
+                  >
+                    <div className="mb-1 flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                        {förslag ? 'Föreslagen tidsändring' : notis.ämne ?? 'Ny händelse'}
+                      </p>
+                      {arNy && <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: tone.color }} />}
+                    </div>
+                    <p className="line-clamp-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {förslag
+                        ? `${förslag.vikarie?.namn ?? notis.vikarie?.namn ?? 'Vikarien'} föreslår ${förslag.foreslagen_tid_fran.slice(0, 5)}-${förslag.foreslagen_tid_till.slice(0, 5)}. ${förslag.anledning}`
+                        : notis.innehåll ?? 'Klicka för att öppna bemanning.'}
                     </p>
-                    {arNy && <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: tone.color }} />}
-                  </div>
-                  <p className="line-clamp-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {notis.innehåll ?? 'Klicka för att öppna bemanning.'}
-                  </p>
-                  <p className="mt-2 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
-                    {notis.vikarie?.namn ? `${notis.vikarie.namn} · ` : ''}{datumText(notis)}
-                  </p>
-                </button>
+                    <p className="mt-2 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+                      {notis.vikarie?.namn ? `${notis.vikarie.namn} · ` : ''}{datumText(notis)}
+                    </p>
+                  </button>
+
+                  {notis.pass_id && förslag && (
+                    <div className="border-t px-3 pb-3 pt-2" style={{ borderColor: 'var(--border)' }}>
+                      {beslutsFel[notis.pass_id] && (
+                        <p className="mb-2 text-xs" style={{ color: '#ef4444' }}>{beslutsFel[notis.pass_id]}</p>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => beslutaOmTidsförslag(notis.pass_id!, 'avslagen')}
+                          disabled={beslutar}
+                          className="rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                          style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+                        >
+                          Avslå
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => beslutaOmTidsförslag(notis.pass_id!, 'godkand')}
+                          disabled={beslutar}
+                          className="rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                          style={{ background: 'var(--blue)' }}
+                        >
+                          {beslutar ? 'Sparar...' : 'Godkänn'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {notis.pass_id && beslutsInfo[notis.pass_id] && !förslag && (
+                    <p className="border-t px-3 py-2 text-xs font-semibold" style={{ borderColor: 'var(--border)', color: '#22c55e' }}>
+                      {beslutsInfo[notis.pass_id]}
+                    </p>
+                  )}
+                </div>
               );
             })}
           </div>
