@@ -745,6 +745,20 @@ function TillgänglighetModal({
 }
 
 
+const UPPDATERINGSTITEL = 'Passportalen har uppdaterats';
+const UPPDATERINGSTEXT = `Hej!
+
+Passportalen har uppdaterats med följande förbättringar för dig som vikarie:
+
+• Du kan nu föreslå en korrigering av arbetad tid direkt från ett pass under Mina pass. Förslaget skickas till administratören för godkännande innan tiderna ändras.
+• Placering och gruppinformation visas tydligare i pass och förfrågningar.
+• Hanteringen av notiser och passuppdateringar har förbättrats.
+
+Stäng Passportalen helt och starta sedan appen igen för att säkerställa att uppdateringen börjar gälla. Om du använder Passportalen i webbläsaren kan du även behöva ladda om sidan.
+
+Vänliga hälsningar
+Administrationen`;
+
 export default function Vikarier() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
@@ -756,6 +770,7 @@ export default function Vikarier() {
   const [massModal, setMassModal] = useState(false);
   const [massTitel, setMassTitel] = useState('Meddelande från admin');
   const [massText, setMassText] = useState('');
+  const [massMall, setMassMall] = useState<'vanlig' | 'uppdatering'>('vanlig');
   const [massFel, setMassFel] = useState('');
   const [massOk, setMassOk] = useState('');
   const [skickarMass, setSkickarMass] = useState(false);
@@ -835,6 +850,22 @@ export default function Vikarier() {
       if (allaFiltreradeMarkerade) return new Set();
       return new Set([...prev, ...filtrerade.map(v => v.id)]);
     });
+  }
+
+  function öppnaMeddelande(mall: 'vanlig' | 'uppdatering') {
+    setMassMall(mall);
+    setMassFel('');
+    setMassOk('');
+
+    if (mall === 'uppdatering') {
+      setMassTitel(UPPDATERINGSTITEL);
+      setMassText(UPPDATERINGSTEXT);
+    } else {
+      setMassTitel('Meddelande från admin');
+      setMassText('');
+    }
+
+    setMassModal(true);
   }
 
   async function skickaMassmeddelande() {
@@ -923,11 +954,19 @@ export default function Vikarier() {
             {allaFiltreradeMarkerade ? 'Avmarkera alla' : 'Markera alla'}
           </button>
           <button
-            onClick={() => setMassModal(true)}
+            onClick={() => öppnaMeddelande('vanlig')}
             disabled={markeradeIds.size === 0}
             className="rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             style={{ background: 'var(--blue)' }}>
             Skicka meddelande ({markeradeIds.size})
+          </button>
+          <button
+            onClick={() => öppnaMeddelande('uppdatering')}
+            disabled={markeradeIds.size === 0}
+            className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--blue)', color: 'var(--blue)' }}
+          >
+            Meddelande om uppdateringar
           </button>
         </div>
       </div>
@@ -1037,6 +1076,9 @@ export default function Vikarier() {
               <div>
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Skicka meddelande</h2>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{markeradeIds.size} valda mottagare</p>
+                {massMall === 'uppdatering' && (
+                  <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--blue)' }}>Redigerbar uppdateringsmall</p>
+                )}
               </div>
               <button onClick={() => setMassModal(false)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>
             </div>
@@ -1059,9 +1101,9 @@ export default function Vikarier() {
               <textarea
                 value={massText}
                 onChange={e => setMassText(e.target.value)}
-                rows={4}
+                rows={massMall === 'uppdatering' ? 12 : 5}
                 placeholder="Exempel: Appen har uppdaterats. Undvik känsliga uppgifter."
-                className="w-full rounded-lg border px-3 py-2 text-sm"
+                className="max-h-[45vh] w-full resize-y rounded-lg border px-3 py-2 text-sm"
                 style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
               />
             </label>
