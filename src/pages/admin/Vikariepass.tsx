@@ -1641,6 +1641,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
   }, [öppen, förvaltDatum, förvaldFrånvaro]);
 
   const veckopassDatum = form.veckopass && form.datum ? veckodagarFörVecka(form.datum) : [];
+  const aktivaVeckopassDagar = veckopassDatum.filter(datum => tidFörDatum(datum).aktiv).length;
 
   function tidFörDatum(datum: string) {
     return veckopassTider[datum] ?? { aktiv: true, tid_från: form.tid_från, tid_till: form.tid_till };
@@ -1897,30 +1898,49 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
             hämtaSchemaTid(form.personal_id, datum);
           }}
         />
-        <label className="flex items-start gap-2 rounded-xl border p-3 text-sm" style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <input
-            type="checkbox"
-            checked={form.veckopass}
-            onChange={e => {
-              setForm({ ...form, veckopass: e.target.checked });
-              setVeckopassTider({});
-            }}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300"
-          />
-          <span>
-            Skapa veckopass
-            <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
-              Skapar ett pass per vald vardag i veckan. Tider kan justeras per dag.
-            </span>
-          </span>
-        </label>
+        <section className="rounded-xl border p-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: false, label: 'En dag', hjälp: 'Skapa ett pass' },
+              { id: true, label: 'Veckopass', hjälp: 'Mån-fre' },
+            ].map(val => {
+              const aktiv = form.veckopass === val.id;
+              return (
+                <button
+                  key={val.label}
+                  type="button"
+                  onClick={() => {
+                    setForm({ ...form, veckopass: val.id });
+                    setVeckopassTider({});
+                  }}
+                  className="rounded-lg border px-3 py-2 text-left transition"
+                  style={{
+                    borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                    background: aktiv ? 'color-mix(in srgb, var(--blue) 14%, var(--bg-card))' : 'var(--bg-card)',
+                  }}
+                >
+                  <span className="block text-sm font-semibold" style={{ color: aktiv ? 'var(--blue)' : 'var(--text)' }}>{val.label}</span>
+                  <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>{val.hjälp}</span>
+                </button>
+              );
+            })}
+          </div>
+          {form.veckopass && (
+            <p className="mt-2 px-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Skapar ett pass per vald vardag. Tider kan justeras per dag och bara en notis skickas.
+            </p>
+          )}
+        </section>
 
         {form.veckopass && veckopassDatum.length > 0 && (
           <div className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                Veckans pass
-              </p>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                  Veckans pass
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{aktivaVeckopassDagar} dagar valda</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setVeckopassTider({})}
@@ -1936,41 +1956,60 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
                 const dagensTid = tidFörDatum(datum);
 
                 return (
-                  <div key={datum} className="grid grid-cols-[24px_1fr_92px_92px] items-end gap-2 rounded-lg border p-2" style={{ borderColor: 'var(--border)' }}>
-                    <input
-                      type="checkbox"
-                      checked={dagensTid.aktiv}
-                      onChange={e => uppdateraVeckopassTid(datum, { aktiv: e.target.checked })}
-                      className="mb-2 h-4 w-4 rounded"
-                    />
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                        {new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{datum}</p>
+                  <div
+                    key={datum}
+                    className="rounded-lg border p-3 transition"
+                    style={{
+                      borderColor: dagensTid.aktiv ? 'var(--blue)' : 'var(--border)',
+                      background: dagensTid.aktiv ? 'color-mix(in srgb, var(--blue) 7%, transparent)' : 'transparent',
+                    }}
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <label className="flex min-w-0 items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={dagensTid.aktiv}
+                          onChange={e => uppdateraVeckopassTid(datum, { aktiv: e.target.checked })}
+                          className="mt-1 h-4 w-4 shrink-0 rounded"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>
+                            {new Date(`${datum}T12:00:00`).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </span>
+                          <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>{datum}</span>
+                        </span>
+                      </label>
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{
+                        background: dagensTid.aktiv ? 'color-mix(in srgb, var(--blue) 16%, transparent)' : 'var(--hover)',
+                        color: dagensTid.aktiv ? 'var(--blue)' : 'var(--text-muted)',
+                      }}>
+                        {dagensTid.aktiv ? 'Ingår' : 'Hoppas över'}
+                      </span>
                     </div>
-                    <label>
-                      <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Från</span>
-                      <input
-                        type="time"
-                        value={dagensTid.tid_från}
-                        disabled={!dagensTid.aktiv}
-                        onChange={e => uppdateraVeckopassTid(datum, { tid_från: e.target.value })}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm disabled:opacity-40"
-                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Till</span>
-                      <input
-                        type="time"
-                        value={dagensTid.tid_till}
-                        disabled={!dagensTid.aktiv}
-                        onChange={e => uppdateraVeckopassTid(datum, { tid_till: e.target.value })}
-                        className="w-full rounded-md border px-2 py-1.5 text-sm disabled:opacity-40"
-                        style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                      />
-                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label>
+                        <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Från</span>
+                        <input
+                          type="time"
+                          value={dagensTid.tid_från}
+                          disabled={!dagensTid.aktiv}
+                          onChange={e => uppdateraVeckopassTid(datum, { tid_från: e.target.value })}
+                          className="w-full rounded-md border px-2 py-2 text-sm disabled:opacity-40"
+                          style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                        />
+                      </label>
+                      <label>
+                        <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Till</span>
+                        <input
+                          type="time"
+                          value={dagensTid.tid_till}
+                          disabled={!dagensTid.aktiv}
+                          onChange={e => uppdateraVeckopassTid(datum, { tid_till: e.target.value })}
+                          className="w-full rounded-md border px-2 py-2 text-sm disabled:opacity-40"
+                          style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 );
               })}
@@ -2043,9 +2082,9 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
 
           <div className="mb-3 grid gap-2 sm:grid-cols-3">
             {[
-              { id: 'ingen', label: 'Ingen bemanning' },
-              { id: 'förfrågan', label: 'Skicka förfrågan' },
-              { id: 'direkt', label: 'Boka direkt' },
+              { id: 'ingen', label: 'Ingen bemanning', hjälp: 'Skapa som obokat eller ledigt' },
+              { id: 'förfrågan', label: 'Skicka förfrågan', hjälp: 'Vikarien får svara' },
+              { id: 'direkt', label: 'Boka direkt', hjälp: 'Kopplas direkt' },
             ].map(val => {
               const aktiv = bemanningLäge === val.id;
               return (
@@ -2056,14 +2095,15 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
                     setBemanningLäge(val.id as typeof bemanningLäge);
                     if (val.id !== 'ingen') setForm(prev => ({ ...prev, publicerad: false }));
                   }}
-                  className="rounded-lg border px-3 py-2 text-sm font-semibold transition"
+                  className="rounded-lg border px-3 py-2 text-left transition"
                   style={{
                     borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
                     background: aktiv ? 'color-mix(in srgb, var(--blue) 14%, var(--bg-card))' : 'var(--bg-card)',
                     color: aktiv ? 'var(--blue)' : 'var(--text)',
                   }}
                 >
-                  {val.label}
+                  <span className="block text-sm font-semibold">{val.label}</span>
+                  <span className="block text-xs" style={{ color: aktiv ? 'var(--blue)' : 'var(--text-muted)' }}>{val.hjälp}</span>
                 </button>
               );
             })}
@@ -2080,20 +2120,22 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
             </Select>
           )}
         </section>
-        <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
+        <label className="flex items-start gap-2 rounded-xl border p-3 text-sm" style={{ color: 'var(--text)', borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <input
             type="checkbox"
             checked={form.publicerad}
             disabled={bemanningLäge !== 'ingen'}
             onChange={e => setForm({ ...form, publicerad: e.target.checked })}
-            className="h-4 w-4 rounded border-gray-300"
+            className="mt-0.5 h-4 w-4 rounded border-gray-300"
           />
-          Publicera direkt för vikarier
-          {bemanningLäge !== 'ingen' && (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(inte när vikarie redan valts)</span>
-          )}
+          <span>
+            Publicera direkt för vikarier
+            {bemanningLäge !== 'ingen' && (
+              <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Inte tillgängligt när vikarie redan valts.</span>
+            )}
+          </span>
         </label>
-        <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 border-t px-1 py-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="sticky bottom-0 -mx-1 grid grid-cols-2 gap-2 border-t px-1 py-3 sm:flex sm:justify-end" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={spara}>
             {form.veckopass ? 'Skapa veckopass' : 'Skapa pass'}
