@@ -1582,8 +1582,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     </div>
   );
 }
-function NyttPassModal({ öppen, onStäng, personal, vikarier, onSkapad, förvaltDatum, förvaldFrånvaro, lastaDagar }: {
-  öppen: boolean; onStäng: () => void; personal: Personal[]; vikarier: Vikarie[]; onSkapad: () => void; förvaltDatum?: string; förvaldFrånvaro?: Frånvaro | null; lastaDagar: Set<string>;
+function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSkapad, förvaltDatum, förvaldFrånvaro, lastaDagar }: {
+  öppen: boolean; onStäng: () => void; personal: Personal[]; vikarier: Vikarie[]; frånvaron: Frånvaro[]; onSkapad: () => void; förvaltDatum?: string; förvaldFrånvaro?: Frånvaro | null; lastaDagar: Set<string>;
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
@@ -1757,6 +1757,15 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, onSkapad, förval
       let frånvaroId: string | null = förvaldFrånvaro?.id ?? null;
 
       if (!frånvaroId && form.registreraFrånvaro && form.personal_id) {
+        const befintligFrånvaro = frånvaron.find((frånvaro) =>
+          frånvaro.personal_id === form.personal_id &&
+          frånvaro.datum_från <= dag.datum &&
+          frånvaro.datum_till >= dag.datum
+        );
+
+        if (befintligFrånvaro) {
+          frånvaroId = befintligFrånvaro.id;
+        } else {
         const frånvaroRes = await frånvaroApi.skapa({
           personal_id: form.personal_id,
           datum_från: dag.datum,
@@ -1776,6 +1785,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, onSkapad, förval
         }
 
         frånvaroId = frånvaroRes.data?.id ?? null;
+        }
       }
 
       const res = await passApi.skapa({
@@ -2943,7 +2953,7 @@ export default function Bemanning() {
         </Modal>
       )}
 
-      <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} vikarier={vikarier} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} lastaDagar={lastaDagar} />
+      <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} vikarier={vikarier} frånvaron={frånvaron} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} lastaDagar={lastaDagar} />
 
       <Confirm
         öppen={arkiveraValda}
