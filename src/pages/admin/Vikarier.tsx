@@ -750,8 +750,10 @@ const UPPDATERINGSTEXT = `Hej!
 
 Passportalen har uppdaterats med följande förbättringar för dig som vikarie:
 
+• Veckopass kan nu skapas och bemannas smidigare av administratören. Om samma vikarie kopplas till flera dagar skickas en samlad notis i stället för en per dag.
 • Du kan nu föreslå en korrigering av arbetad tid direkt från ett pass under Mina pass. Förslaget skickas till administratören för godkännande innan tiderna ändras.
 • Placering och gruppinformation visas tydligare i pass och förfrågningar.
+• Mobilmenyn i vikarievyn har fått större knappar och mer luft längst ned på skärmen, särskilt för nyare iPhone-modeller.
 • Hanteringen av notiser och passuppdateringar har förbättrats.
 
 Stäng Passportalen helt och starta sedan appen igen för att säkerställa att uppdateringen börjar gälla. Om du använder Passportalen i webbläsaren kan du även behöva ladda om sidan.
