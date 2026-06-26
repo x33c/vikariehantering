@@ -89,7 +89,35 @@ export default function Konton() {
       {fel && <Alert typ="error" className="mb-4">{fel}</Alert>}
       {meddelande && <Alert typ="success" className="mb-4">{meddelande}</Alert>}
 
-      <div className="overflow-hidden rounded-lg border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <div className="space-y-3 md:hidden">
+        {profiler.map(profil => (
+          <article
+            key={profil.id}
+            className="rounded-2xl border p-4"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+          >
+            <div className="mb-3">
+              <p className="font-semibold" style={{ color: 'var(--text)' }}>{profil.namn ?? 'Namnlöst konto'}</p>
+              <p className="break-words text-xs" style={{ color: 'var(--text-muted)' }}>{profil.epost ?? '-'}</p>
+            </div>
+            <div className="grid gap-2">
+              <Select
+                value={profil.roll}
+                onChange={e => uppdateraRoll(profil, e.target.value as UserRoll)}
+                disabled={spararId === profil.id}
+              >
+                <option value="admin">Admin</option>
+                <option value="vikarie">Vikarie</option>
+              </Select>
+              <Button size="sm" variant="secondary" onClick={() => skickaLosenordsreset(profil.epost)}>
+                Återställ lösenord
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>

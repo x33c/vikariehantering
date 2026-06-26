@@ -211,7 +211,45 @@ export default function Historik() {
       {laddar ? <LaddaSida /> : filtrerade.length === 0 ? (
         <TomtTillstånd text="Ingen historik att visa." />
       ) : (
-        <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+        <>
+        <div className="space-y-3 sm:hidden">
+          {filtrerade.map(r => (
+            <article
+              key={r.id}
+              className="rounded-2xl border p-4"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+            >
+              <div className="mb-2 flex items-start gap-2">
+                <span
+                  className="mt-2 h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: HÄNDELSE_FÄRG[r.händelse] ?? 'var(--text-subtle)' }}
+                />
+                <div className="min-w-0">
+                  <p className="font-semibold" style={{ color: 'var(--text)' }}>
+                    {händelseRubrik(r.händelse, r.metadata)}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {new Date(r.created_at).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' })}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--bg)' }}>
+                <MetadataDetalj
+                  händelse={r.händelse}
+                  metadata={r.metadata}
+                  vikariepass={r.vikariepass}
+                  utfördAvNamn={r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? null}
+                  vikarieNamnById={vikarieNamnById}
+                />
+              </div>
+              <p className="mt-2 text-xs" style={{ color: 'var(--text-subtle)' }}>
+                {r.utförd_av_profil?.namn ?? r.utförd_av_profil?.epost ?? 'System'}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden overflow-hidden rounded-xl border sm:block" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -257,6 +295,7 @@ export default function Historik() {
             </table>
           </div>
         </div>
+        </>
       )}
     </div>
   );
