@@ -1582,8 +1582,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     </div>
   );
 }
-function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, förvaldFrånvaro, lastaDagar }: {
-  öppen: boolean; onStäng: () => void; personal: Personal[]; onSkapad: () => void; förvaltDatum?: string; förvaldFrånvaro?: Frånvaro | null; lastaDagar: Set<string>;
+function NyttPassModal({ öppen, onStäng, personal, vikarier, onSkapad, förvaltDatum, förvaldFrånvaro, lastaDagar }: {
+  öppen: boolean; onStäng: () => void; personal: Personal[]; vikarier: Vikarie[]; onSkapad: () => void; förvaltDatum?: string; förvaldFrånvaro?: Frånvaro | null; lastaDagar: Set<string>;
 }) {
   const [form, setForm] = useState({
     personal_id: '', datum: new Date().toISOString().slice(0, 10),
@@ -1596,6 +1596,14 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
   const [schemaInfo, setSchemaInfo] = useState('');
   const [veckopassTider, setVeckopassTider] = useState<Record<string, { aktiv: boolean; tid_från: string; tid_till: string }>>({});
   const [fel, setFel] = useState('');
+  const [bemanningLäge, setBemanningLäge] = useState<'ingen' | 'förfrågan' | 'direkt'>('ingen');
+  const [valdVikarieId, setValdVikarieId] = useState('');
+
+  useEffect(() => {
+    if (öppen) return;
+    setBemanningLäge('ingen');
+    setValdVikarieId('');
+  }, [öppen]);
 
   useEffect(() => {
     if (!öppen) return;
@@ -1736,6 +1744,15 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
       }
     }
 
+    if (bemanningLäge !== 'ingen' && !valdVikarieId) {
+      setLaddar(false);
+      setFel('Välj vikarie eller ändra bemanning till "Ingen bemanning".');
+      return;
+    }
+
+    const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
+    const skapadePass: Bemanning[] = [];
+
     for (const dag of passSomSkaSkapas) {
       let frånvaroId: string | null = förvaldFrånvaro?.id ?? null;
 
@@ -1765,7 +1782,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
         personal_id: form.personal_id || null,
         frånvaro_id: frånvaroId,
         schemarad_id: null,
-        vikarie_id: null,
+        vikarie_id: bemanningLäge === 'direkt' ? valdVikarieId : null,
         datum: dag.datum,
         tid_från: dag.tid_från,
         tid_till: dag.tid_till,
@@ -1774,9 +1791,9 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
         grupp: form.grupp || null,
         sal: null,
         anteckning: form.anteckning || null,
-        riktad_till_vikarie_id: null,
-        publicerad: form.publicerad,
-        status: 'obokat',
+        riktad_till_vikarie_id: bemanningLäge === 'förfrågan' ? valdVikarieId : null,
+        publicerad: bemanningLäge === 'ingen' ? form.publicerad : false,
+        status: bemanningLäge === 'förfrågan' ? 'notifierat' : bemanningLäge === 'direkt' ? 'bokat' : 'obokat',
         skapad_av: null,
       });
 
@@ -1789,10 +1806,36 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
       }
 
       if (res.data) {
+        skapadePass.push(res.data as Bemanning);
         await historikApi.skapa(res.data.id, 'pass_skapat', {
           ...(form.veckopass ? { typ: 'veckopass', datum: dag.datum } : {}),
           ...(frånvaroId ? { frånvaro_id: frånvaroId, åtgärd: förvaldFrånvaro ? 'skapade_pass_från_befintlig_frånvaro' : 'skapade_pass_med_frånvaro' } : {}),
         });
+
+        if (bemanningLäge === 'förfrågan') {
+          await historikApi.skapa(res.data.id, 'vikarie_notifierat', {
+            vikarie_id: valdVikarieId,
+            vikarie_namn: valdVikarie?.namn,
+            ...(form.veckopass ? { typ: 'veckopass', samlad_notis: true } : {}),
+          });
+        }
+
+        if (bemanningLäge === 'direkt') {
+          await historikApi.skapa(res.data.id, 'vikarie_bokat', {
+            vikarie_id: valdVikarieId,
+            vikarie_namn: valdVikarie?.namn,
+            ...(form.veckopass ? { typ: 'veckopass', samlad_notis: true } : {}),
+          });
+        }
+      }
+    }
+
+    const notisPass = skapadePass[0];
+    if (notisPass && valdVikarieId) {
+      if (bemanningLäge === 'förfrågan') {
+        await notisApi.skickaNotiser(notisPass.id, [valdVikarieId]);
+      } else if (bemanningLäge === 'direkt') {
+        await notisApi.skickaPassAndrat(notisPass.id, valdVikarieId);
       }
     }
 
@@ -1814,7 +1857,7 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [öppen, laddar, form]);
+  }, [öppen, laddar, form, bemanningLäge, valdVikarieId]);
 
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
@@ -1978,14 +2021,67 @@ function NyttPassModal({ öppen, onStäng, personal, onSkapad, förvaltDatum, f�
             style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
           />
         </div>
+        <section className="rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="mb-3">
+            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Bemanning</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {form.veckopass
+                ? 'Välj vikarie här om samma person ska kopplas till alla valda dagar. Endast en notis skickas.'
+                : 'Välj vikarie direkt när passet skapas.'}
+            </p>
+          </div>
+
+          <div className="mb-3 grid gap-2 sm:grid-cols-3">
+            {[
+              { id: 'ingen', label: 'Ingen bemanning' },
+              { id: 'förfrågan', label: 'Skicka förfrågan' },
+              { id: 'direkt', label: 'Boka direkt' },
+            ].map(val => {
+              const aktiv = bemanningLäge === val.id;
+              return (
+                <button
+                  key={val.id}
+                  type="button"
+                  onClick={() => {
+                    setBemanningLäge(val.id as typeof bemanningLäge);
+                    if (val.id !== 'ingen') setForm(prev => ({ ...prev, publicerad: false }));
+                  }}
+                  className="rounded-lg border px-3 py-2 text-sm font-semibold transition"
+                  style={{
+                    borderColor: aktiv ? 'var(--blue)' : 'var(--border)',
+                    background: aktiv ? 'color-mix(in srgb, var(--blue) 14%, var(--bg-card))' : 'var(--bg-card)',
+                    color: aktiv ? 'var(--blue)' : 'var(--text)',
+                  }}
+                >
+                  {val.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {bemanningLäge !== 'ingen' && (
+            <Select
+              label="Vikarie"
+              value={valdVikarieId}
+              onChange={e => setValdVikarieId(e.target.value)}
+            >
+              <option value="">Välj vikarie...</option>
+              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+            </Select>
+          )}
+        </section>
         <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text)' }}>
           <input
             type="checkbox"
             checked={form.publicerad}
+            disabled={bemanningLäge !== 'ingen'}
             onChange={e => setForm({ ...form, publicerad: e.target.checked })}
             className="h-4 w-4 rounded border-gray-300"
           />
           Publicera direkt för vikarier
+          {bemanningLäge !== 'ingen' && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(inte när vikarie redan valts)</span>
+          )}
         </label>
         <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 border-t px-1 py-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
@@ -2847,7 +2943,7 @@ export default function Bemanning() {
         </Modal>
       )}
 
-      <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} lastaDagar={lastaDagar} />
+      <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} vikarier={vikarier} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} lastaDagar={lastaDagar} />
 
       <Confirm
         öppen={arkiveraValda}
