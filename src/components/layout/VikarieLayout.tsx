@@ -175,11 +175,11 @@ export default function VikarieLayout() {
             </button>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-4 lg:pb-0">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:pb-0">
           <Outlet />
         </main>
         <nav
-          className="grid shrink-0 grid-cols-6 gap-1 border-t px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 lg:hidden"
+          className="flex shrink-0 gap-1 overflow-x-auto border-t px-2 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           {navItems.filter((item) => item.to !== '/vikarie/notiser').map((item) => (
@@ -187,7 +187,7 @@ export default function VikarieLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
-              className="flex min-h-12 items-center justify-center rounded-xl px-1.5 text-center text-[11px] font-semibold sm:text-xs"
+              className="flex min-h-12 min-w-[4.8rem] shrink-0 items-center justify-center rounded-xl px-3 text-center text-[11px] font-semibold sm:min-w-[5.8rem] sm:text-xs"
               style={({ isActive }) => ({
                 background: isActive ? 'var(--nav-active)' : 'transparent',
                 color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
