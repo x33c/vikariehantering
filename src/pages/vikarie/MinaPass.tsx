@@ -168,6 +168,7 @@ export default function MinaPass() {
   const [modalFel, setModalFel] = useState('');
   const [kalenderDatum, setKalenderDatum] = useState(idagIso());
   const [valdDatum, setValdDatum] = useState(idagIso());
+  const [visaValdaDagensPass, setVisaValdaDagensPass] = useState(false);
 
   useEffect(() => {
     async function ladda() {
@@ -191,6 +192,7 @@ export default function MinaPass() {
       if (förstaVisadePass) {
         setValdDatum(förstaVisadePass.datum);
         setKalenderDatum(förstaVisadePass.datum);
+        setVisaValdaDagensPass(false);
       }
 
       const antal = await Promise.all(mina.map(async p => {
@@ -356,6 +358,7 @@ export default function MinaPass() {
     setKalenderDatum(nästaMånad);
     const förstaPassIMånaden = kalenderPass.find(p => p.datum.startsWith(nästaMånad.slice(0, 7)));
     setValdDatum(förstaPassIMånaden?.datum ?? `${nästaMånad.slice(0, 7)}-01`);
+    setVisaValdaDagensPass(false);
   }
 
   return (
@@ -431,7 +434,11 @@ export default function MinaPass() {
                 key={datum ?? `tom-${index}`}
                 type="button"
                 disabled={!datum}
-                onClick={() => datum && setValdDatum(datum)}
+                onClick={() => {
+                  if (!datum) return;
+                  setValdDatum(datum);
+                  setVisaValdaDagensPass((passPerDatum[datum] ?? []).length > 0);
+                }}
                 className="relative aspect-square rounded-xl border text-sm font-semibold transition disabled:opacity-0"
                 style={{
                   background: vald ? 'var(--blue)' : harPass ? 'color-mix(in srgb, var(--blue) 9%, var(--bg))' : 'var(--bg)',
@@ -457,15 +464,24 @@ export default function MinaPass() {
         </div>
       </section>
 
-      <section className="mb-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(valdDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {valdaDagensPass.length > 0 ? `${valdaDagensPass.length} pass denna dag` : 'Inga pass denna dag'}
             </p>
           </div>
-          {kommande.length > 0 && valdaDagensPass.length === 0 && (
+          {valdaDagensPass.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setVisaValdaDagensPass(v => !v)}
+              className="shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold"
+              style={{ borderColor: 'var(--border)', color: 'var(--blue)' }}
+            >
+              {visaValdaDagensPass ? 'Dölj' : 'Visa pass'}
+            </button>
+          ) : kommande.length > 0 ? (
             <button
               type="button"
               onClick={() => {
@@ -473,6 +489,7 @@ export default function MinaPass() {
                 if (nästa) {
                   setValdDatum(nästa.datum);
                   setKalenderDatum(nästa.datum);
+                  setVisaValdaDagensPass(true);
                 }
               }}
               className="rounded-xl border px-3 py-2 text-xs font-semibold"
@@ -480,23 +497,27 @@ export default function MinaPass() {
             >
               Nästa pass
             </button>
-          )}
+          ) : null}
         </div>
 
         {valdaDagensPass.length === 0 ? (
-          <div className="rounded-2xl border border-dashed px-4 py-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <div className="mt-3 rounded-2xl border border-dashed px-4 py-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {kommande.length === 0 && !visaTidigare
                 ? 'Du har inga kommande pass. Lägg gärna in tillgänglighet så kan admin hitta dig lättare.'
                 : 'Välj en markerad dag i kalendern för att se pass.'}
             </p>
           </div>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
+        ) : visaValdaDagensPass ? (
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {valdaDagensPass.map(p => (
               <PassKort key={p.id} pass={p} meddelanden={meddelandeAntal[p.id] ?? 0} onClick={() => öppnaPass(p)} />
             ))}
           </div>
+        ) : (
+          <p className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ background: 'var(--bg)', color: 'var(--text-muted)' }}>
+            Passlistan är dold. Tryck på Visa pass för detaljer.
+          </p>
         )}
       </section>
 
