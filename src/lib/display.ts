@@ -46,7 +46,7 @@ export function visaGruppInfo(grupper: Array<string | null | undefined>) {
 
   return detaljerad
     ? { etikett: 'Placering under dagen', text: råtext }
-    : { etikett: 'Årskurs', text: visaArskurs(grupper) };
+    : { etikett: 'Årskurs', text: råtext || visaArskurs(grupper) };
 }
 
 export function visaKommentar(anteckning?: string | null) {
