@@ -437,7 +437,7 @@ export default function MinaPass() {
                 onClick={() => {
                   if (!datum) return;
                   setValdDatum(datum);
-                  setVisaValdaDagensPass((passPerDatum[datum] ?? []).length > 0);
+                  setVisaValdaDagensPass(false);
                 }}
                 className="relative aspect-square rounded-xl border text-sm font-semibold transition disabled:opacity-0"
                 style={{
