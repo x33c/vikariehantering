@@ -464,8 +464,9 @@ export default function MinaPass() {
         </div>
       </section>
 
-      <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between gap-3">
+      {kalenderPass.length > 0 && (
+        <section className="mb-6 rounded-2xl border p-3 sm:p-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(valdDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -519,7 +520,8 @@ export default function MinaPass() {
             Passlistan är dold. Tryck på Visa pass för detaljer.
           </p>
         )}
-      </section>
+        </section>
+      )}
 
       {tidigare.length > 0 && !visaTidigare && (
         <p className="mb-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
