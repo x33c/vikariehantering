@@ -54,16 +54,9 @@ function kortNamn(namn: string | null | undefined) {
   return `${delar[0]} ${delar[delar.length - 1].slice(0, 1)}.`;
 }
 
-function arskurs(grupp: string | null | undefined) {
-  const text = (grupp ?? '').toLowerCase();
-  if (!text.trim()) return 'Ej angiven årskurs';
-  if (/fsk|förskoleklass|f-klass|fk/.test(text)) return 'FSK';
-
-  const siffror = [...text.matchAll(/\b[1-6]\b/g)].map((m) => Number(m[0]));
-  if (siffror.some((n) => n >= 1 && n <= 3)) return 'åk. 1-3';
-  if (siffror.some((n) => n >= 4 && n <= 6)) return 'åk. 4-6';
-
-  return 'Ej angiven årskurs';
+function gruppText(grupp: string | null | undefined) {
+  const text = (grupp ?? '').trim();
+  return text || 'Ej angiven grupp';
 }
 
 
@@ -714,7 +707,7 @@ serve(async (req) => {
   for (const vikarie of (vikarier ?? [])) {
     const namn = kortNamn(pass.personal?.namn) ?? 'personal';
     const tid = `${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}`;
-    const årskurs = arskurs(pass.grupp);
+    const grupp = gruppText(pass.grupp);
     const ämne = 'Ny vikariefråga';
     const rader = [
       `Hej ${vikarie.namn},`,
@@ -722,7 +715,7 @@ serve(async (req) => {
       'Du har en vikariefråga:',
       '',
       `Vikarierar för: ${namn}`,
-      `Årskurs: ${årskurs}`,
+      `Grupp: ${grupp}`,
       `Tid: ${tid}`,
       `Datum: ${pass.datum}`,
       pass.anteckning ? `Kommentar: ${pass.anteckning}` : null,
