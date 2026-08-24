@@ -19,10 +19,19 @@ jobs:
       - name: Apply patch
         shell: bash
         run: |
+          set -euo pipefail
           cat .codex-patches/pass_forfragningar.part*.b64 > /tmp/codex.patch.b64
           base64 -d /tmp/codex.patch.b64 > /tmp/codex.patch
-          git apply --check /tmp/codex.patch
-          git apply /tmp/codex.patch
+          echo "Patch files:"
+          grep '^diff --git' /tmp/codex.patch || true
+          echo "Trying 3-way patch apply..."
+          if ! git apply --3way /tmp/codex.patch; then
+            echo "3-way apply failed. Current rejected/conflicted files:"
+            git status --short
+            find . -name '*.rej' -print -maxdepth 5 || true
+            exit 1
+          fi
+          git status --short
       - name: Verify build
         shell: bash
         run: |
