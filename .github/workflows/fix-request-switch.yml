@@ -1,0 +1,73 @@
+name: Fix request switch UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-request-switch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Patch request UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('src/pages/admin/Vikariepass.tsx')
+          s = p.read_text(encoding='utf-8')
+          original = s
+
+          # 1. The status text should describe the selected substitute, not the whole pass.
+          old = """                {harAktivFörfrågan && (\n                  <p className=\"rounded-xl border px-3 py-2 text-sm\" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>\n                    Förfrågan är skickad till {valdVikarieHarFörfrågan ? 'vald vikarie' : 'annan vikarie'}.\n                  </p>\n                )}"""
+          new = """                {harAktivFörfrågan && (\n                  <p className=\"rounded-xl border px-3 py-2 text-sm\" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>\n                    {valdVikarieHarFörfrågan\n                      ? 'Förfrågan är redan skickad till vald vikarie.'\n                      : 'Passet har en aktiv förfrågan till annan vikarie. Du kan skicka till den valda vikarien också.'}\n                  </p>\n                )}"""
+          if old in s:
+            s = s.replace(old, new, 1)
+
+          # 2. If a button block conditionally swaps Skicka förfrågan for Ta tillbaka förfrågan,
+          #    make Skicka förfrågan depend only on whether the selected vikarie already has one.
+          conditional = re.compile(
+            r"\{harAktivFörfrågan \? \(\s*<Button\s+variant=\"secondary\"\s+onClick=\{taTillbakaFörfrågan\}\s+loading=\{sparar\}\s+disabled=\{dagLast\}\s*>\s*Ta tillbaka\s*förfrågan\s*</Button>\s*\) : \(\s*<Button\s+onClick=\{skickaFörfrågan\}\s+loading=\{sparar\}\s+disabled=\{!kanSkickaFörfrågan\}\s*>\s*Skicka förfrågan\s*</Button>\s*\)\}",
+            re.S,
+          )
+          replacement = """<Button onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>\n              {valdVikarieHarFörfrågan ? 'Förfrågan skickad' : 'Skicka förfrågan'}\n            </Button>\n            {(valdVikarieHarFörfrågan || (!valdVikarieId && harAktivFörfrågan)) && (\n              <Button variant=\"secondary\" onClick={taTillbakaFörfrågan} loading={sparar} disabled={dagLast}>\n                Ta tillbaka\n                förfrågan\n              </Button>\n            )}"""
+          s, n = conditional.subn(replacement, s, count=1)
+
+          # 3. Fallback for a slightly different button order: keep Skicka förfrågan visible before recall.
+          if n == 0 and 'Ta tillbaka\n                förfrågan' in s and 'Skicka förfrågan' in s:
+            recall_block = """            {harAktivFörfrågan ? (\n              <Button variant=\"secondary\" onClick={taTillbakaFörfrågan} loading={sparar} disabled={dagLast}>\n                Ta tillbaka\n                förfrågan\n              </Button>\n            ) : (\n              <Button onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>\n                Skicka förfrågan\n              </Button>\n            )}"""
+            if recall_block in s:
+              s = s.replace(recall_block, replacement, 1)
+              n = 1
+
+          # 4. If the current file has no conditional block anymore, make sure the disabled state is not based on harAktivFörfrågan.
+          s = s.replace('disabled={!kanSkickaFörfrågan || harAktivFörfrågan}', 'disabled={!kanSkickaFörfrågan}')
+          s = s.replace('disabled={harAktivFörfrågan || !kanSkickaFörfrågan}', 'disabled={!kanSkickaFörfrågan}')
+
+          if s == original:
+            raise SystemExit('Ingen ändring gjordes. Knappblocket matchade inte förväntad struktur.')
+
+          p.write_text(s, encoding='utf-8')
+          print('Patched src/pages/admin/Vikariepass.tsx')
+          PY
+      - run: npm run build
+      - name: Commit patch and remove workflow
+        run: |
+          rm .github/workflows/fix-request-switch.yml
+          git config user.name "x33c"
+          git config user.email "x33c@users.noreply.github.com"
+          git add src/pages/admin/Vikariepass.tsx .github/workflows/fix-request-switch.yml
+          git commit -m "fix: tillåt ny förfrågan utan återkallning"
+          git push
