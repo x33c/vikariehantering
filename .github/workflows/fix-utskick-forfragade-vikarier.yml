@@ -64,15 +64,12 @@ jobs:
   const gruppText = grupp ? ` - ${grupp}` : '';
   return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
 }"""
-          if old not in s:
-            raise SystemExit('Hittade inte gamla vikarieText-blocket.')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif 'const väntandeFörfrågningar = (pass.förfrågningar ?? [])' not in s:
+              raise SystemExit('Hittade inte vikarieText-blocket.')
           p.write_text(s, encoding='utf-8')
           PY
-      - name: Build
-        run: |
-          npm ci
-          npm run build
       - name: Commit source fix and remove temporary files
         run: |
           git config user.name "github-actions[bot]"
