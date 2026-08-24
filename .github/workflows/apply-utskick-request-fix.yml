@@ -1,0 +1,84 @@
+name: Apply utskick request fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-utskick-request-fix.yml'
+      - '.github/utskick-request-fix-trigger.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Utskick.tsx
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/pages/admin/Utskick.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = """function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById: Map<string, Vikarie>) {
+  const bokadVikarie = pass.vikarie_id ? vikarierById.get(pass.vikarie_id)?.namn ?? pass.vikarie?.namn : null;
+  const riktadVikarie = pass.riktad_till_vikarie_id ? vikarierById.get(pass.riktad_till_vikarie_id)?.namn : null;
+  const namn = bokadVikarie
+    ? formatNamn(bokadVikarie)
+    : riktadVikarie
+      ? `Tillfrågad: ${formatNamn(riktadVikarie)}`
+      : 'Vikarie saknas';
+
+  const grupp = utskickGruppText(gruppForUtskick(pass));
+  const gruppText = grupp ? ` - ${grupp}` : '';
+  return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
+}"""
+          new = """function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById: Map<string, Vikarie>) {
+  const bokadVikarie = pass.vikarie_id ? vikarierById.get(pass.vikarie_id)?.namn ?? pass.vikarie?.namn : null;
+  const riktadVikarie = pass.riktad_till_vikarie_id ? vikarierById.get(pass.riktad_till_vikarie_id)?.namn : null;
+  const väntandeFörfrågningar = (pass.förfrågningar ?? [])
+    .filter((förfrågan) => förfrågan.status === 'vantar')
+    .map((förfrågan) => förfrågan.vikarie?.namn ?? vikarierById.get(förfrågan.vikarie_id)?.namn)
+    .filter((namn): namn is string => Boolean(namn));
+  const tillfrågade = [
+    ...new Map(
+      [...väntandeFörfrågningar, riktadVikarie]
+        .filter((namn): namn is string => Boolean(namn))
+        .map((namn) => [namn.trim().toLowerCase(), namn.trim()] as const)
+    ).values(),
+  ];
+
+  const namn = bokadVikarie
+    ? formatNamn(bokadVikarie)
+    : tillfrågade.length === 1
+      ? `Tillfrågad: ${formatNamn(tillfrågade[0])}`
+      : tillfrågade.length > 1
+        ? `Tillfrågade: ${tillfrågade.map((namn) => formatNamn(namn)).join(', ')}`
+        : 'Vikarie saknas';
+
+  const grupp = utskickGruppText(gruppForUtskick(pass));
+  const gruppText = grupp ? ` - ${grupp}` : '';
+  return `${namn}${gruppText}\n(${tid(pass.tid_från)}-${tid(pass.tid_till)})`;
+}"""
+          if old in s:
+              p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          elif 'const väntandeFörfrågningar = (pass.förfrågningar ?? [])' in s:
+              print('Utskick.tsx is already patched.')
+          else:
+              raise SystemExit('Could not find expected vikarieText block.')
+      - name: Commit source fix
+        shell: bash
+        run: |
+          if git diff --quiet -- src/pages/admin/Utskick.tsx; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/pages/admin/Utskick.tsx
+          git commit -m "fix: visa tillfrågade vikarier i utskick"
+          git push
