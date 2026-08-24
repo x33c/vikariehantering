@@ -24,11 +24,13 @@ import type {
   Vikarie, NyVikarie, UppdateraVikarie,
   VikarieTillgänglighet,
   Frånvaro, NyFrånvaro,
-  Vikariepass, NyttVikariepass, UppdateraVikariepass, VikariepassExkludering,
+  Vikariepass, PassFörfrågan, NyttVikariepass, UppdateraVikariepass, VikariepassExkludering,
   PassStatus, HändelsTyp, Passmeddelande, Tidsändringsstatus,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
 } from '../../types';
+
+const VIKARIEPASS_SELECT = '*, personal(*, arbetslag(*)), frånvaro(*), förfrågningar:pass_forfragningar(*, vikarie:vikarier(*))';
 
 export const auth = {
   async loggaIn(epost: string, lösenord: string) {
@@ -179,7 +181,7 @@ export const frånvaroApi = {
 export const passApi = {
   async lista(filter?: PassFilter) {
     let q: any = supabase.from('vikariepass')
-      .select('*, personal(*, arbetslag(*)), frånvaro(*)')
+      .select(VIKARIEPASS_SELECT)
       .order('datum').order('tid_från');
     if (filter?.datumFrån) q = q.gte('datum', filter.datumFrån);
     if (filter?.datumTill) q = q.lte('datum', filter.datumTill);
@@ -188,7 +190,7 @@ export const passApi = {
   },
   async hämta(id: string) {
     return (supabase.from('vikariepass') as any)
-      .select('*, personal(*, arbetslag(*)), frånvaro(*)')
+      .select(VIKARIEPASS_SELECT)
       .eq('id', id).single();
   },
   async listaExkluderingar(passId: string) {
@@ -291,23 +293,129 @@ export const passApi = {
       .update({ vikarie_id: vikarieId, status: 'bokat' })
       .eq('id', passId).select('*, personal(*)').single();
   },
+  async läggTillFörfrågningar(passId: string, vikarieIds: string[]) {
+    const ids = [...new Set(vikarieIds)].filter(Boolean);
+    if (ids.length === 0) return { data: [] as PassFörfrågan[], error: null };
+
+    const passRes = await supabase.from('vikariepass')
+      .update({ status: 'notifierat', publicerad: false })
+      .eq('id', passId)
+      .select(VIKARIEPASS_SELECT)
+      .single();
+
+    if (passRes.error) return { data: null, error: passRes.error };
+
+    return supabase.from('pass_forfragningar')
+      .upsert(ids.map(vikarie_id => ({
+        pass_id: passId,
+        vikarie_id,
+        status: 'vantar',
+        svarat_kl: null,
+      })), { onConflict: 'pass_id,vikarie_id' })
+      .select('*, vikarie:vikarier(*)');
+  },
+  async återkallaFörfrågningar(passId: string, vikarieIds?: string[]) {
+    let q = supabase.from('pass_forfragningar')
+      .update({ status: 'aterkallad', svarat_kl: new Date().toISOString() })
+      .eq('pass_id', passId)
+      .eq('status', 'vantar');
+
+    if (vikarieIds?.length) q = q.in('vikarie_id', vikarieIds);
+    const res = await q.select('*, vikarie:vikarier(*)');
+    if (res.error) return res;
+
+    const kvar = await supabase.from('pass_forfragningar')
+      .select('id')
+      .eq('pass_id', passId)
+      .eq('status', 'vantar')
+      .limit(1);
+
+    if (!kvar.error && (kvar.data ?? []).length === 0) {
+      await supabase.from('vikariepass')
+        .update({ status: 'obokat', riktad_till_vikarie_id: null })
+        .eq('id', passId)
+        .eq('status', 'notifierat')
+        .is('vikarie_id', null);
+    }
+
+    return res;
+  },
   async bokaPass(passId: string, vikarieId: string) {
-    return supabase.from('vikariepass')
+    const res = await supabase.from('vikariepass')
       .update({ vikarie_id: vikarieId, status: 'bokat' })
       .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
-      .select().single();
+      .select(VIKARIEPASS_SELECT).single();
+
+    if (!res.error) {
+      await supabase.from('pass_forfragningar')
+        .update({ status: 'ja', svarat_kl: new Date().toISOString() })
+        .eq('pass_id', passId)
+        .eq('vikarie_id', vikarieId)
+        .eq('status', 'vantar');
+      await supabase.from('pass_forfragningar')
+        .update({ status: 'aterkallad', svarat_kl: new Date().toISOString() })
+        .eq('pass_id', passId)
+        .neq('vikarie_id', vikarieId)
+        .eq('status', 'vantar');
+    }
+
+    return res;
   },
   async tackaJa(passId: string, vikarieId: string) {
-    return supabase.from('vikariepass')
+    const res = await supabase.from('vikariepass')
       .update({ vikarie_id: vikarieId, status: 'bokat', riktad_till_vikarie_id: null })
       .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
-      .select('*').single();
+      .select(VIKARIEPASS_SELECT).single();
+
+    if (!res.error) {
+      await supabase.from('pass_forfragningar')
+        .update({ status: 'ja', svarat_kl: new Date().toISOString() })
+        .eq('pass_id', passId)
+        .eq('vikarie_id', vikarieId)
+        .eq('status', 'vantar');
+      await supabase.from('pass_forfragningar')
+        .update({ status: 'aterkallad', svarat_kl: new Date().toISOString() })
+        .eq('pass_id', passId)
+        .neq('vikarie_id', vikarieId)
+        .eq('status', 'vantar');
+    }
+
+    return res;
   },
   async tackaNej(passId: string, vikarieId: string) {
+    const svar = await supabase.from('pass_forfragningar')
+      .update({ status: 'nej', svarat_kl: new Date().toISOString() })
+      .eq('pass_id', passId)
+      .eq('vikarie_id', vikarieId)
+      .eq('status', 'vantar')
+      .select('*');
+
+    if (svar.error) return { data: null, error: svar.error };
+
+    const kvar = await supabase.from('pass_forfragningar')
+      .select('id')
+      .eq('pass_id', passId)
+      .eq('status', 'vantar')
+      .limit(1);
+
+    if (!kvar.error && (kvar.data ?? []).length === 0) {
+      return supabase.from('vikariepass')
+        .update({ status: 'obokat', riktad_till_vikarie_id: null })
+        .eq('id', passId)
+        .eq('status', 'notifierat')
+        .is('vikarie_id', null)
+        .select(VIKARIEPASS_SELECT)
+        .single();
+    }
+
+    if ((svar.data ?? []).length > 0) {
+      return supabase.from('vikariepass').select(VIKARIEPASS_SELECT).eq('id', passId).single();
+    }
+
     return supabase.from('vikariepass')
       .update({ status: 'obokat', riktad_till_vikarie_id: null })
       .eq('id', passId).eq('riktad_till_vikarie_id', vikarieId).eq('status', 'notifierat')
-      .select('*').single();
+      .select(VIKARIEPASS_SELECT).single();
   },
   async hämtaVikarie(vikarieId: string) {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();

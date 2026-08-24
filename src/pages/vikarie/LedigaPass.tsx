@@ -69,11 +69,21 @@ async function hittaÖverlappandeBokning(grupp: Passgrupp, vikarieId: string) {
   );
 }
 
+function harVäntandeFörfrågan(pass: Vikariepass, vikarieId: string) {
+  return pass.riktad_till_vikarie_id === vikarieId ||
+    (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
+}
+
+function harNågonVäntandeFörfrågan(pass: Vikariepass) {
+  return !!pass.riktad_till_vikarie_id ||
+    (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
+}
+
 function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[] {
   const grupper = new Map<string, Passgrupp>();
 
   for (const p of pass) {
-    const riktad = !!minVikarieId && p.riktad_till_vikarie_id === minVikarieId;
+    const riktad = !!minVikarieId && harVäntandeFörfrågan(p, minVikarieId);
     const nyckel = `${p.personal_id ?? 'okänd'}_${p.datum}_${riktad ? 'riktad' : 'ledig'}`;
 
     if (!grupper.has(nyckel)) {
@@ -196,6 +206,7 @@ export default function LedigaPass() {
   const [fel, setFel] = useState('');
   const [bekräftelse, setBekräftelse] = useState('');
   const [bekräftaBokning, setBekräftaBokning] = useState<Passgrupp | null>(null);
+  const [bekräftaTackaNej, setBekräftaTackaNej] = useState<Passgrupp | null>(null);
 
   useEffect(() => { ladda(); }, [användare]);
   useRealtimeRefresh(!!minVikarie, ladda, ['vikariepass', 'notiser']);
@@ -221,11 +232,11 @@ export default function LedigaPass() {
     const aktiva = alla.filter((p) => !ärPassPasserat(p) && !doldaPassIds.has(p.id));
 
     setFörfrågningar(
-      aktiva.filter((p) => p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
+      aktiva.filter((p) => p.status === 'notifierat' && harVäntandeFörfrågan(p, vikarie.id))
     );
 
     setLedigaPass(
-      aktiva.filter((p) => p.status === 'obokat' && p.publicerad && !p.riktad_till_vikarie_id)
+      aktiva.filter((p) => p.status === 'obokat' && p.publicerad && !harNågonVäntandeFörfrågan(p))
     );
 
     setLaddar(false);
@@ -410,7 +421,7 @@ export default function LedigaPass() {
                 secondaryText="Tacka nej"
                 disabled={sparar}
                 onKlick={() => { setFel(''); tackaJa(grupp); }}
-                onSecondary={() => { setFel(''); tackaNej(grupp); }}
+                onSecondary={() => { setFel(''); setBekräftaTackaNej(grupp); }}
               />
             ))}
           </div>
@@ -444,6 +455,42 @@ export default function LedigaPass() {
         )}
       </section>
 
+
+      {bekräftaTackaNej && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setBekräftaTackaNej(null)} />
+          <div className="relative w-full rounded-t-2xl p-5 shadow-xl sm:max-w-sm sm:rounded-2xl" style={{ background: 'var(--bg-card)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Tacka nej?</h2>
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Är du säker på att du vill tacka nej till {bekräftaTackaNej.personalNamn} {bekräftaTackaNej.datum}?
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBekräftaTackaNej(null)}
+                className="rounded-xl border px-4 py-3 text-sm font-semibold"
+                style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                disabled={sparar}
+                onClick={() => {
+                  const grupp = bekräftaTackaNej;
+                  setBekräftaTackaNej(null);
+                  setFel('');
+                  tackaNej(grupp);
+                }}
+                className="rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: 'var(--danger)' }}
+              >
+                {sparar ? 'Sparar...' : 'Ja, tacka nej'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {bekräftaBokning && (
         <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 sm:items-center sm:p-4">

@@ -177,6 +177,16 @@ function hittaTillgänglighetFörDatum(poster: VikarieTillgänglighet[], datum: 
   return poster.find(t => t.återkommande && t.veckodag === veckodag) ?? null;
 }
 
+function väntandeFörfrågningar(pass: Bemanning) {
+  return (pass.förfrågningar ?? []).filter(f => f.status === 'vantar');
+}
+
+function harVäntandeFörfråganTill(pass: Bemanning, vikarieId?: string | null) {
+  if (!vikarieId) return false;
+  return pass.riktad_till_vikarie_id === vikarieId ||
+    väntandeFörfrågningar(pass).some(f => f.vikarie_id === vikarieId);
+}
+
 function ärAvbokningsförfrågan(meddelande?: string | null) {
   const text = (meddelande ?? '').toLowerCase();
   return text.includes('avboka') || text.includes('avbokning');
@@ -384,6 +394,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const [matchandeFrånvaro, setMatchandeFrånvaro] = useState<Frånvaro | null>(null);
   const [tidsändringsförslag, setTidsändringsförslag] = useState<PassTidsändring | null>(null);
   const [beslutarTidsändring, setBeslutarTidsändring] = useState(false);
+  const [skickaNotis, setSkickaNotis] = useState(true);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -762,15 +773,15 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       return;
     }
 
+    if (harVäntandeFörfråganTill(pass, valdVikarieId)) {
+      setFel('Vikarien har redan en aktiv förfrågan på passet.');
+      return;
+    }
+
     setSparar(true);
     setFel('');
 
-    const res = await passApi.uppdatera(pass.id, {
-      status: 'notifierat',
-      publicerad: false,
-      vikarie_id: null,
-      riktad_till_vikarie_id: valdVikarieId,
-    } as any);
+    const res = await passApi.läggTillFörfrågningar(pass.id, [valdVikarieId]);
 
     if (res.error) {
       setSparar(false);
@@ -779,23 +790,32 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     }
 
     let notisMetadata: Record<string, unknown>;
-    try {
-      const { error } = await notisApi.skickaNotiser(pass.id, [valdVikarieId]);
-      notisMetadata = {
-        notis_skickad: !error,
-        notifiering: error ? 'misslyckades' : 'skickad',
-        notis_typ: 'förfrågan',
-        notis_mottagare: valdVikarie?.namn ?? 'vikarien',
-        notis_fel: error?.message ?? null,
-      };
-    } catch (error) {
+    if (!skickaNotis) {
       notisMetadata = {
         notis_skickad: false,
-        notifiering: 'misslyckades',
+        notifiering: 'avstängd',
         notis_typ: 'förfrågan',
         notis_mottagare: valdVikarie?.namn ?? 'vikarien',
-        notis_fel: error instanceof Error ? error.message : String(error),
       };
+    } else {
+      try {
+        const { error } = await notisApi.skickaNotiser(pass.id, [valdVikarieId]);
+        notisMetadata = {
+          notis_skickad: !error,
+          notifiering: error ? 'misslyckades' : 'skickad',
+          notis_typ: 'förfrågan',
+          notis_mottagare: valdVikarie?.namn ?? 'vikarien',
+          notis_fel: error?.message ?? null,
+        };
+      } catch (error) {
+        notisMetadata = {
+          notis_skickad: false,
+          notifiering: 'misslyckades',
+          notis_typ: 'förfrågan',
+          notis_mottagare: valdVikarie?.namn ?? 'vikarien',
+          notis_fel: error instanceof Error ? error.message : String(error),
+        };
+      }
     }
 
     await historikApi.skapa(pass.id, 'vikarie_notifierat', {
@@ -811,35 +831,57 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       status: 'notifierat',
       publicerad: false,
       vikarie_id: null,
-      riktad_till_vikarie_id: valdVikarieId,
+      riktad_till_vikarie_id: pass.riktad_till_vikarie_id,
+      förfrågningar: [
+        ...(pass.förfrågningar ?? []).filter(f => f.vikarie_id !== valdVikarieId || f.status !== 'vantar'),
+        ...((res.data ?? []) as any[]),
+      ],
     });
   }
 
   async function taTillbakaFörfrågan() {
-    if (!pass.riktad_till_vikarie_id || pass.status !== 'notifierat') {
+    const aktiva = väntandeFörfrågningar(pass);
+    const ids = valdVikarieId && harVäntandeFörfråganTill(pass, valdVikarieId)
+      ? [valdVikarieId]
+      : aktiva.map(f => f.vikarie_id);
+    const gamlaRiktadeIds = pass.riktad_till_vikarie_id ? [pass.riktad_till_vikarie_id] : [];
+    const idsAttÅterkalla = [...new Set([...ids, ...gamlaRiktadeIds])];
+
+    if (idsAttÅterkalla.length === 0 || pass.status !== 'notifierat') {
       setFel('Det finns ingen aktiv förfrågan att ta tillbaka.');
       return;
     }
 
-    const tillfrågadVikarie = vikarier.find(v => v.id === pass.riktad_till_vikarie_id);
-    const ok = await uppdateraPass(
-      {
-        status: 'obokat',
-        publicerad: false,
-        vikarie_id: null,
-        riktad_till_vikarie_id: null,
-      } as Partial<Bemanning>,
-      {
-        åtgärd: 'tog_tillbaka_förfrågan',
-        vikarie_id: pass.riktad_till_vikarie_id,
-        vikarie_namn: tillfrågadVikarie?.namn,
-      }
-    );
+    setSparar(true);
+    setFel('');
+    const res = await passApi.återkallaFörfrågningar(pass.id, idsAttÅterkalla);
+    setSparar(false);
 
-    if (ok) {
-      setValdVikarieId('');
-      await laddaHistorikFörPass();
+    if (res.error) {
+      setFel(res.error.message);
+      return;
     }
+
+    const namn = idsAttÅterkalla
+      .map(id => vikarier.find(v => v.id === id)?.namn)
+      .filter(Boolean)
+      .join(', ');
+
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', {
+      åtgärd: 'tog_tillbaka_förfrågan',
+      vikarie_ids: idsAttÅterkalla,
+      vikarie_namn: namn || null,
+    });
+
+    const kvar = (pass.förfrågningar ?? []).filter(f => !(idsAttÅterkalla.includes(f.vikarie_id) && f.status === 'vantar'));
+    onUppdaterad({
+      ...pass,
+      status: kvar.some(f => f.status === 'vantar') ? 'notifierat' : 'obokat',
+      riktad_till_vikarie_id: idsAttÅterkalla.includes(pass.riktad_till_vikarie_id ?? '') ? null : pass.riktad_till_vikarie_id,
+      förfrågningar: kvar,
+    });
+    setValdVikarieId('');
+    await laddaHistorikFörPass();
   }
 
   async function bokaDirekt() {
@@ -1099,12 +1141,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     ? (visadFrånvaro.hel_dag ? 'Heldag' : `${visadFrånvaro.tid_från?.slice(0, 5) ?? ''}-${visadFrånvaro.tid_till?.slice(0, 5) ?? ''}`)
     : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro';
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
-  const harAktivFörfrågan = pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id;
+  const aktivaFörfrågningar = väntandeFörfrågningar(pass);
+  const harAktivFörfrågan = pass.status === 'notifierat' && (!!pass.riktad_till_vikarie_id || aktivaFörfrågningar.length > 0);
+  const valdVikarieHarFörfrågan = harVäntandeFörfråganTill(pass, valdVikarieId);
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
   const valdVikarieHarKrock = !!valdVikarieId && !!bokadeVikarier[valdVikarieId];
   const valdVikarieÄrRedanBokadPåPasset = harAktivBokning && pass.vikarie_id === valdVikarieId;
   const kanBemannaMedValdVikarie = !dagLast && !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieÄrRedanBokadPåPasset && pass.status !== 'avbokat';
-  const kanSkickaFörfrågan = !dagLast && !!valdVikarieId && !valdVikarieHarKrock && !harAktivFörfrågan && pass.status !== 'avbokat';
+  const kanSkickaFörfrågan = !dagLast && !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieHarFörfrågan && pass.status !== 'avbokat';
   const bemanningsKnappText = harAktivBokning ? 'Byt vikarie' : 'Boka vald vikarie';
 
   return (
@@ -1552,6 +1596,15 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
             )}
           </div>
         )}
+        <label className="mb-3 flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <input
+            type="checkbox"
+            checked={skickaNotis}
+            onChange={e => setSkickaNotis(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Skicka push-notis vid förfrågan
+        </label>
         <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
             {bemanningsKnappText}
@@ -2179,6 +2232,7 @@ export default function Bemanning() {
   const [lastaDagar, setLastaDagar] = useState<Set<string>>(() => lasLastaDagar());
   const [valda, setValda] = useState<Set<string>>(new Set());
   const [massVikarieId, setMassVikarieId] = useState('');
+  const [massSkickaNotis, setMassSkickaNotis] = useState(true);
   const [massSparar, setMassSparar] = useState(false);
   const [massFel, setMassFel] = useState('');
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
@@ -2318,14 +2372,13 @@ export default function Bemanning() {
     setMassSparar(true);
     setMassFel('');
 
-    const uppdatering: Partial<Bemanning> = typ === 'förfrågan'
-      ? { status: 'notifierat', publicerad: false, vikarie_id: null, riktad_till_vikarie_id: massVikarieId }
-      : { status: 'bokat', publicerad: false, vikarie_id: massVikarieId, riktad_till_vikarie_id: null };
-
     const uppdateradeIds: string[] = [];
 
     for (const passrad of passAttBemanna) {
-      const res = await passApi.uppdatera(passrad.id, uppdatering as any);
+      const res = typ === 'förfrågan'
+        ? await passApi.läggTillFörfrågningar(passrad.id, [massVikarieId])
+        : await passApi.uppdatera(passrad.id, { status: 'bokat', publicerad: false, vikarie_id: massVikarieId, riktad_till_vikarie_id: null } as any);
+
       if (res.error) {
         setMassSparar(false);
         setMassFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad')
@@ -2344,13 +2397,15 @@ export default function Bemanning() {
     };
 
     try {
-      const { error } = typ === 'förfrågan'
-        ? await notisApi.skickaNotiser(notisPass.id, [massVikarieId])
-        : await notisApi.skickaPassAndrat(notisPass.id, massVikarieId);
+      const { error } = massSkickaNotis
+        ? (typ === 'förfrågan'
+          ? await notisApi.skickaNotiser(notisPass.id, [massVikarieId])
+          : await notisApi.skickaPassAndrat(notisPass.id, massVikarieId))
+        : { error: null };
       notisMetadata = {
         ...notisMetadata,
-        notis_skickad: !error,
-        notifiering: error ? 'misslyckades' : 'skickad',
+        notis_skickad: massSkickaNotis && !error,
+        notifiering: massSkickaNotis ? (error ? 'misslyckades' : 'skickad') : 'avstängd',
         notis_typ: typ === 'förfrågan' ? 'samlad_förfrågan' : 'samlad_bokning',
         notis_fel: error?.message ?? null,
       };
@@ -2375,7 +2430,12 @@ export default function Bemanning() {
       }
     )));
 
-    setPass(prev => prev.map(p => uppdateradeIds.includes(p.id) ? { ...p, ...uppdatering } : p));
+    setPass(prev => prev.map(p => {
+      if (!uppdateradeIds.includes(p.id)) return p;
+      return typ === 'förfrågan'
+        ? { ...p, status: 'notifierat' as PassStatus, publicerad: false }
+        : { ...p, status: 'bokat' as PassStatus, publicerad: false, vikarie_id: massVikarieId, riktad_till_vikarie_id: null };
+    }));
     setValda(new Set());
     setMassVikarieId('');
     setMassSparar(false);
@@ -2415,7 +2475,9 @@ export default function Bemanning() {
   function gruppInfo(grupp: Passgrupp) {
     const harBokad = grupp.pass.some(p => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
     const harAvbokningsförfrågan = grupp.pass.some(p => avbokningsPassIds.has(p.id) && !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
-    const harRiktadFörfrågan = grupp.pass.some(p => !!p.riktad_till_vikarie_id && p.status === 'notifierat');
+    const harRiktadFörfrågan = grupp.pass.some(p =>
+      p.status === 'notifierat' && (!!p.riktad_till_vikarie_id || väntandeFörfrågningar(p).length > 0)
+    );
     const publicerad = grupp.pass.some(p => p.publicerad);
     const avbokad = grupp.pass.every(p => p.status === 'avbokat');
     const passerad = ärGruppPasserad(grupp);
@@ -2767,10 +2829,21 @@ export default function Bemanning() {
                   Välj en vikarie och bemanna alla markerade pass med en samlad notis.
                 </p>
               </div>
-              <Select value={massVikarieId} onChange={e => { setMassVikarieId(e.target.value); setMassFel(''); }}>
-                <option value="">Välj vikarie</option>
-                {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
-              </Select>
+              <div className="space-y-2">
+                <Select value={massVikarieId} onChange={e => { setMassVikarieId(e.target.value); setMassFel(''); }}>
+                  <option value="">Välj vikarie</option>
+                  {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                </Select>
+                <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <input
+                    type="checkbox"
+                    checked={massSkickaNotis}
+                    onChange={e => setMassSkickaNotis(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Skicka en samlad push-notis
+                </label>
+              </div>
               <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-none xl:grid-cols-3">
                 <Button size="sm" onClick={() => bemannaMarkerade('förfrågan')} loading={massSparar} disabled={!massVikarieId}>
                   Skicka förfrågan

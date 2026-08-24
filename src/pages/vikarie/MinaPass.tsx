@@ -29,8 +29,13 @@ function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
   return new Date(`${pass.datum}T${sluttid}:00`).getTime() < Date.now();
 }
 
-function ärFörfrågan(pass: Vikariepass) {
-  return pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id && !pass.vikarie_id;
+function ärFörfrågan(pass: Vikariepass, vikarieId?: string) {
+  if (pass.vikarie_id || pass.status !== 'notifierat') return false;
+  if (vikarieId) {
+    return pass.riktad_till_vikarie_id === vikarieId ||
+      (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
+  }
+  return !!pass.riktad_till_vikarie_id || (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
 }
 
 function tillIsoDatum(datum: Date) {
@@ -91,15 +96,17 @@ function ärAvbokningsmeddelande(text: string) {
 function PassKort({
   pass,
   meddelanden,
+  vikarieId,
   onClick,
 }: {
   pass: Vikariepass;
   meddelanden: number;
+  vikarieId?: string;
   onClick: () => void;
 }) {
   const kommentar = visaKommentar(pass.anteckning);
   const gruppInfo = visaGruppInfo([pass.grupp]);
-  const förfrågan = ärFörfrågan(pass);
+  const förfrågan = ärFörfrågan(pass, vikarieId);
 
   return (
     <button
@@ -204,7 +211,7 @@ export default function MinaPass() {
       const mina = ((pRes.data ?? []) as Vikariepass[])
         .filter(p =>
           p.vikarie_id === vikarie.id ||
-          (p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
+          (p.status === 'notifierat' && ärFörfrågan(p, vikarie.id))
         )
         .sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
 
@@ -367,8 +374,8 @@ export default function MinaPass() {
 
   const kommande = pass.filter(p => !ärPassPasserat(p));
   const tidigare = pass.filter(ärPassPasserat).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
-  const kommandeBokade = kommande.filter(p => !ärFörfrågan(p));
-  const kommandeFörfrågningar = kommande.filter(ärFörfrågan);
+  const kommandeBokade = kommande.filter(p => !ärFörfrågan(p, vikarie?.id));
+  const kommandeFörfrågningar = kommande.filter(p => ärFörfrågan(p, vikarie?.id));
   const kalenderPass = visaTidigare ? pass : kommande;
   const passPerDatum = kalenderPass.reduce<Record<string, Vikariepass[]>>((acc, p) => {
     acc[p.datum] = [...(acc[p.datum] ?? []), p].sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
@@ -451,8 +458,8 @@ export default function MinaPass() {
           {kalenderDagar(kalenderDatum).map((datum, index) => {
             const dagensPass = datum ? passPerDatum[datum] ?? [] : [];
             const harPass = dagensPass.length > 0;
-            const harFörfrågan = dagensPass.some(ärFörfrågan);
-            const harBokat = dagensPass.some(p => !ärFörfrågan(p));
+            const harFörfrågan = dagensPass.some(p => ärFörfrågan(p, vikarie?.id));
+            const harBokat = dagensPass.some(p => !ärFörfrågan(p, vikarie?.id));
             const vald = datum === valdDatum;
             const idag = datum === dagensDatum;
 
@@ -504,7 +511,7 @@ export default function MinaPass() {
             <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(valdDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {valdaDagensPass.length > 0
-                ? `${valdaDagensPass.filter(p => !ärFörfrågan(p)).length} pass · ${valdaDagensPass.filter(ärFörfrågan).length} förfrågningar`
+                ? `${valdaDagensPass.filter(p => !ärFörfrågan(p, vikarie?.id)).length} pass · ${valdaDagensPass.filter(p => ärFörfrågan(p, vikarie?.id)).length} förfrågningar`
                 : 'Inga pass denna dag'}
             </p>
           </div>
@@ -551,7 +558,8 @@ export default function MinaPass() {
                 key={p.id}
                 pass={p}
                 meddelanden={meddelandeAntal[p.id] ?? 0}
-                onClick={() => ärFörfrågan(p) ? navigate('/vikarie') : öppnaPass(p)}
+                vikarieId={vikarie?.id}
+                onClick={() => ärFörfrågan(p, vikarie?.id) ? navigate('/vikarie') : öppnaPass(p)}
               />
             ))}
           </div>

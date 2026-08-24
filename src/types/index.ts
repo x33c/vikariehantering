@@ -162,6 +162,20 @@ anteckning: string | null;
   personal?: Personal;
   vikarie?: Vikarie;
   frånvaro?: Frånvaro;
+  förfrågningar?: PassFörfrågan[];
+}
+
+export type PassFörfråganStatus = 'vantar' | 'ja' | 'nej' | 'aterkallad';
+
+export interface PassFörfrågan {
+  id: string;
+  pass_id: string;
+  vikarie_id: string;
+  status: PassFörfråganStatus;
+  svarat_kl: string | null;
+  created_at: string;
+  updated_at: string;
+  vikarie?: Vikarie;
 }
 
 export interface VikariepassExkludering {
@@ -242,7 +256,7 @@ export type UppdateraVikarie = Partial<NyVikarie>;
 export type NyFrånvaro = Omit<Frånvaro, 'id' | 'created_at' | 'updated_at' | 'personal'>;
 export type UppdateraFrånvaro = Partial<NyFrånvaro>;
 
-export type NyttVikariepass = Omit<Vikariepass, 'id' | 'created_at' | 'updated_at' | 'personal' | 'vikarie' | 'frånvaro'>;
+export type NyttVikariepass = Omit<Vikariepass, 'id' | 'created_at' | 'updated_at' | 'personal' | 'vikarie' | 'frånvaro' | 'förfrågningar'>;
 export type UppdateraVikariepass = Partial<NyttVikariepass>;
 export type Bemanning = Vikariepass;
 
