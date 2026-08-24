@@ -384,11 +384,26 @@ function utskickGruppText(grupp?: string | null) {
 function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById: Map<string, Vikarie>) {
   const bokadVikarie = pass.vikarie_id ? vikarierById.get(pass.vikarie_id)?.namn ?? pass.vikarie?.namn : null;
   const riktadVikarie = pass.riktad_till_vikarie_id ? vikarierById.get(pass.riktad_till_vikarie_id)?.namn : null;
+  const väntandeFörfrågningar = (pass.förfrågningar ?? [])
+    .filter((förfrågan) => förfrågan.status === 'vantar')
+    .map((förfrågan) => förfrågan.vikarie?.namn ?? vikarierById.get(förfrågan.vikarie_id)?.namn)
+    .filter((namn): namn is string => Boolean(namn));
+
+  const tillfrågade = [
+    ...new Map(
+      [...väntandeFörfrågningar, riktadVikarie]
+        .filter((namn): namn is string => Boolean(namn))
+        .map((namn) => [namn.trim().toLowerCase(), namn.trim()] as const)
+    ).values(),
+  ];
+
   const namn = bokadVikarie
     ? formatNamn(bokadVikarie)
-    : riktadVikarie
-      ? `Tillfrågad: ${formatNamn(riktadVikarie)}`
-      : 'Vikarie saknas';
+    : tillfrågade.length === 1
+      ? `Tillfrågad: ${formatNamn(tillfrågade[0])}`
+      : tillfrågade.length > 1
+        ? `Tillfrågade: ${tillfrågade.map((namn) => formatNamn(namn)).join(', ')}`
+        : 'Vikarie saknas';
 
   const grupp = utskickGruppText(gruppForUtskick(pass));
   const gruppText = grupp ? ` - ${grupp}` : '';
