@@ -2178,6 +2178,9 @@ export default function Bemanning() {
   const [veckaStart, setVeckaStart] = useState(() => standardVeckaStartIso());
   const [lastaDagar, setLastaDagar] = useState<Set<string>>(() => lasLastaDagar());
   const [valda, setValda] = useState<Set<string>>(new Set());
+  const [massVikarieId, setMassVikarieId] = useState('');
+  const [massSparar, setMassSparar] = useState(false);
+  const [massFel, setMassFel] = useState('');
   const [avbokningsPassIds, setAvbokningsPassIds] = useState<Set<string>>(new Set());
   const [arkiveraValda, setArkiveraValda] = useState(false);
   const [arkiverar, setArkiverar] = useState(false);
@@ -2285,6 +2288,97 @@ export default function Bemanning() {
     setValda(new Set());
     setArkiveraValda(false);
     setArkiverar(false);
+    ladda();
+  }
+
+
+  async function bemannaMarkerade(typ: 'förfrågan' | 'boka') {
+    if (!massVikarieId) {
+      setMassFel('Välj en vikarie först.');
+      return;
+    }
+
+    const ids = [...valda];
+    const passAttBemanna = pass
+      .filter(p => ids.includes(p.id))
+      .sort((a, b) => a.datum.localeCompare(b.datum) || minuter(a.tid_från) - minuter(b.tid_från));
+    const valdVikarie = vikarier.find(v => v.id === massVikarieId);
+
+    if (passAttBemanna.length === 0) {
+      setMassFel('Markera minst ett pass först.');
+      return;
+    }
+
+    const låstaDatum = [...new Set(passAttBemanna.filter(p => arDagLast(p.datum)).map(p => p.datum))];
+    if (låstaDatum.length > 0) {
+      setMassFel(`Dagen är låst (${låstaDatum.join(', ')}). Lås upp dagen innan du bemannar markerade pass.`);
+      return;
+    }
+
+    setMassSparar(true);
+    setMassFel('');
+
+    const uppdatering: Partial<Bemanning> = typ === 'förfrågan'
+      ? { status: 'notifierat', publicerad: false, vikarie_id: null, riktad_till_vikarie_id: massVikarieId }
+      : { status: 'bokat', publicerad: false, vikarie_id: massVikarieId, riktad_till_vikarie_id: null };
+
+    const uppdateradeIds: string[] = [];
+
+    for (const passrad of passAttBemanna) {
+      const res = await passApi.uppdatera(passrad.id, uppdatering as any);
+      if (res.error) {
+        setMassSparar(false);
+        setMassFel(res.error.message.includes('dubbelbokad') || res.error.message.includes('redan bokad')
+          ? 'Vikarien är redan bokad på ett pass som överlappar någon av de markerade tiderna.'
+          : res.error.message);
+        return;
+      }
+      uppdateradeIds.push(passrad.id);
+    }
+
+    const notisPass = passAttBemanna[0];
+    let notisMetadata: Record<string, unknown> = {
+      samlad_åtgärd: true,
+      antal_pass: passAttBemanna.length,
+      notis_mottagare: valdVikarie?.namn ?? 'vikarien',
+    };
+
+    try {
+      const { error } = typ === 'förfrågan'
+        ? await notisApi.skickaNotiser(notisPass.id, [massVikarieId])
+        : await notisApi.skickaPassAndrat(notisPass.id, massVikarieId);
+      notisMetadata = {
+        ...notisMetadata,
+        notis_skickad: !error,
+        notifiering: error ? 'misslyckades' : 'skickad',
+        notis_typ: typ === 'förfrågan' ? 'samlad_förfrågan' : 'samlad_bokning',
+        notis_fel: error?.message ?? null,
+      };
+    } catch (error) {
+      notisMetadata = {
+        ...notisMetadata,
+        notis_skickad: false,
+        notifiering: 'misslyckades',
+        notis_typ: typ === 'förfrågan' ? 'samlad_förfrågan' : 'samlad_bokning',
+        notis_fel: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    await Promise.all(passAttBemanna.map(passrad => historikApi.skapa(
+      passrad.id,
+      typ === 'förfrågan' ? 'vikarie_notifierat' : 'vikarie_bokat',
+      {
+        vikarie_id: massVikarieId,
+        vikarie_namn: valdVikarie?.namn,
+        tillfrågad_vikarie_namn: typ === 'förfrågan' ? valdVikarie?.namn : undefined,
+        ...notisMetadata,
+      }
+    )));
+
+    setPass(prev => prev.map(p => uppdateradeIds.includes(p.id) ? { ...p, ...uppdatering } : p));
+    setValda(new Set());
+    setMassVikarieId('');
+    setMassSparar(false);
     ladda();
   }
 
@@ -2662,6 +2756,35 @@ export default function Bemanning() {
               </button>
             </div>
         </div>
+
+        {valda.size > 0 && (
+          <section className="mb-3 rounded-xl border p-3" style={{ borderColor: 'var(--blue)', background: 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' }}>
+            {massFel && <div className="mb-3"><Alert typ="error">{massFel}</Alert></div>}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)_auto] lg:items-end">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{valda.size} markerade pass</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Välj en vikarie och bemanna alla markerade pass med en samlad notis.
+                </p>
+              </div>
+              <Select value={massVikarieId} onChange={e => { setMassVikarieId(e.target.value); setMassFel(''); }}>
+                <option value="">Välj vikarie</option>
+                {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+              </Select>
+              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-none xl:grid-cols-3">
+                <Button size="sm" onClick={() => bemannaMarkerade('förfrågan')} loading={massSparar} disabled={!massVikarieId}>
+                  Skicka förfrågan
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => bemannaMarkerade('boka')} loading={massSparar} disabled={!massVikarieId}>
+                  Boka direkt
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => { setValda(new Set()); setMassFel(''); }} disabled={massSparar}>
+                  Avmarkera
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
