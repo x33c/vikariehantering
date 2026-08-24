@@ -350,7 +350,7 @@ export default function MinaPass() {
     const text = `Jag behöver avboka passet ${valtPass.datum} ${valtPass.tid_från.slice(0, 5)}-${valtPass.tid_till.slice(0, 5)}.`;
     setSparar(true);
     const res = await passmeddelandeApi.skapa(valtPass.id, text, 'vikarie');
-    setSparar(false;
+    setSparar(false);
 
     if (!res.error) {
       await notisApi.skickaAdminAvbokning(valtPass.id);
