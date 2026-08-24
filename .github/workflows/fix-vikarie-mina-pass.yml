@@ -1,0 +1,52 @@
+name: Fix vikarie Mina pass
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Mina pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/pages/vikarie/MinaPass.tsx')
+          s = p.read_text(encoding='utf-8')
+          if 'vikarie?.id' not in s:
+              print('MinaPass.tsx verkar redan vara fixad.')
+          else:
+              s = s.replace('vikarie?.id', 'minVikarie?.id')
+              p.write_text(s, encoding='utf-8')
+              print('Ersatte vikarie?.id med minVikarie?.id i MinaPass.tsx')
+          if 'vikarie?.id' in p.read_text(encoding='utf-8'):
+              raise SystemExit('Det finns fortfarande vikarie?.id kvar')
+          PY
+          git diff -- src/pages/vikarie/MinaPass.tsx
+      - name: Verify build
+        shell: bash
+        run: |
+          npm ci
+          npm run build
+      - name: Commit fix
+        shell: bash
+        run: |
+          rm -f .github/workflows/fix-vikarie-mina-pass.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/vikarie/MinaPass.tsx .github/workflows/fix-vikarie-mina-pass.yml
+          if git diff --cached --quiet; then
+            echo "Inga ändringar att committa."
+          else
+            git commit -m "fix: rätta vikariens mina pass"
+            git push
+          fi
