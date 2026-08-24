@@ -1,0 +1,101 @@
+name: Fix request switch UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/request-switch-trigger.txt'
+      - '.github/workflows/fix-request-switch-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Patch request button logic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('src/pages/admin/Vikariepass.tsx')
+          s = p.read_text(encoding='utf-8')
+          original = s
+
+          old_msg = """          {harAktivFörfrågan && (
+            <p className=\"mb-3 rounded-lg border px-3 py-2 text-xs\" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              Förfrågan är skickad till <strong style={{ color: 'var(--text)' }}>{riktadVikarie?.namn ?? 'vald vikarie'}</strong>.
+            </p>
+          )}"""
+          new_msg = """          {harAktivFörfrågan && (
+            <p className=\"mb-3 rounded-lg border px-3 py-2 text-xs\" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+              {valdVikarieHarFörfrågan ? (
+                <>Förfrågan är redan skickad till <strong style={{ color: 'var(--text)' }}>{valdVikarie?.namn ?? riktadVikarie?.namn ?? 'vald vikarie'}</strong>.</>
+              ) : (
+                <>Passet har en aktiv förfrågan till annan vikarie. Du kan skicka till <strong style={{ color: 'var(--text)' }}>{valdVikarie?.namn ?? 'vald vikarie'}</strong> också.</>
+              )}
+            </p>
+          )}"""
+          if old_msg in s:
+            s = s.replace(old_msg, new_msg, 1)
+          else:
+            s, count = re.subn(
+              r"          \{harAktivFörfrågan && \(\n            <p className=\"mb-3 rounded-lg border px-3 py-2 text-xs\" style=\{\{ borderColor: 'var\(--border\)', background: 'var\(--bg-card\)', color: 'var\(--text-muted\)' \}\}>\n              Förfrågan är skickad till <strong style=\{\{ color: 'var\(--text\)' \}\}>\{riktadVikarie\?\.namn \?\? 'vald vikarie'\}</strong>\.\n            </p>\n          \)\}",
+              new_msg,
+              s,
+              count=1,
+            )
+            if count != 1:
+              raise SystemExit('Hittade inte informationsrutan för aktiv förfrågan.')
+
+          old_buttons = """          {harAktivFörfrågan ? (
+            <Button variant=\"secondary\" onClick={taTillbakaFörfrågan} loading={sparar}>
+              Ta tillbaka förfrågan
+            </Button>
+          ) : (
+            <Button variant=\"secondary\" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
+              Skicka förfrågan
+            </Button>
+          )}"""
+          new_buttons = """          <Button variant=\"secondary\" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
+            {valdVikarieHarFörfrågan ? 'Förfrågan skickad' : 'Skicka förfrågan'}
+          </Button>
+          {valdVikarieHarFörfrågan && (
+            <Button variant=\"secondary\" onClick={taTillbakaFörfrågan} loading={sparar}>
+              Ta tillbaka förfrågan
+            </Button>
+          )}"""
+          if old_buttons in s:
+            s = s.replace(old_buttons, new_buttons, 1)
+          else:
+            s, count = re.subn(
+              r"          \{harAktivFörfrågan \? \(\n            <Button variant=\"secondary\" onClick=\{taTillbakaFörfrågan\} loading=\{sparar\}>\n              Ta tillbaka förfrågan\n            </Button>\n          \) : \(\n            <Button variant=\"secondary\" onClick=\{skickaFörfrågan\} loading=\{sparar\} disabled=\{!kanSkickaFörfrågan\}>\n              Skicka förfrågan\n            </Button>\n          \)\}",
+              new_buttons,
+              s,
+              count=1,
+            )
+            if count != 1:
+              raise SystemExit('Hittade inte knappblocket för förfrågan.')
+
+          if s == original:
+            raise SystemExit('Ingen ändring gjordes.')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+      - name: Commit source fix and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/fix-request-switch-ui.yml .github/request-switch-trigger.txt
+          git add src/pages/admin/Vikariepass.tsx .github/workflows/fix-request-switch-ui.yml .github/request-switch-trigger.txt
+          git commit -m "fix: skicka förfrågan till vald vikarie"
+          git push
