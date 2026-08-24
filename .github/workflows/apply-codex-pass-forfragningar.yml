@@ -3,14 +3,14 @@ name: Apply Codex pass patch
 on:
   push:
     branches: [main]
-    paths:
-      - ".github/workflows/apply-codex-pass-forfragningar.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,9 +32,9 @@ jobs:
         shell: bash
         run: |
           rm -rf .codex-patches
-          rm .github/workflows/apply-codex-pass-forfragningar.yml
+          rm -f .github/workflows/apply-codex-pass-forfragningar.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/lib/api/index.ts src/types/index.ts src/pages/admin/Vikariepass.tsx src/pages/vikarie/LedigaPass.tsx src/pages/vikarie/MinaPass.tsx .codex-patches .github/workflows/apply-codex-pass-forfragningar.yml
+          git add src/lib/api/index.ts src/types/index.ts src/pages/admin/Vikariepass.tsx src/pages/vikarie/LedigaPass.tsx src/pages/vikarie/MinaPass.tsx supabase/migrations/20260824090000_add_pass_forfragningar.sql .codex-patches .github/workflows/apply-codex-pass-forfragningar.yml
           git commit -m "pass: stöd flera förfrågningar och notisval"
           git push
