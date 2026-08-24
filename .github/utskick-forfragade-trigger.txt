@@ -1,1 +1,0 @@
-trigger utskick tillfragade fix igen
