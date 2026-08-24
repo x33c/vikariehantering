@@ -24,11 +24,11 @@ jobs:
           base64 -d /tmp/codex.patch.b64 > /tmp/codex.patch
           echo "Patch files:"
           grep '^diff --git' /tmp/codex.patch || true
-          echo "Trying 3-way patch apply..."
-          if ! git apply --3way /tmp/codex.patch; then
-            echo "3-way apply failed. Current rejected/conflicted files:"
+          echo "Trying whitespace-tolerant patch apply..."
+          if ! git apply --3way --ignore-space-change /tmp/codex.patch; then
+            echo "Patch apply failed. Current rejected/conflicted files:"
             git status --short
-            find . -name '*.rej' -print -maxdepth 5 || true
+            find . -maxdepth 5 -name '*.rej' -print || true
             exit 1
           fi
           git status --short
