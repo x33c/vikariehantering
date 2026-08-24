@@ -1,0 +1,40 @@
+name: Apply Codex pass patch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/apply-codex-pass-forfragningar.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        shell: bash
+        run: |
+          cat .codex-patches/pass_forfragningar.part*.b64 > /tmp/codex.patch.b64
+          base64 -d /tmp/codex.patch.b64 > /tmp/codex.patch
+          git apply --check /tmp/codex.patch
+          git apply /tmp/codex.patch
+      - name: Verify build
+        shell: bash
+        run: |
+          npm ci
+          npm run build
+      - name: Commit applied patch
+        shell: bash
+        run: |
+          rm -rf .codex-patches
+          rm .github/workflows/apply-codex-pass-forfragningar.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/api/index.ts src/types/index.ts src/pages/admin/Vikariepass.tsx src/pages/vikarie/LedigaPass.tsx src/pages/vikarie/MinaPass.tsx .codex-patches .github/workflows/apply-codex-pass-forfragningar.yml
+          git commit -m "pass: stöd flera förfrågningar och notisval"
+          git push
