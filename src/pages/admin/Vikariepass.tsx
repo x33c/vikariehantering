@@ -1341,10 +1341,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
           </div>
 
           {harAktivFörfrågan && (
-            <p className="mb-3 rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
-              Förfrågan är skickad till <strong style={{ color: 'var(--text)' }}>{riktadVikarie?.namn ?? 'vald vikarie'}</strong>.
-            </p>
-          )}
+  <p className="mb-3 rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+    {valdVikarieHarFörfrågan ? (
+      <>Förfrågan är redan skickad till <strong style={{ color: 'var(--text)' }}>{valdVikarie?.namn ?? riktadVikarie?.namn ?? 'vald vikarie'}</strong>.</>
+    ) : (
+      <>Passet har en aktiv förfrågan till annan vikarie. Du kan skicka till <strong style={{ color: 'var(--text)' }}>{valdVikarie?.namn ?? 'vald vikarie'}</strong> också.</>
+    )}
+  </p>
+)}
 
           {rekommenderadeSynliga.length > 0 && (
             <div className="mb-3">
@@ -1609,15 +1613,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
             {bemanningsKnappText}
           </Button>
-          {harAktivFörfrågan ? (
-            <Button variant="secondary" onClick={taTillbakaFörfrågan} loading={sparar}>
-              Ta tillbaka förfrågan
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
-              Skicka förfrågan
-            </Button>
-          )}
+          <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
+  {valdVikarieHarFörfrågan ? 'Förfrågan skickad' : 'Skicka förfrågan'}
+</Button>
+{valdVikarieHarFörfrågan && (
+  <Button variant="secondary" onClick={taTillbakaFörfrågan} loading={sparar}>
+    Ta tillbaka förfrågan
+  </Button>
+)}
           <Button variant="secondary" onClick={sparaPassÄndringar} loading={sparar} disabled={!harPassÄndringar || pass.status === 'avbokat'}>
             Spara ändringar
           </Button>
