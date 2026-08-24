@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { passApi, vikariApi, passmeddelandeApi, passTidsändringApi, historikApi, notisApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikariepass, Vikarie, Passmeddelande, PassTidsändring } from '../../types';
@@ -26,6 +27,10 @@ function passNyckel(p: Vikariepass) {
 function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
   const sluttid = pass.tid_till?.slice(0, 5) || '23:59';
   return new Date(`${pass.datum}T${sluttid}:00`).getTime() < Date.now();
+}
+
+function ärFörfrågan(pass: Vikariepass) {
+  return pass.status === 'notifierat' && !!pass.riktad_till_vikarie_id && !pass.vikarie_id;
 }
 
 function tillIsoDatum(datum: Date) {
@@ -94,12 +99,16 @@ function PassKort({
 }) {
   const kommentar = visaKommentar(pass.anteckning);
   const gruppInfo = visaGruppInfo([pass.grupp]);
+  const förfrågan = ärFörfrågan(pass);
 
   return (
     <button
       onClick={onClick}
       className="w-full rounded-2xl border p-4 text-left shadow-sm transition hover:opacity-90"
-      style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+      style={{
+        background: förfrågan ? 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' : 'var(--bg-card)',
+        borderColor: förfrågan ? 'var(--blue)' : 'var(--border)',
+      }}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
@@ -110,8 +119,11 @@ function PassKort({
             {pass.tid_från.slice(0, 5)}-{pass.tid_till.slice(0, 5)}
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${PASS_STATUS_COLORS[pass.status]}`}>
-          {PASS_STATUS_LABELS[pass.status]}
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${förfrågan ? '' : PASS_STATUS_COLORS[pass.status]}`}
+          style={förfrågan ? { background: 'color-mix(in srgb, var(--blue) 18%, transparent)', color: 'var(--blue)' } : undefined}
+        >
+          {förfrågan ? 'Förfrågan' : PASS_STATUS_LABELS[pass.status]}
         </span>
       </div>
 
@@ -133,6 +145,11 @@ function PassKort({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        {förfrågan && (
+          <span className="rounded-full px-2.5 py-1 font-medium" style={{ background: 'color-mix(in srgb, var(--blue) 16%, transparent)', color: 'var(--blue)' }}>
+            Personlig förfrågan
+          </span>
+        )}
         {kommentar && (
           <span className="rounded-full px-2.5 py-1 font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
             Kommentar
@@ -150,6 +167,7 @@ function PassKort({
 
 export default function MinaPass() {
   const { användare } = useAuth();
+  const navigate = useNavigate();
   const [minVikarie, setMinVikarie] = useState<Vikarie | null>(null);
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [meddelandeAntal, setMeddelandeAntal] = useState<Record<string, number>>({});
@@ -182,9 +200,12 @@ export default function MinaPass() {
         return;
       }
 
-      const pRes = await passApi.lista({ status: ['bokat', 'bekräftat'] });
+      const pRes = await passApi.lista({ status: ['bokat', 'bekräftat', 'notifierat'] });
       const mina = ((pRes.data ?? []) as Vikariepass[])
-        .filter(p => p.vikarie_id === vikarie.id)
+        .filter(p =>
+          p.vikarie_id === vikarie.id ||
+          (p.status === 'notifierat' && p.riktad_till_vikarie_id === vikarie.id)
+        )
         .sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
 
       setPass(mina);
@@ -329,7 +350,7 @@ export default function MinaPass() {
     const text = `Jag behöver avboka passet ${valtPass.datum} ${valtPass.tid_från.slice(0, 5)}-${valtPass.tid_till.slice(0, 5)}.`;
     setSparar(true);
     const res = await passmeddelandeApi.skapa(valtPass.id, text, 'vikarie');
-    setSparar(false);
+    setSparar(false;
 
     if (!res.error) {
       await notisApi.skickaAdminAvbokning(valtPass.id);
@@ -346,6 +367,8 @@ export default function MinaPass() {
 
   const kommande = pass.filter(p => !ärPassPasserat(p));
   const tidigare = pass.filter(ärPassPasserat).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
+  const kommandeBokade = kommande.filter(p => !ärFörfrågan(p));
+  const kommandeFörfrågningar = kommande.filter(ärFörfrågan);
   const kalenderPass = visaTidigare ? pass : kommande;
   const passPerDatum = kalenderPass.reduce<Record<string, Vikariepass[]>>((acc, p) => {
     acc[p.datum] = [...(acc[p.datum] ?? []), p].sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
@@ -368,7 +391,7 @@ export default function MinaPass() {
           <div>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Mina pass</p>
             <h1 className="mt-1 text-2xl font-semibold" style={{ color: 'var(--text)' }}>
-              {kommande.length > 0 ? `${kommande.length} kommande pass` : 'Inga kommande pass'}
+              {kommandeBokade.length > 0 ? `${kommandeBokade.length} kommande pass` : 'Inga kommande pass'}
             </h1>
           </div>
           {tidigare.length > 0 && (
@@ -387,7 +410,7 @@ export default function MinaPass() {
           )}
         </div>
         <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Tryck på en dag i kalendern för att se dina pass.
+          Tryck på en dag i kalendern för att se pass och förfrågningar.
         </p>
       </div>
 
@@ -405,7 +428,9 @@ export default function MinaPass() {
           <div className="text-center">
             <h2 className="text-base font-semibold capitalize" style={{ color: 'var(--text)' }}>{månadstitel(kalenderDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {visaTidigare ? `${kalenderPass.length} pass totalt` : `${kommande.length} kommande pass`}
+              {visaTidigare
+                ? `${kalenderPass.length} pass totalt`
+                : `${kommandeBokade.length} pass · ${kommandeFörfrågningar.length} förfrågningar`}
             </p>
           </div>
           <button
@@ -426,6 +451,8 @@ export default function MinaPass() {
           {kalenderDagar(kalenderDatum).map((datum, index) => {
             const dagensPass = datum ? passPerDatum[datum] ?? [] : [];
             const harPass = dagensPass.length > 0;
+            const harFörfrågan = dagensPass.some(ärFörfrågan);
+            const harBokat = dagensPass.some(p => !ärFörfrågan(p));
             const vald = datum === valdDatum;
             const idag = datum === dagensDatum;
 
@@ -441,17 +468,23 @@ export default function MinaPass() {
                 }}
                 className="relative aspect-square rounded-xl border text-sm font-semibold transition disabled:opacity-0"
                 style={{
-                  background: vald ? 'var(--blue)' : harPass ? 'color-mix(in srgb, var(--blue) 9%, var(--bg))' : 'var(--bg)',
+                  background: vald
+                    ? 'var(--blue)'
+                    : harFörfrågan
+                      ? 'color-mix(in srgb, var(--blue) 13%, var(--bg))'
+                      : harPass
+                        ? 'color-mix(in srgb, var(--blue) 9%, var(--bg))'
+                        : 'var(--bg)',
                   borderColor: vald ? 'var(--blue)' : idag ? 'var(--blue)' : 'transparent',
                   color: vald ? '#fff' : 'var(--text)',
                 }}
               >
                 {datum ? Number(datum.slice(8, 10)) : ''}
                 {harPass && (
-                  <span
-                    className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
-                    style={{ background: vald ? '#fff' : 'var(--blue)' }}
-                  />
+                  <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-1">
+                    {harBokat && <span className="h-1.5 w-1.5 rounded-full" style={{ background: vald ? '#fff' : 'var(--blue)' }} />}
+                    {harFörfrågan && <span className="h-1.5 w-1.5 rounded-full" style={{ background: vald ? '#fff' : '#f59e0b' }} />}
+                  </span>
                 )}
                 {dagensPass.length > 1 && (
                   <span className="absolute right-1 top-1 text-[9px] leading-none" style={{ color: vald ? '#fff' : 'var(--blue)' }}>
@@ -470,7 +503,9 @@ export default function MinaPass() {
           <div>
             <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(valdDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {valdaDagensPass.length > 0 ? `${valdaDagensPass.length} pass denna dag` : 'Inga pass denna dag'}
+              {valdaDagensPass.length > 0
+                ? `${valdaDagensPass.filter(p => !ärFörfrågan(p)).length} pass · ${valdaDagensPass.filter(ärFörfrågan).length} förfrågningar`
+                : 'Inga pass denna dag'}
             </p>
           </div>
           {valdaDagensPass.length > 0 ? (
@@ -505,14 +540,19 @@ export default function MinaPass() {
           <div className="mt-3 rounded-2xl border border-dashed px-4 py-8 text-center" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
               {kommande.length === 0 && !visaTidigare
-                ? 'Du har inga kommande pass. Lägg gärna in tillgänglighet så kan admin hitta dig lättare.'
+                ? 'Du har inga kommande pass eller förfrågningar. Lägg gärna in tillgänglighet så kan admin hitta dig lättare.'
                 : 'Välj en markerad dag i kalendern för att se pass.'}
             </p>
           </div>
         ) : visaValdaDagensPass ? (
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
             {valdaDagensPass.map(p => (
-              <PassKort key={p.id} pass={p} meddelanden={meddelandeAntal[p.id] ?? 0} onClick={() => öppnaPass(p)} />
+              <PassKort
+                key={p.id}
+                pass={p}
+                meddelanden={meddelandeAntal[p.id] ?? 0}
+                onClick={() => ärFörfrågan(p) ? navigate('/vikarie') : öppnaPass(p)}
+              />
             ))}
           </div>
         ) : (
