@@ -374,8 +374,8 @@ export default function MinaPass() {
 
   const kommande = pass.filter(p => !ärPassPasserat(p));
   const tidigare = pass.filter(ärPassPasserat).sort((a, b) => passNyckel(b).localeCompare(passNyckel(a)));
-  const kommandeBokade = kommande.filter(p => !ärFörfrågan(p, vikarie?.id));
-  const kommandeFörfrågningar = kommande.filter(p => ärFörfrågan(p, vikarie?.id));
+  const kommandeBokade = kommande.filter(p => !ärFörfrågan(p, minVikarie?.id));
+  const kommandeFörfrågningar = kommande.filter(p => ärFörfrågan(p, minVikarie?.id));
   const kalenderPass = visaTidigare ? pass : kommande;
   const passPerDatum = kalenderPass.reduce<Record<string, Vikariepass[]>>((acc, p) => {
     acc[p.datum] = [...(acc[p.datum] ?? []), p].sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
@@ -458,8 +458,8 @@ export default function MinaPass() {
           {kalenderDagar(kalenderDatum).map((datum, index) => {
             const dagensPass = datum ? passPerDatum[datum] ?? [] : [];
             const harPass = dagensPass.length > 0;
-            const harFörfrågan = dagensPass.some(p => ärFörfrågan(p, vikarie?.id));
-            const harBokat = dagensPass.some(p => !ärFörfrågan(p, vikarie?.id));
+            const harFörfrågan = dagensPass.some(p => ärFörfrågan(p, minVikarie?.id));
+            const harBokat = dagensPass.some(p => !ärFörfrågan(p, minVikarie?.id));
             const vald = datum === valdDatum;
             const idag = datum === dagensDatum;
 
@@ -511,7 +511,7 @@ export default function MinaPass() {
             <h2 className="text-sm font-semibold capitalize" style={{ color: 'var(--text)' }}>{kortDatum(valdDatum)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {valdaDagensPass.length > 0
-                ? `${valdaDagensPass.filter(p => !ärFörfrågan(p, vikarie?.id)).length} pass · ${valdaDagensPass.filter(p => ärFörfrågan(p, vikarie?.id)).length} förfrågningar`
+                ? `${valdaDagensPass.filter(p => !ärFörfrågan(p, minVikarie?.id)).length} pass · ${valdaDagensPass.filter(p => ärFörfrågan(p, minVikarie?.id)).length} förfrågningar`
                 : 'Inga pass denna dag'}
             </p>
           </div>
@@ -558,8 +558,8 @@ export default function MinaPass() {
                 key={p.id}
                 pass={p}
                 meddelanden={meddelandeAntal[p.id] ?? 0}
-                vikarieId={vikarie?.id}
-                onClick={() => ärFörfrågan(p, vikarie?.id) ? navigate('/vikarie') : öppnaPass(p)}
+                vikarieId={minVikarie?.id}
+                onClick={() => ärFörfrågan(p, minVikarie?.id) ? navigate('/vikarie') : öppnaPass(p)}
               />
             ))}
           </div>
