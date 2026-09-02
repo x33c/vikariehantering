@@ -42,11 +42,12 @@ export function parsaNovaschemaFil(text: string): NovaschemaLektion[] {
     .filter((rad): rad is NovaschemaLektion => rad !== null);
 }
 
-export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaImportRad[] {
+export function expanderaLektioner(lektioner: NovaschemaLektion[], referensdatum = new Date()): NovaschemaImportRad[] {
+  const startÅr = skolårsStartÅr(referensdatum);
   return lektioner.flatMap((lektion) => {
     const tidTill = läggTillMinuter(lektion.tidFrån, lektion.minuter);
     return lektion.veckor.map((vecka) => ({
-      datum: isoDatumFörVecka(vecka >= 27 ? 2025 : 2026, vecka, lektion.veckodag),
+      datum: isoDatumFörVecka(vecka >= 27 ? startÅr : startÅr + 1, vecka, lektion.veckodag),
       tidFrån: lektion.tidFrån,
       tidTill,
       ämne: lektion.ämne,
@@ -57,6 +58,12 @@ export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaIm
       vecka,
     }));
   });
+}
+
+function skolårsStartÅr(datum: Date): number {
+  const år = datum.getFullYear();
+  const månad = datum.getMonth();
+  return månad >= 6 ? år : år - 1;
 }
 
 function hittaLektionsrader(text: string): string[] {
