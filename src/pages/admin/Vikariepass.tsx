@@ -1715,6 +1715,26 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
     }));
   }
 
+  function sammanfattaSchemaRader(rader: Schemarad[]) {
+    const sorterade = rader
+      .filter(r => r.tid_från && r.tid_till)
+      .sort((a, b) => minuter(a.tid_från) - minuter(b.tid_från));
+
+    if (sorterade.length === 0) return null;
+
+    const första = sorterade[0];
+    const sista = sorterade.reduce((senast, rad) =>
+      minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
+    , sorterade[0]);
+
+    return {
+      tid_från: första.tid_från!.slice(0, 5),
+      tid_till: sista.tid_till!.slice(0, 5),
+      grupp: [...new Set(sorterade.map(r => r.grupp).filter(Boolean))].slice(0, 3).join(', '),
+      antal: sorterade.length,
+    };
+  }
+
   async function hämtaSchemaTid(personalId: string, datum: string) {
     if (!personalId || !datum) {
       setSchemaInfo('');
@@ -1731,24 +1751,78 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
 
     setHämtarSchema(false);
 
-    if (rader.length === 0) {
+    const schemaTid = sammanfattaSchemaRader(rader);
+    if (!schemaTid) {
       setSchemaInfo('Inget schema hittades för vald person och dag. Tiderna kan anges manuellt.');
       return;
     }
 
-    const första = rader[0];
-    const sista = rader.reduce((senast, rad) =>
-      minuter(rad.tid_till) > minuter(senast.tid_till) ? rad : senast
-    , rader[0]);
+    setForm(prev => ({
+      ...prev,
+      tid_från: schemaTid.tid_från,
+      tid_till: schemaTid.tid_till,
+      grupp: schemaTid.grupp || prev.grupp,
+    }));
+
+    setSchemaInfo(`Tider hämtade från schema: ${schemaTid.tid_från}-${schemaTid.tid_till} (${schemaTid.antal} lektioner).`);
+  }
+
+  async function hämtaVeckopassSchemaTider(personalId: string, startDatum: string) {
+    if (!personalId || !startDatum) {
+      setSchemaInfo('');
+      return;
+    }
+
+    const datum = veckodagarFörVecka(startDatum);
+    if (datum.length === 0) return;
+
+    setHämtarSchema(true);
+    setSchemaInfo('');
+
+    const res = await frånvaroApi.hämtaSchemaraderFörFrånvaro(personalId, datum[0], datum[datum.length - 1]);
+    const rader = ((res.data ?? []) as Schemarad[]).filter(r => r.datum && r.tid_från && r.tid_till);
+    const tiderPerDatum: Record<string, { aktiv: boolean; tid_från: string; tid_till: string }> = {};
+    const grupper: string[] = [];
+    let förstaSchemaTid: { tid_från: string; tid_till: string } | null = null;
+    let dagarMedSchema = 0;
+    let antalRader = 0;
+
+    for (const dag of datum) {
+      const schemaTid = sammanfattaSchemaRader(rader.filter(r => r.datum === dag));
+      if (schemaTid) {
+        dagarMedSchema += 1;
+        antalRader += schemaTid.antal;
+        förstaSchemaTid ??= { tid_från: schemaTid.tid_från, tid_till: schemaTid.tid_till };
+        if (schemaTid.grupp) grupper.push(schemaTid.grupp);
+        tiderPerDatum[dag] = {
+          aktiv: true,
+          tid_från: schemaTid.tid_från,
+          tid_till: schemaTid.tid_till,
+        };
+      } else {
+        tiderPerDatum[dag] = {
+          aktiv: true,
+          tid_från: STANDARD_TID_FRÅN,
+          tid_till: STANDARD_TID_TILL,
+        };
+      }
+    }
+
+    setVeckopassTider(tiderPerDatum);
+    setHämtarSchema(false);
 
     setForm(prev => ({
       ...prev,
-      tid_från: första.tid_från!.slice(0, 5),
-      tid_till: sista.tid_till!.slice(0, 5),
-      grupp: [...new Set(rader.map(r => r.grupp).filter(Boolean))].slice(0, 3).join(', ') || prev.grupp,
+      tid_från: förstaSchemaTid?.tid_från ?? prev.tid_från,
+      tid_till: förstaSchemaTid?.tid_till ?? prev.tid_till,
+      grupp: [...new Set(grupper)].slice(0, 3).join(', ') || prev.grupp,
     }));
 
-    setSchemaInfo(`Tider hämtade från schema: ${första.tid_från!.slice(0, 5)}-${sista.tid_till!.slice(0, 5)} (${rader.length} lektioner).`);
+    setSchemaInfo(
+      dagarMedSchema > 0
+        ? `Tider hämtade per dag från schema: ${dagarMedSchema} av ${datum.length} dagar (${antalRader} lektioner).`
+        : 'Inget schema hittades för vald person och vecka. Standardtider kan justeras per dag.'
+    );
   }
 
   async function spara() {
@@ -1937,7 +2011,11 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
           onChange={e => {
             const personal_id = e.target.value;
             setForm({ ...form, personal_id, registreraFrånvaro: personal_id ? form.registreraFrånvaro : false });
-            hämtaSchemaTid(personal_id, form.datum);
+            if (form.veckopass) {
+              hämtaVeckopassSchemaTider(personal_id, form.datum);
+            } else {
+              hämtaSchemaTid(personal_id, form.datum);
+            }
           }}
         >
           <option value="">Fristående pass</option>
@@ -1951,7 +2029,11 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
             const datum = e.target.value;
             setForm({ ...form, datum });
             setVeckopassTider({});
-            hämtaSchemaTid(form.personal_id, datum);
+            if (form.veckopass) {
+              hämtaVeckopassSchemaTider(form.personal_id, datum);
+            } else {
+              hämtaSchemaTid(form.personal_id, datum);
+            }
           }}
         />
         <section className="rounded-xl border p-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
@@ -1968,6 +2050,11 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
                   onClick={() => {
                     setForm({ ...form, veckopass: val.id });
                     setVeckopassTider({});
+                    if (val.id) {
+                      hämtaVeckopassSchemaTider(form.personal_id, form.datum);
+                    } else {
+                      hämtaSchemaTid(form.personal_id, form.datum);
+                    }
                   }}
                   className="rounded-lg border px-3 py-2 text-left transition"
                   style={{
