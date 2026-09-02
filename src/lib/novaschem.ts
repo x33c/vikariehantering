@@ -42,11 +42,12 @@ export function parsaNovaschemaFil(text: string): NovaschemaLektion[] {
     .filter((rad): rad is NovaschemaLektion => rad !== null);
 }
 
-export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaImportRad[] {
+export function expanderaLektioner(lektioner: NovaschemaLektion[], referensdatum = new Date()): NovaschemaImportRad[] {
+  const startÅr = skolårsStartÅr(referensdatum);
   return lektioner.flatMap((lektion) => {
     const tidTill = läggTillMinuter(lektion.tidFrån, lektion.minuter);
     return lektion.veckor.map((vecka) => ({
-      datum: isoDatumFörVecka(vecka >= 27 ? 2025 : 2026, vecka, lektion.veckodag),
+      datum: isoDatumFörVecka(vecka >= 27 ? startÅr : startÅr + 1, vecka, lektion.veckodag),
       tidFrån: lektion.tidFrån,
       tidTill,
       ämne: lektion.ämne,
@@ -57,6 +58,12 @@ export function expanderaLektioner(lektioner: NovaschemaLektion[]): NovaschemaIm
       vecka,
     }));
   });
+}
+
+function skolårsStartÅr(datum: Date): number {
+  const år = datum.getFullYear();
+  const månad = datum.getMonth();
+  return månad >= 6 ? år : år - 1;
 }
 
 function hittaLektionsrader(text: string): string[] {
@@ -89,8 +96,12 @@ function parsaLektionsrad(rad: string): NovaschemaLektion | null {
 
 function parsaFastNovaschemRad(kolumner: string[]): NovaschemaLektion | null {
   const veckodag = parseVeckodag(kolumner[2]);
-  const tidFrån = normaliseraTid(kolumner[3]);
-  const minuter = parseMinuter(kolumner[4]);
+  const intervall = parseTidsintervall(kolumner[3]);
+  const tidFrån = normaliseraTid(kolumner[3]) ?? intervall?.tidFrån ?? null;
+  const minuter = parseMinuter(kolumner[4])
+    ?? beräknaMinuterMellan(tidFrån, normaliseraTid(kolumner[4]))
+    ?? intervall?.minuter
+    ?? null;
   const veckor = parseVeckor(kolumner.slice(10).join(' '));
 
   if (!veckodag || !tidFrån || !minuter || veckor.length === 0) return null;
@@ -109,18 +120,22 @@ function parsaFastNovaschemRad(kolumner: string[]): NovaschemaLektion | null {
 }
 
 function parsaFlexibelNovaschemRad(kolumner: string[]): NovaschemaLektion | null {
-  const tidIndex = kolumner.findIndex((kolumn) => normaliseraTid(kolumn) !== null);
+  const tidIndex = kolumner.findIndex((kolumn) => normaliseraTid(kolumn) !== null || parseTidsintervall(kolumn) !== null);
   if (tidIndex === -1) return null;
 
   const veckodagIndex = Math.max(0, tidIndex - 1);
   const veckodag = parseVeckodag(kolumner[veckodagIndex]);
-  const tidFrån = normaliseraTid(kolumner[tidIndex]);
-  const minuter = parseMinuter(kolumner[tidIndex + 1]);
-  const veckor = parseVeckor(kolumner.slice(tidIndex + 2).join(' '));
+  const intervall = parseTidsintervall(kolumner[tidIndex]);
+  const tidFrån = normaliseraTid(kolumner[tidIndex]) ?? intervall?.tidFrån ?? null;
+  const minuterFrånNästaKolumn = parseMinuter(kolumner[tidIndex + 1])
+    ?? beräknaMinuterMellan(tidFrån, normaliseraTid(kolumner[tidIndex + 1]));
+  const minuter = minuterFrånNästaKolumn ?? intervall?.minuter ?? null;
+  const efterTidStart = minuterFrånNästaKolumn ? tidIndex + 2 : tidIndex + 1;
+  const veckor = parseVeckor(kolumner.slice(efterTidStart).join(' '));
 
   if (!veckodag || !tidFrån || !minuter || veckor.length === 0) return null;
 
-  const efterTid = kolumner.slice(tidIndex + 2).filter(Boolean);
+  const efterTid = kolumner.slice(efterTidStart).filter(Boolean);
   const utanVeckor = efterTid.filter((kolumn) => parseVeckor(kolumn).length === 0);
 
   const ämne = utanVeckor[0] ?? '';
@@ -157,7 +172,7 @@ function normaliseraTid(värde: string | undefined): string | null {
   const text = värde?.trim();
   if (!text) return null;
 
-  const kolon = text.match(/^(\d{1,2})[:.](\d{2})$/);
+  const kolon = text.match(/^(\d{1,2})\s*[:.]\s*(\d{2})(?::\d{2})?$/);
   if (kolon) return `${kolon[1].padStart(2, '0')}:${kolon[2]}`;
 
   const kompakt = text.match(/^(\d{1,2})(\d{2})$/);
@@ -166,9 +181,38 @@ function normaliseraTid(värde: string | undefined): string | null {
   return null;
 }
 
+function parseTidsintervall(värde: string | undefined): { tidFrån: string; minuter: number } | null {
+  const text = värde?.replace(/[–—]/g, '-').trim();
+  if (!text) return null;
+
+  const match = text.match(/(\d{1,2}\s*[:.]?\s*\d{0,2})\s*-\s*(\d{1,2}\s*[:.]?\s*\d{0,2})/);
+  if (!match) return null;
+
+  const tidFrån = normaliseraTid(match[1]);
+  const tidTill = normaliseraTid(match[2]);
+  const minuter = beräknaMinuterMellan(tidFrån, tidTill);
+  if (!tidFrån || !minuter) return null;
+
+  return { tidFrån, minuter };
+}
+
 function parseMinuter(värde: string | undefined): number | null {
   const minuter = Number.parseInt(värde?.trim() ?? '', 10);
-  return Number.isFinite(minuter) && minuter > 0 && minuter <= 300 ? minuter : null;
+  return Number.isFinite(minuter) && minuter > 0 && minuter <= 720 ? minuter : null;
+}
+
+function beräknaMinuterMellan(tidFrån: string | null | undefined, tidTill: string | null | undefined): number | null {
+  if (!tidFrån || !tidTill) return null;
+  const [frånTimme, frånMinut] = tidFrån.split(':').map(Number);
+  const [tillTimme, tillMinut] = tidTill.split(':').map(Number);
+  if ([frånTimme, frånMinut, tillTimme, tillMinut].some((del) => !Number.isFinite(del))) return null;
+
+  const från = frånTimme * 60 + frånMinut;
+  let till = tillTimme * 60 + tillMinut;
+  if (till <= från) till += 24 * 60;
+
+  const minuter = till - från;
+  return minuter > 0 && minuter <= 720 ? minuter : null;
 }
 
 function parseVeckor(värde: string): number[] {
