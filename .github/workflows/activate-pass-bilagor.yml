@@ -1,0 +1,46 @@
+name: Aktivera passbilagor
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - supabase/migrations/20260911123000_add_pass_bilagor.sql
+      - scripts/activate-pass-bilagor.mjs
+      - scripts/test-pass-bilagor.sql
+      - .github/workflows/activate-pass-bilagor.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: activate-pass-bilagor
+  cancel-in-progress: false
+
+jobs:
+  activate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Testa migrering och filbehorigheter i isolerad databas
+        env:
+          PGPASSWORD: test-only-password
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/test-pass-bilagor.sql
+      - name: Aktivera bilagor i Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: node scripts/activate-pass-bilagor.mjs

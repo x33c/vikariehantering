@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { passApi, vikariApi, historikApi, notisApi } from '../../lib/api';
+import { passApi, vikariApi, historikApi, notisApi, passbilagaApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
-import type { Vikariepass, Vikarie } from '../../types';
+import type { Vikariepass, Vikarie, PassBilaga } from '../../types';
 import { visaGruppInfo, visaKortNamn } from '../../lib/display';
 
 interface Passgrupp {
@@ -50,6 +50,12 @@ function bokningsFelText(error?: unknown) {
 
 function tiderÖverlappar(startA: string, slutA: string, startB: string, slutB: string) {
   return startA < slutB && slutA > startB;
+}
+
+function filstorlekText(bytes?: number | null) {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 }
 
 async function hittaÖverlappandeBokning(grupp: Passgrupp, vikarieId: string) {
@@ -111,6 +117,7 @@ function PassKort({
   onKlick,
   secondaryText,
   onSecondary,
+  onBilagaKlick,
   disabled,
 }: {
   grupp: Passgrupp;
@@ -118,11 +125,13 @@ function PassKort({
   onKlick: () => void;
   secondaryText?: string;
   onSecondary?: () => void;
+  onBilagaKlick: (bilaga: PassBilaga) => void;
   disabled?: boolean;
 }) {
   const tidFrån = grupp.pass[0].tid_från.slice(0, 5);
   const tidTill = grupp.pass[grupp.pass.length - 1].tid_till.slice(0, 5);
   const gruppInfo = visaGruppInfo(grupp.pass.map(p => p.grupp));
+  const bilagor = grupp.pass.flatMap(p => p.bilagor ?? []);
 
   return (
     <article
@@ -178,6 +187,26 @@ function PassKort({
         </div>
       </div>
 
+      {bilagor.length > 0 && (
+        <div className="mb-4 rounded-xl border px-3 py-3 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bilagor</p>
+          <div className="space-y-2">
+            {bilagor.map(bilaga => (
+              <button
+                key={bilaga.id}
+                type="button"
+                onClick={() => onBilagaKlick(bilaga)}
+                className="block w-full rounded-lg border px-3 py-2 text-left"
+                style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+              >
+                <span className="block truncate font-semibold" style={{ color: 'var(--text)' }}>{bilaga.filnamn}</span>
+                <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>{filstorlekText(bilaga.storlek) || 'Bilaga'} · Öppna</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={secondaryText ? 'grid gap-2 sm:grid-cols-2' : ''}>
         <button type="button" onClick={onKlick} disabled={disabled}
           className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
@@ -209,7 +238,7 @@ export default function LedigaPass() {
   const [bekräftaTackaNej, setBekräftaTackaNej] = useState<Passgrupp | null>(null);
 
   useEffect(() => { ladda(); }, [användare]);
-  useRealtimeRefresh(!!minVikarie, ladda, ['vikariepass', 'notiser']);
+  useRealtimeRefresh(!!minVikarie, ladda, ['vikariepass', 'notiser', 'pass_bilagor']);
 
   async function ladda() {
     if (!användare) return;
@@ -231,9 +260,9 @@ export default function LedigaPass() {
     const alla = (pRes.data ?? []) as Vikariepass[];
     const aktiva = alla.filter((p) => !ärPassPasserat(p) && !doldaPassIds.has(p.id));
 
-    setFörfrågningar(
+    setFörfrågningar(await passbilagaApi.kopplaTillPass(
       aktiva.filter((p) => p.status === 'notifierat' && harVäntandeFörfrågan(p, vikarie.id))
-    );
+    ));
 
     setLedigaPass(
       aktiva.filter((p) => p.status === 'obokat' && p.publicerad && !harNågonVäntandeFörfrågan(p))
@@ -350,6 +379,11 @@ export default function LedigaPass() {
     setTimeout(() => setBekräftelse(''), 5000);
   }
 
+  async function öppnaBilaga(bilaga: PassBilaga) {
+    const res = await passbilagaApi.öppna(bilaga);
+    if (res.error) setFel(res.error.message);
+  }
+
   if (laddar) return (
     <div className="flex h-64 items-center justify-center">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent' }} />
@@ -420,6 +454,7 @@ export default function LedigaPass() {
                 knappText="Tacka ja"
                 secondaryText="Tacka nej"
                 disabled={sparar}
+                onBilagaKlick={öppnaBilaga}
                 onKlick={() => { setFel(''); tackaJa(grupp); }}
                 onSecondary={() => { setFel(''); setBekräftaTackaNej(grupp); }}
               />
@@ -448,6 +483,7 @@ export default function LedigaPass() {
                 grupp={grupp}
                 knappText="Boka passet"
                 disabled={sparar}
+                onBilagaKlick={öppnaBilaga}
                 onKlick={() => { setFel(''); setBekräftaBokning(grupp); }}
               />
             ))}

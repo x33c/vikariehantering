@@ -26,11 +26,38 @@ import type {
   Frånvaro, NyFrånvaro,
   Vikariepass, PassFörfrågan, NyttVikariepass, UppdateraVikariepass, VikariepassExkludering,
   PassStatus, HändelsTyp, Passmeddelande, Tidsändringsstatus,
+  PassBilaga,
   Schemaimport, Schemarad, Matchningsstatus,
   DashboardStatistik, PassFilter,
 } from '../../types';
 
+const PASS_BILAGOR_BUCKET = 'pass-bilagor';
+const MAX_PASS_BILAGA_STORLEK = 10 * 1024 * 1024;
+const TILLATNA_PASS_BILAGA_TYPER = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'text/plain',
+]);
+
 const VIKARIEPASS_SELECT = '*, personal(*, arbetslag(*)), frånvaro(*), förfrågningar:pass_forfragningar(*, vikarie:vikarier(*))';
+
+function filnamnFörLagring(filnamn: string) {
+  return filnamn
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/[^\w.\-\s]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 90) || 'bilaga';
+}
 
 export const auth = {
   async loggaIn(epost: string, lösenord: string) {
@@ -494,6 +521,117 @@ export const passmeddelandeApi = {
   },
   async radera(id: string) {
     return supabase.from('passmeddelanden').delete().eq('id', id);
+  },
+};
+
+function gissaMimeTyp(filnamn: string) {
+  const ext = filnamn.toLowerCase().split('.').pop();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'doc') return 'application/msword';
+  if (ext === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (ext === 'xls') return 'application/vnd.ms-excel';
+  if (ext === 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (ext === 'ppt') return 'application/vnd.ms-powerpoint';
+  if (ext === 'pptx') return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'txt') return 'text/plain';
+  return '';
+}
+
+export const passbilagaApi = {
+  async lista(passId: string) {
+    return supabase
+      .from('pass_bilagor')
+      .select('*')
+      .eq('pass_id', passId)
+      .order('created_at', { ascending: false });
+  },
+  async laddaUpp(passId: string, fil: File) {
+    const mimeType = !fil.type || fil.type === 'application/octet-stream'
+      ? gissaMimeTyp(fil.name) : fil.type;
+
+    if (fil.size > MAX_PASS_BILAGA_STORLEK) {
+      return { data: null, error: { message: 'Filen är för stor. Maxstorlek är 10 MB.' } };
+    }
+
+    if (!mimeType || !TILLATNA_PASS_BILAGA_TYPER.has(mimeType)) {
+      return { data: null, error: { message: 'Filtypen stöds inte. Använd PDF, Word, Excel, PowerPoint, bild eller textfil.' } };
+    }
+
+    const { data: userRes } = await supabase.auth.getUser();
+    const filnamn = fil.name.trim() || 'bilaga';
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const storagePath = `${passId}/${id}-${filnamnFörLagring(filnamn)}`;
+
+    const upload = await supabase.storage
+      .from(PASS_BILAGOR_BUCKET)
+      .upload(storagePath, fil, {
+        cacheControl: '3600',
+        contentType: mimeType,
+        upsert: false,
+      });
+
+    if (upload.error) return { data: null, error: upload.error };
+
+    const rad = await supabase
+      .from('pass_bilagor')
+      .insert({
+        pass_id: passId,
+        filnamn,
+        storage_path: storagePath,
+        mime_type: mimeType,
+        storlek: fil.size,
+        uppladdad_av: userRes.user?.id ?? null,
+      })
+      .select()
+      .single();
+
+    if (rad.error) {
+      await supabase.storage.from(PASS_BILAGOR_BUCKET).remove([storagePath]);
+      return { data: null, error: rad.error };
+    }
+
+    return { data: rad.data as PassBilaga, error: null };
+  },
+  async kopplaTillPass(pass: Vikariepass[]) {
+    if (pass.length === 0) return pass;
+    const { data } = await supabase.from('pass_bilagor')
+      .select('*').in('pass_id', pass.map(p => p.id));
+    // Bilagor laddas separat sa passlistan fungerar aven fore migreringen.
+    const perPass = new Map<string, PassBilaga[]>();
+    for (const bilaga of (data ?? []) as PassBilaga[]) {
+      perPass.set(bilaga.pass_id, [...(perPass.get(bilaga.pass_id) ?? []), bilaga]);
+    }
+    return pass.map(p => ({ ...p, bilagor: perPass.get(p.id) ?? [] }));
+  },
+  async öppna(bilaga: Pick<PassBilaga, 'storage_path'>) {
+    // Oppna under klicket sa mobila webblasare inte blockerar fonstret efter await.
+    const fönster = window.open('about:blank', '_blank');
+    if (!fönster) return { error: { message: 'Tillåt popup-fönster för att öppna bilagan och försök igen.' } };
+    fönster.opener = null;
+    try {
+      const res = await supabase.storage.from(PASS_BILAGOR_BUCKET)
+        .createSignedUrl(bilaga.storage_path, 60);
+      if (res.error || !res.data?.signedUrl) {
+        fönster.close();
+        return { error: res.error ?? { message: 'Bilagan kunde inte öppnas.' } };
+      }
+      fönster.location.replace(res.data.signedUrl);
+      return { error: null };
+    } catch {
+      fönster.close();
+      return { error: { message: 'Bilagan kunde inte öppnas. Kontrollera anslutningen och försök igen.' } };
+    }
+  },
+  async radera(bilaga: Pick<PassBilaga, 'id' | 'storage_path'>) {
+    const fil = await supabase.storage.from(PASS_BILAGOR_BUCKET).remove([bilaga.storage_path]);
+    if (fil.error) return fil;
+
+    return supabase.from('pass_bilagor').delete().eq('id', bilaga.id);
   },
 };
 

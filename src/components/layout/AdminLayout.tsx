@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
 
-const huvudNavItems = [
+const huvudNavItems: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
   { to: '/admin/vikariepass', label: 'Bemanning', icon: 'board' },
   { to: '/admin/utskick', label: 'Utskick', icon: 'mail' },

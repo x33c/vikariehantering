@@ -97,6 +97,7 @@ export interface Frånvaro {
   datum_från: string;
   datum_till: string;
   hel_dag: boolean;
+  ingen_vikarie_behövs?: boolean;
   tid_från: string | null;
   tid_till: string | null;
   orsak: string | null;
@@ -163,6 +164,7 @@ anteckning: string | null;
   vikarie?: Vikarie;
   frånvaro?: Frånvaro;
   förfrågningar?: PassFörfrågan[];
+  bilagor?: PassBilaga[];
 }
 
 export type PassFörfråganStatus = 'vantar' | 'ja' | 'nej' | 'aterkallad';
@@ -206,6 +208,17 @@ export interface Passmeddelande {
   meddelande: string;
   created_at: string;
   avsandare?: Profil;
+}
+
+export interface PassBilaga {
+  id: string;
+  pass_id: string;
+  filnamn: string;
+  storage_path: string;
+  mime_type: string | null;
+  storlek: number | null;
+  uppladdad_av: string | null;
+  created_at: string;
 }
 
 export interface PassTidsändring {
@@ -256,7 +269,7 @@ export type UppdateraVikarie = Partial<NyVikarie>;
 export type NyFrånvaro = Omit<Frånvaro, 'id' | 'created_at' | 'updated_at' | 'personal'>;
 export type UppdateraFrånvaro = Partial<NyFrånvaro>;
 
-export type NyttVikariepass = Omit<Vikariepass, 'id' | 'created_at' | 'updated_at' | 'personal' | 'vikarie' | 'frånvaro' | 'förfrågningar'>;
+export type NyttVikariepass = Omit<Vikariepass, 'id' | 'created_at' | 'updated_at' | 'personal' | 'vikarie' | 'frånvaro' | 'förfrågningar' | 'bilagor'>;
 export type UppdateraVikariepass = Partial<NyttVikariepass>;
 export type Bemanning = Vikariepass;
 

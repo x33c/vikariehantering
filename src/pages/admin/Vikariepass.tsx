@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi, passTidsändringApi } from '../../lib/api';
-import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande, PassTidsändring } from '../../types';
+import { passApi, historikApi, vikariApi, notisApi, personalApi, frånvaroApi, passmeddelandeApi, passTidsändringApi, passbilagaApi } from '../../lib/api';
+import type { Bemanning, Frånvaro, PassStatus, Vikarie, Passhistorik, Personal, VikarieTillgänglighet, Schemarad, Passmeddelande, PassTidsändring, PassBilaga } from '../../types';
 import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../types';
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
@@ -200,6 +200,12 @@ function notisFelText(error: unknown) {
   return String(error);
 }
 
+function filstorlekText(bytes?: number | null) {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
 
 interface Passgrupp {
   personal_id: string;
@@ -395,6 +401,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const [tidsändringsförslag, setTidsändringsförslag] = useState<PassTidsändring | null>(null);
   const [beslutarTidsändring, setBeslutarTidsändring] = useState(false);
   const [skickaNotis, setSkickaNotis] = useState(true);
+  const [bilagor, setBilagor] = useState<PassBilaga[]>(pass.bilagor ?? []);
+  const [laddarUppBilaga, setLaddarUppBilaga] = useState(false);
+  const [draggarBilaga, setDraggarBilaga] = useState(false);
 
   useEffect(() => {
     setTidFrån(pass.tid_från.slice(0, 5));
@@ -417,15 +426,18 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
   useEffect(() => {
     async function laddaPassdata() {
-      const [historikRes, meddelandeRes, tidsändringsRes] = await Promise.all([
+      const [historikRes, meddelandeRes, tidsändringsRes, bilagorRes] = await Promise.all([
         historikApi.listaFörPass(pass.id),
         passmeddelandeApi.lista(pass.id),
         passTidsändringApi.listaFörPass(pass.id),
+        passbilagaApi.lista(pass.id),
       ]);
       setHistorik((historikRes.data ?? []) as Passhistorik[]);
       setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
       const förslag = (tidsändringsRes.data ?? []) as PassTidsändring[];
       setTidsändringsförslag(förslag.find(rad => rad.status === 'vantar') ?? förslag[0] ?? null);
+      setBilagor((bilagorRes.data ?? []) as PassBilaga[]);
+      if (bilagorRes.error) setFel('Bilagorna kunde inte hämtas. Kontrollera att bilagefunktionen är aktiverad i Supabase.');
       await laddaExkluderingar();
       setLaddar(false);
     }
@@ -934,6 +946,63 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     }
 
     onRaderad(pass.id);
+  }
+
+  async function laddaUppBilagor(filer: FileList | File[]) {
+    if (laddarUppBilaga) return;
+    const valdaFiler = Array.from(filer).filter(Boolean);
+    if (valdaFiler.length === 0) return;
+
+    setLaddarUppBilaga(true);
+    setFel('');
+
+    const uppladdade: PassBilaga[] = [];
+    try {
+      for (const fil of valdaFiler) {
+        const res = await passbilagaApi.laddaUpp(pass.id, fil);
+        if (res.error) {
+          setFel(`${fil.name}: ${res.error.message}`);
+          break;
+        }
+        if (res.data) uppladdade.push(res.data);
+      }
+    } catch {
+      setFel('Uppladdningen avbröts. Kontrollera anslutningen och försök igen.');
+    } finally {
+      if (uppladdade.length > 0) {
+        setBilagor(prev => [...uppladdade, ...prev]);
+      }
+      setLaddarUppBilaga(false);
+    }
+    if (uppladdade.length > 0) {
+      await historikApi.skapa(pass.id, 'pass_uppdaterat', {
+        åtgärd: 'lade_till_bilagor',
+        bilagor: uppladdade.map(b => b.filnamn),
+      });
+      await laddaHistorikFörPass();
+    }
+  }
+
+  async function öppnaBilaga(bilaga: PassBilaga) {
+    const res = await passbilagaApi.öppna(bilaga);
+    if (res.error) setFel(res.error.message);
+  }
+
+  async function raderaBilaga(bilaga: PassBilaga) {
+    if (!window.confirm(`Ta bort bilagan "${bilaga.filnamn}"?`)) return;
+
+    const res = await passbilagaApi.radera(bilaga);
+    if (res.error) {
+      setFel(res.error.message);
+      return;
+    }
+
+    setBilagor(prev => prev.filter(b => b.id !== bilaga.id));
+    await historikApi.skapa(pass.id, 'pass_uppdaterat', {
+      åtgärd: 'raderade_bilaga',
+      bilaga: bilaga.filnamn,
+    });
+    await laddaHistorikFörPass();
   }
 
   async function skickaMeddelande() {
@@ -1520,6 +1589,97 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
           </div>
         </section>
 
+
+        <section>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bilagor</p>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDraggarBilaga(true);
+            }}
+            onDragLeave={() => setDraggarBilaga(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDraggarBilaga(false);
+              void laddaUppBilagor(e.dataTransfer.files);
+            }}
+            className="rounded-xl border p-3"
+            style={{
+              borderColor: draggarBilaga ? 'var(--blue)' : 'var(--border)',
+              background: draggarBilaga ? 'color-mix(in srgb, var(--blue) 10%, var(--bg))' : 'var(--bg)',
+            }}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                  {bilagor.length > 0 ? `${bilagor.length} ${bilagor.length === 1 ? 'bilaga' : 'bilagor'}` : 'Inga bilagor'}
+                </p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  PDF, Office, bilder eller text. Max 10 MB per fil.
+                </p>
+              </div>
+              <label
+                className="relative inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+                style={{ background: 'var(--blue)', opacity: laddarUppBilaga ? 0.65 : 1 }}
+              >
+                {laddarUppBilaga ? 'Laddar upp...' : 'Lägg till fil'}
+                <input
+                  type="file"
+                  aria-label="Lägg till bilagor"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  multiple
+                  disabled={laddarUppBilaga}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.txt"
+                  onChange={(e) => {
+                    if (e.target.files) void laddaUppBilagor(e.target.files);
+                    e.currentTarget.value = '';
+                  }}
+                />
+              </label>
+            </div>
+
+            {bilagor.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {bilagor.map(bilaga => (
+                  <div
+                    key={bilaga.id}
+                    className="flex flex-col gap-2 rounded-lg border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                    style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => öppnaBilaga(bilaga)}
+                      className="min-w-0 text-left"
+                    >
+                      <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{bilaga.filnamn}</span>
+                      <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {filstorlekText(bilaga.storlek) || 'Bilaga'} · {new Date(bilaga.created_at).toLocaleDateString('sv-SE')}
+                      </span>
+                    </button>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => öppnaBilaga(bilaga)}
+                        className="rounded-md border px-2.5 py-1.5 text-xs font-semibold"
+                        style={{ borderColor: 'var(--border)', color: 'var(--blue)' }}
+                      >
+                        Öppna
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => raderaBilaga(bilaga)}
+                        className="rounded-md px-2.5 py-1.5 text-xs font-semibold"
+                        style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.10)' }}
+                      >
+                        Ta bort
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
         <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Meddelanden</p>
@@ -2381,7 +2541,7 @@ export default function Bemanning() {
   }, [statusFilter, datumFrån, datumTill, veckaStart]);
 
   useEffect(() => { ladda(); }, [ladda]);
-  useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser']);
+  useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser', 'pass_bilagor']);
 
   const passIdFrånUrl = searchParams.get('pass');
 

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { passApi, vikariApi, passmeddelandeApi, passTidsändringApi, historikApi, notisApi } from '../../lib/api';
+import { passApi, vikariApi, passmeddelandeApi, passTidsändringApi, historikApi, notisApi, passbilagaApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
-import type { Vikariepass, Vikarie, Passmeddelande, PassTidsändring } from '../../types';
+import type { Vikariepass, Vikarie, Passmeddelande, PassTidsändring, PassBilaga } from '../../types';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS } from '../../types';
 import { visaGruppInfo, visaKommentar, visaKortNamn } from '../../lib/display';
 
@@ -93,6 +93,12 @@ function ärAvbokningsmeddelande(text: string) {
   return normaliserad.includes('avboka') || normaliserad.includes('avbokning');
 }
 
+function filstorlekText(bytes?: number | null) {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
 function PassKort({
   pass,
   meddelanden,
@@ -167,6 +173,11 @@ function PassKort({
             {meddelanden} från admin
           </span>
         )}
+        {(pass.bilagor?.length ?? 0) > 0 && (
+          <span className="rounded-full px-2.5 py-1 font-medium" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>
+            {pass.bilagor?.length} bilaga{pass.bilagor?.length === 1 ? '' : 'or'}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -180,6 +191,7 @@ export default function MinaPass() {
   const [meddelandeAntal, setMeddelandeAntal] = useState<Record<string, number>>({});
   const [valtPass, setValtPass] = useState<Vikariepass | null>(null);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
+  const [bilagor, setBilagor] = useState<PassBilaga[]>([]);
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [modalInfo, setModalInfo] = useState('');
   const [laddar, setLaddar] = useState(true);
@@ -215,7 +227,7 @@ export default function MinaPass() {
         )
         .sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
 
-      setPass(mina);
+      setPass(await passbilagaApi.kopplaTillPass(mina));
       const förstaVisadePass = mina.find(p => !ärPassPasserat(p)) ?? mina[0];
       if (förstaVisadePass) {
         setValdDatum(förstaVisadePass.datum);
@@ -242,16 +254,20 @@ export default function MinaPass() {
     setModalInfo('');
     setModalFel('');
     setNyttMeddelande('');
+    setBilagor(p.bilagor ?? []);
     setVisaTidsförslag(false);
     setFöreslagenTidFrån(p.tid_från.slice(0, 5));
     setFöreslagenTidTill(p.tid_till.slice(0, 5));
     setTidsändringsAnledning('');
 
-    const [meddelandeRes, tidsändringsRes] = await Promise.all([
+    const [meddelandeRes, tidsändringsRes, bilagorRes] = await Promise.all([
       passmeddelandeApi.lista(p.id),
       passTidsändringApi.hämtaSenasteFörPass(p.id),
+      passbilagaApi.lista(p.id),
     ]);
     setMeddelanden((meddelandeRes.data ?? []) as Passmeddelande[]);
+    setBilagor((bilagorRes.data ?? []) as PassBilaga[]);
+    if (bilagorRes.error) setModalFel('Bilagorna kunde inte hämtas. Försök öppna passet igen.');
     const senaste = (tidsändringsRes.data ?? null) as PassTidsändring | null;
     setTidsändring(senaste);
     if (senaste?.status === 'vantar') {
@@ -364,6 +380,11 @@ export default function MinaPass() {
       setModalInfo('Admin har fått din avbokningsförfrågan.');
       await uppdateraMeddelanden(valtPass.id);
     }
+  }
+
+  async function öppnaBilaga(bilaga: PassBilaga) {
+    const res = await passbilagaApi.öppna(bilaga);
+    if (res.error) setModalFel(res.error.message);
   }
 
   if (laddar) return (
@@ -702,6 +723,30 @@ export default function MinaPass() {
             >
               {ärPassPasserat(valtPass) ? 'Passet är arkiverat' : 'Jag behöver avboka'}
             </button>
+
+            <section className="mb-4 rounded-xl border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Bilagor</p>
+              {bilagor.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga bilagor till passet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {bilagor.map(bilaga => (
+                    <button
+                      key={bilaga.id}
+                      type="button"
+                      onClick={() => öppnaBilaga(bilaga)}
+                      className="w-full rounded-lg border px-3 py-2 text-left"
+                      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+                    >
+                      <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{bilaga.filnamn}</span>
+                      <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {filstorlekText(bilaga.storlek) || 'Bilaga'} · Öppna
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
 
             <div className="mb-4 space-y-2">
               {meddelanden.length === 0 ? (
