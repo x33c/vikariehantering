@@ -497,6 +497,53 @@ export const passmeddelandeApi = {
   },
 };
 
+function formateraPassTid(pass?: { datum?: string | null; tid_från?: string | null; tid_till?: string | null } | null) {
+  if (!pass) return null;
+  const fran = pass.tid_från?.slice(0, 5);
+  const till = pass.tid_till?.slice(0, 5);
+  if (pass.datum && fran && till) return `${pass.datum} ${fran}-${till}`;
+  if (pass.datum) return pass.datum;
+  if (fran && till) return `${fran}-${till}`;
+  return null;
+}
+
+function relationSomObjekt<T>(relation: T | T[] | null | undefined) {
+  return Array.isArray(relation) ? relation[0] : relation;
+}
+
+async function hämtaPassFörNotis(passId: string) {
+  const { data } = await supabase
+    .from('vikariepass')
+    .select('datum, tid_från, tid_till, grupp, vikarie_id, personal(namn, arbetslag(namn))')
+    .eq('id', passId)
+    .maybeSingle();
+
+  return data as {
+    datum?: string | null;
+    tid_från?: string | null;
+    tid_till?: string | null;
+    grupp?: string | null;
+    vikarie_id?: string | null;
+    personal?: { namn?: string | null; arbetslag?: { namn?: string | null } | null } | { namn?: string | null; arbetslag?: { namn?: string | null } | null }[] | null;
+  } | null;
+}
+
+function byggAdminNotisInnehåll(
+  huvudrad: string,
+  pass: Awaited<ReturnType<typeof hämtaPassFörNotis>>,
+) {
+  const personal = relationSomObjekt(pass?.personal);
+  const passTid = formateraPassTid(pass);
+  const grupp = pass?.grupp?.trim() || personal?.arbetslag?.namn || null;
+
+  return [
+    huvudrad,
+    passTid ? `Pass: ${passTid}` : null,
+    personal?.namn ? `Ersätter: ${personal.namn}` : null,
+    grupp ? `Grupp: ${grupp}` : null,
+  ].filter((rad): rad is string => Boolean(rad)).join('\n');
+}
+
 export const notisApi = {
   async skapaAppMeddelanden(
     vikarieIds: string[],
@@ -520,7 +567,7 @@ export const notisApi = {
   async listaMina(vikarieId: string) {
     return supabase
       .from('notiser')
-      .select('*, pass:vikariepass(*, personal(namn))')
+      .select('*, pass:vikariepass(*, personal(namn, arbetslag(namn)))')
       .eq('vikarie_id', vikarieId)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -541,7 +588,7 @@ export const notisApi = {
   async listaAdmin() {
     return supabase
       .from('notiser')
-      .select('*, vikarie:vikarier(namn, epost), pass:vikariepass(*, personal(namn))')
+      .select('*, vikarie:vikarier(namn, epost), pass:vikariepass(*, personal(namn, arbetslag(namn)))')
       .eq('mottagare', 'admin')
       .order('created_at', { ascending: false })
       .limit(100);
@@ -567,6 +614,7 @@ export const notisApi = {
   },
   async skapaAdminBokning(passId: string, vikarieId: string, vikarieNamn?: string) {
     const namn = vikarieNamn?.trim() || 'Vikarien';
+    const pass = await hämtaPassFörNotis(passId);
     return supabase.from('notiser').insert({
       pass_id: passId,
       vikarie_id: vikarieId,
@@ -574,12 +622,13 @@ export const notisApi = {
       status: 'skickat',
       mottagare: 'admin',
       ämne: 'Pass bokat',
-      innehåll: `${namn} har bokat ett ledigt pass.`,
+      innehåll: byggAdminNotisInnehåll(`${namn} har bokat ett ledigt pass.`, pass),
       skickat_kl: new Date().toISOString(),
     });
   },
   async skapaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej', vikarieNamn?: string) {
     const namn = vikarieNamn?.trim() || 'Vikarien';
+    const pass = await hämtaPassFörNotis(passId);
     return supabase.from('notiser').insert({
       pass_id: passId,
       vikarie_id: vikarieId,
@@ -587,9 +636,12 @@ export const notisApi = {
       status: 'skickat',
       mottagare: 'admin',
       ämne: svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej',
-      innehåll: svar === 'ja'
-        ? `${namn} har tackat ja till förfrågan.`
-        : `${namn} har tackat nej till förfrågan.`,
+      innehåll: byggAdminNotisInnehåll(
+        svar === 'ja'
+          ? `${namn} har tackat ja till förfrågan.`
+          : `${namn} har tackat nej till förfrågan.`,
+        pass,
+      ),
       skickat_kl: new Date().toISOString(),
     });
   },
@@ -599,14 +651,15 @@ export const notisApi = {
     });
   },
   async skapaAdminAvbokning(passId: string) {
+    const pass = await hämtaPassFörNotis(passId);
     return supabase.from('notiser').insert({
       pass_id: passId,
-      vikarie_id: null,
+      vikarie_id: pass?.vikarie_id ?? null,
       kanal: 'push',
       status: 'skickat',
       mottagare: 'admin',
       ämne: 'Avbokningsförfrågan',
-      innehåll: 'En vikarie har begärt att avboka ett pass.',
+      innehåll: byggAdminNotisInnehåll('En vikarie har begärt att avboka ett pass.', pass),
       skickat_kl: new Date().toISOString(),
     });
   },

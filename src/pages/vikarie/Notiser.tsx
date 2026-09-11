@@ -5,6 +5,16 @@ import { notisApi, vikariApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import type { Notis, Vikarie } from '../../types';
 
+type VikarieNotis = Notis & {
+  pass?: {
+    datum?: string | null;
+    tid_från?: string | null;
+    tid_till?: string | null;
+    grupp?: string | null;
+    personal?: { namn?: string | null; arbetslag?: { namn?: string | null } | null } | null;
+  } | null;
+};
+
 function formatTid(value: string) {
   return new Date(value).toLocaleString('sv-SE', {
     day: 'numeric',
@@ -19,13 +29,33 @@ function förhandsvisning(text?: string | null) {
   return kompakt.length > 120 ? `${kompakt.slice(0, 117)}...` : kompakt;
 }
 
+function passTid(notis: VikarieNotis) {
+  const pass = notis.pass;
+  if (!pass) return null;
+  const fran = pass.tid_från?.slice(0, 5);
+  const till = pass.tid_till?.slice(0, 5);
+
+  if (pass.datum && fran && till) return `${pass.datum} ${fran}-${till}`;
+  if (pass.datum) return pass.datum;
+  if (fran && till) return `${fran}-${till}`;
+  return null;
+}
+
+function passDetaljer(notis: VikarieNotis) {
+  return [
+    { label: 'Pass', value: passTid(notis) },
+    { label: 'Ersätter', value: notis.pass?.personal?.namn ?? null },
+    { label: 'Grupp', value: notis.pass?.grupp ?? notis.pass?.personal?.arbetslag?.namn ?? null },
+  ].filter((rad): rad is { label: string; value: string } => Boolean(rad.value));
+}
+
 export default function VikarieNotiser() {
   const { användare } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const efterfrågadId = searchParams.get('notis');
   const [vikarie, setVikarie] = useState<Vikarie | null>(null);
-  const [notiser, setNotiser] = useState<Notis[]>([]);
-  const [vald, setVald] = useState<Notis | null>(null);
+  const [notiser, setNotiser] = useState<VikarieNotis[]>([]);
+  const [vald, setVald] = useState<VikarieNotis | null>(null);
   const [laddar, setLaddar] = useState(true);
   const [fel, setFel] = useState('');
   const [raderarId, setRaderarId] = useState<string | null>(null);
@@ -37,7 +67,7 @@ export default function VikarieNotiser() {
       return;
     }
 
-    const nya = (res.data ?? []) as Notis[];
+    const nya = (res.data ?? []) as VikarieNotis[];
     setNotiser(nya);
     if (efterfrågadId) setVald(nya.find((notis) => notis.id === efterfrågadId) ?? null);
   }, [efterfrågadId]);
@@ -75,7 +105,7 @@ export default function VikarieNotiser() {
     return () => { supabase.removeChannel(kanal); };
   }, [vikarie, laddaNotiser]);
 
-  function öppna(notis: Notis) {
+  function öppna(notis: VikarieNotis) {
     setVald(notis);
     setSearchParams({ notis: notis.id });
   }
@@ -85,7 +115,7 @@ export default function VikarieNotiser() {
     setSearchParams({});
   }
 
-  async function raderaNotis(notis: Notis) {
+  async function raderaNotis(notis: VikarieNotis) {
     if (!vikarie || !window.confirm('Ta bort notisen?')) return;
     setRaderarId(notis.id);
     setFel('');
@@ -121,6 +151,8 @@ export default function VikarieNotiser() {
     return <div className="flex min-h-64 items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>Laddar notiser...</div>;
   }
 
+  const valdDetaljer = vald ? passDetaljer(vald) : [];
+
   return (
     <div className="mx-auto w-full max-w-3xl px-3 py-5 sm:px-6 sm:py-7">
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -155,7 +187,10 @@ export default function VikarieNotiser() {
         </div>
       ) : (
         <div className="space-y-2">
-          {notiser.map((notis) => (
+          {notiser.map((notis) => {
+            const detaljer = passDetaljer(notis);
+
+            return (
             <div key={notis.id} className="flex items-stretch rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
               <button
                 type="button"
@@ -167,6 +202,15 @@ export default function VikarieNotiser() {
                   <span className="shrink-0 text-xs" style={{ color: 'var(--text-subtle)' }}>{formatTid(notis.created_at)}</span>
                 </div>
                 <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{förhandsvisning(notis.innehåll) || 'Öppna för detaljer.'}</p>
+                {detaljer.length > 0 && (
+                  <div className="mt-3 grid gap-1 text-xs sm:grid-cols-3">
+                    {detaljer.map((rad) => (
+                      <p key={rad.label} className="min-w-0 truncate" style={{ color: 'var(--text-subtle)' }}>
+                        <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>{rad.label}:</span> {rad.value}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </button>
               <button
                 type="button"
@@ -184,7 +228,8 @@ export default function VikarieNotiser() {
                 )}
               </button>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -206,6 +251,15 @@ export default function VikarieNotiser() {
             <div className="mt-5 whitespace-pre-wrap break-words text-sm leading-6" style={{ color: 'var(--text)' }}>
               {vald.innehåll || 'Det finns ingen ytterligare information.'}
             </div>
+            {valdDetaljer.length > 0 && (
+              <div className="mt-5 rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                {valdDetaljer.map((rad) => (
+                  <p key={rad.label} className="py-1" style={{ color: 'var(--text-muted)' }}>
+                    <span className="font-semibold" style={{ color: 'var(--text)' }}>{rad.label}:</span> {rad.value}
+                  </p>
+                ))}
+              </div>
+            )}
 
             <button type="button" onClick={stäng} className="mt-6 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ background: 'var(--blue)' }}>
               Stäng

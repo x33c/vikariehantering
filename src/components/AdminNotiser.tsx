@@ -9,7 +9,9 @@ type AdminNotis = Notis & {
     datum?: string | null;
     tid_från?: string | null;
     tid_till?: string | null;
-    personal?: { namn?: string | null } | null;
+    grupp?: string | null;
+    personal?: { namn?: string | null; arbetslag?: { namn?: string | null } | null } | null;
+    vikarie?: { namn?: string | null; epost?: string | null } | null;
   } | null;
   vikarie?: { namn?: string | null; epost?: string | null } | null;
 };
@@ -53,6 +55,54 @@ function datumText(notis: AdminNotis) {
     dateStyle: 'short',
     timeStyle: 'short',
   });
+}
+
+function passTidText(notis: AdminNotis) {
+  if (!notis.pass) return null;
+  const datum = notis.pass.datum;
+  const fran = notis.pass.tid_från?.slice(0, 5);
+  const till = notis.pass.tid_till?.slice(0, 5);
+
+  if (datum && fran && till) return `${datum} ${fran}-${till}`;
+  if (datum) return datum;
+  if (fran && till) return `${fran}-${till}`;
+  return null;
+}
+
+function vikarieNamn(notis: AdminNotis, förslag?: PassTidsändring) {
+  return förslag?.vikarie?.namn ?? notis.vikarie?.namn ?? notis.pass?.vikarie?.namn ?? null;
+}
+
+function adminNotisTitel(notis: AdminNotis, förslag?: PassTidsändring) {
+  const namn = vikarieNamn(notis, förslag);
+  const text = `${notis.ämne ?? ''} ${notis.innehåll ?? ''}`.toLowerCase();
+
+  if (förslag) return namn ? `Tidsändring från ${namn}` : 'Föreslagen tidsändring';
+  if (text.includes('tackade nej')) return namn ? `${namn} tackade nej` : 'Vikarie tackade nej';
+  if (text.includes('tackade ja')) return namn ? `${namn} tackade ja` : 'Vikarie tackade ja';
+  if (text.includes('avbok')) return namn ? `${namn} vill avboka` : 'Avbokningsförfrågan';
+  if (text.includes('bokat')) return namn ? `${namn} bokade pass` : 'Pass bokat';
+  if (text.includes('meddelande')) return namn ? `Meddelande från ${namn}` : 'Nytt meddelande';
+
+  return notis.ämne ?? 'Ny händelse';
+}
+
+function adminNotisText(notis: AdminNotis, förslag?: PassTidsändring) {
+  if (förslag) {
+    return `${vikarieNamn(notis, förslag) ?? 'Vikarien'} föreslår ${förslag.foreslagen_tid_fran.slice(0, 5)}-${förslag.foreslagen_tid_till.slice(0, 5)}. ${förslag.anledning}`;
+  }
+
+  const innehåll = notis.innehåll?.trim();
+  if (innehåll) return innehåll;
+  return 'Klicka för att öppna passet.';
+}
+
+function adminNotisDetaljer(notis: AdminNotis) {
+  return [
+    { label: 'Pass', value: passTidText(notis) },
+    { label: 'Ersätter', value: notis.pass?.personal?.namn ?? null },
+    { label: 'Grupp', value: notis.pass?.grupp ?? notis.pass?.personal?.arbetslag?.namn ?? null },
+  ].filter((rad): rad is { label: string; value: string } => Boolean(rad.value));
 }
 
 function notisTone(notis: AdminNotis) {
@@ -327,6 +377,8 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
               const tone = notisTone(notis);
               const arNy = !lasta.has(notis.id);
               const förslag = notis.pass_id ? tidsförslag[notis.pass_id] : undefined;
+              const detaljer = adminNotisDetaljer(notis);
+              const namn = vikarieNamn(notis, förslag);
               const beslutar = beslutarPassId === notis.pass_id;
 
               return (
@@ -345,17 +397,24 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
                   >
                     <div className="mb-1 flex items-start justify-between gap-2">
                       <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                        {förslag ? 'Föreslagen tidsändring' : notis.ämne ?? 'Ny händelse'}
+                        {adminNotisTitel(notis, förslag)}
                       </p>
                       {arNy && <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: tone.color }} />}
                     </div>
-                    <p className="line-clamp-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {förslag
-                        ? `${förslag.vikarie?.namn ?? notis.vikarie?.namn ?? 'Vikarien'} föreslår ${förslag.foreslagen_tid_fran.slice(0, 5)}-${förslag.foreslagen_tid_till.slice(0, 5)}. ${förslag.anledning}`
-                        : notis.innehåll ?? 'Klicka för att öppna bemanning.'}
+                    <p className="line-clamp-3 whitespace-pre-line text-xs" style={{ color: 'var(--text-muted)' }}>
+                      {adminNotisText(notis, förslag)}
                     </p>
+                    {detaljer.length > 0 && (
+                      <div className="mt-2 grid gap-1">
+                        {detaljer.map((rad) => (
+                          <p key={rad.label} className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+                            <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>{rad.label}:</span> {rad.value}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-2 text-[11px]" style={{ color: 'var(--text-subtle)' }}>
-                      {notis.vikarie?.namn ? `${notis.vikarie.namn} · ` : ''}{datumText(notis)}
+                      {namn ? `${namn} · ` : ''}{datumText(notis)}
                     </p>
                   </button>
 
