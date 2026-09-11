@@ -59,6 +59,54 @@ function gruppText(grupp: string | null | undefined) {
   return text || 'Ej angiven grupp';
 }
 
+function passTidText(pass: { datum?: string | null; tid_från?: string | null; tid_till?: string | null } | null | undefined) {
+  if (!pass) return null;
+  const fran = pass.tid_från?.slice(0, 5);
+  const till = pass.tid_till?.slice(0, 5);
+
+  if (pass.datum && fran && till) return `${pass.datum} ${fran}-${till}`;
+  if (pass.datum) return pass.datum;
+  if (fran && till) return `${fran}-${till}`;
+  return null;
+}
+
+function relationSomObjekt<T>(relation: T | T[] | null | undefined) {
+  return Array.isArray(relation) ? relation[0] : relation;
+}
+
+function passPersonal(pass: { personal?: { namn?: string | null; arbetslag?: { namn?: string | null } | null } | { namn?: string | null; arbetslag?: { namn?: string | null } | null }[] | null } | null | undefined) {
+  return relationSomObjekt(pass?.personal);
+}
+
+function passGrupp(pass: { grupp?: string | null; personal?: { arbetslag?: { namn?: string | null } | null } | { arbetslag?: { namn?: string | null } | null }[] | null } | null | undefined) {
+  const personal = passPersonal(pass);
+  return pass?.grupp?.trim() || personal?.arbetslag?.namn || null;
+}
+
+function passDetaljRader(pass: {
+  datum?: string | null;
+  tid_från?: string | null;
+  tid_till?: string | null;
+  grupp?: string | null;
+  personal?: { namn?: string | null; arbetslag?: { namn?: string | null } | null } | { namn?: string | null; arbetslag?: { namn?: string | null } | null }[] | null;
+} | null | undefined) {
+  const personal = passPersonal(pass);
+  const tid = passTidText(pass);
+  const grupp = passGrupp(pass);
+  return [
+    tid ? `Pass: ${tid}` : null,
+    personal?.namn ? `Ersätter: ${personal.namn}` : null,
+    grupp ? `Grupp: ${grupp}` : null,
+  ].filter((rad): rad is string => Boolean(rad));
+}
+
+function passKortText(pass: Parameters<typeof passDetaljRader>[0]) {
+  const tid = passTidText(pass);
+  const personal = passPersonal(pass)?.namn;
+  if (personal && tid) return `${personal}, ${tid}`;
+  return tid ?? personal ?? 'ett pass';
+}
+
 
 async function hittaProfilIdForVikarie(supabase: ReturnType<typeof createClient>, vikarie: { profil_id?: string | null; epost?: string | null; id: string }) {
   if (vikarie.profil_id) return vikarie.profil_id;
@@ -351,9 +399,15 @@ serve(async (req) => {
       });
     }
 
-    const bodyText = typ === 'bokat_pass_andrat'
-      ? 'Ett bokat pass har ändrats. Öppna appen för detaljer.'
-      : 'Ett nytt ledigt pass finns att boka. Öppna appen för detaljer.';
+    const pushBodyText = typ === 'bokat_pass_andrat'
+      ? `Ett bokat pass har ändrats: ${passKortText(pass)}.`
+      : `Nytt ledigt pass: ${passKortText(pass)}.`;
+    const appBodyText = [
+      typ === 'bokat_pass_andrat'
+        ? 'Ett bokat pass har ändrats.'
+        : 'Ett nytt ledigt pass finns att boka.',
+      ...passDetaljRader(pass),
+    ].join('\n');
 
     if (typ === 'bokat_pass_andrat') {
       if (!vikarie_id) {
@@ -385,13 +439,13 @@ serve(async (req) => {
         status: pushCount > 0 ? 'skickat' : 'misslyckat',
         mottagare: vikarie.epost ?? 'push',
         ämne: title,
-        innehåll: bodyText,
+        innehåll: appBodyText,
         skickat_kl: new Date().toISOString(),
         felmeddelande: pushCount > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
       });
 
       if (pushCount > 0) {
-        await skickaPush(supabase, profilId, title, bodyText, '/vikarie/mina-pass');
+        await skickaPush(supabase, profilId, title, pushBodyText, '/vikarie/mina-pass');
       }
 
       return new Response(JSON.stringify({ ok: true, push_prenumerationer: pushCount }), {
@@ -432,13 +486,13 @@ serve(async (req) => {
         status: pushCount > 0 ? 'skickat' : 'misslyckat',
         mottagare: vikarie.epost ?? 'push',
         ämne: title,
-        innehåll: bodyText,
+        innehåll: appBodyText,
         skickat_kl: new Date().toISOString(),
         felmeddelande: pushCount > 0 ? null : 'Ingen aktiv push-prenumeration hittades.',
       });
 
       if (pushCount > 0) {
-        await skickaPush(supabase, profilId, title, bodyText, '/vikarie');
+        await skickaPush(supabase, profilId, title, pushBodyText, '/vikarie');
         skickadePush += 1;
       } else {
         utanPush += 1;
@@ -505,7 +559,7 @@ serve(async (req) => {
 
     const { data: pass, error: passError } = await supabase
       .from('vikariepass')
-      .select('*, personal(namn)')
+      .select('*, personal(namn, arbetslag(namn))')
       .eq('id', pass_id)
       .single();
 
@@ -528,10 +582,11 @@ serve(async (req) => {
       .eq('aktiv', true);
 
     const title = svar === 'ja' ? 'Vikarie tackade ja' : 'Vikarie tackade nej';
-    const bodyText = 'En vikarie har svarat på en förfrågan. Öppna appen för detaljer.';
+    const vikarieNamn = vikarie?.namn ?? 'En vikarie';
+    const bodyText = `${vikarieNamn} har tackat ${svar === 'ja' ? 'ja' : 'nej'} till ${passKortText(pass)}.`;
 
     for (const admin of admins ?? []) {
-      await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
+      await skickaPush(supabase, admin.id, title, bodyText, `/admin/vikariepass?pass=${pass_id}`);
     }
 
     return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
@@ -553,7 +608,7 @@ serve(async (req) => {
 
     const { data: pass, error: passError } = await supabase
       .from('vikariepass')
-      .select('*, personal(namn)')
+      .select('*, personal(namn, arbetslag(namn))')
       .eq('id', pass_id)
       .single();
 
@@ -580,6 +635,11 @@ serve(async (req) => {
         const profilId = await hittaProfilIdForVikarie(supabase, vikarie);
         const title = 'Nytt meddelande från admin';
         const pushBody = 'Du har fått ett nytt meddelande om ett pass. Öppna appen för detaljer.';
+        const appText = [
+          meddelandeText,
+          '',
+          ...passDetaljRader(pass),
+        ].filter(Boolean).join('\n');
 
         await supabase.from('notiser').insert({
           pass_id,
@@ -588,7 +648,7 @@ serve(async (req) => {
           status: 'skickat',
           mottagare: vikarie.epost ?? 'vikarie',
           ämne: title,
-          innehåll: pushBody,
+          innehåll: appText,
           skickat_kl: new Date().toISOString(),
         });
 
@@ -606,8 +666,21 @@ serve(async (req) => {
       .eq('roll', 'admin')
       .eq('aktiv', true);
 
-    const title = 'Nytt meddelande från vikarie';
-    const pushBody = 'En vikarie har skrivit ett nytt meddelande om ett pass. Öppna appen för detaljer.';
+    const { data: vikarie } = pass.vikarie_id
+      ? await supabase
+        .from('vikarier')
+        .select('id, namn')
+        .eq('id', pass.vikarie_id)
+        .maybeSingle()
+      : { data: null };
+    const vikarieNamn = vikarie?.namn ?? 'Vikarie';
+    const title = `Meddelande från ${vikarieNamn}`;
+    const pushBody = `${vikarieNamn} skrev om ${passKortText(pass)}.`;
+    const appText = [
+      meddelandeText,
+      '',
+      ...passDetaljRader(pass),
+    ].filter(Boolean).join('\n');
 
     await supabase.from('notiser').insert({
       pass_id,
@@ -616,12 +689,12 @@ serve(async (req) => {
       status: 'skickat',
       mottagare: 'admin',
       ämne: title,
-      innehåll: pushBody,
+      innehåll: appText,
       skickat_kl: new Date().toISOString(),
     });
 
     for (const admin of admins ?? []) {
-      await skickaPush(supabase, admin.id, title, pushBody, '/admin/vikariepass');
+      await skickaPush(supabase, admin.id, title, pushBody, `/admin/vikariepass?pass=${pass_id}`);
     }
 
     return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
@@ -638,7 +711,7 @@ serve(async (req) => {
 
     const { data: pass, error: passError } = await supabase
       .from('vikariepass')
-      .select('*, personal(namn)')
+      .select('*, personal(namn, arbetslag(namn))')
       .eq('id', pass_id)
       .single();
 
@@ -655,7 +728,19 @@ serve(async (req) => {
       .eq('aktiv', true);
 
     const title = 'Avbokningsförfrågan';
-    const bodyText = 'En vikarie vill avboka ett pass. Öppna appen för detaljer.';
+    const { data: vikarie } = pass.vikarie_id
+      ? await supabase
+        .from('vikarier')
+        .select('id, namn')
+        .eq('id', pass.vikarie_id)
+        .maybeSingle()
+      : { data: null };
+    const vikarieNamn = vikarie?.namn ?? 'En vikarie';
+    const bodyText = `${vikarieNamn} vill avboka ${passKortText(pass)}.`;
+    const appText = [
+      `${vikarieNamn} har begärt att avboka ett pass.`,
+      ...passDetaljRader(pass),
+    ].join('\n');
 
     await supabase.from('notiser').insert({
       pass_id,
@@ -664,12 +749,12 @@ serve(async (req) => {
       status: 'skickat',
       mottagare: 'admin',
       ämne: title,
-      innehåll: bodyText,
+      innehåll: appText,
       skickat_kl: new Date().toISOString(),
     });
 
     for (const admin of admins ?? []) {
-      await skickaPush(supabase, admin.id, title, bodyText, '/admin/vikariepass');
+      await skickaPush(supabase, admin.id, title, bodyText, `/admin/vikariepass?pass=${pass_id}`);
     }
 
     return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
