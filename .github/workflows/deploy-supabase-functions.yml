@@ -1,13 +1,10 @@
 name: Deploy Supabase functions
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
-    paths:
-      - supabase/functions/skicka-epost/**
-      - .github/workflows/deploy-supabase-functions.yml
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,9 +15,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-    - uses: supabase/setup-cli@v1
-      with:
-        version: 2.48.3
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.48.3
 
       - name: Deploy function
         env:
