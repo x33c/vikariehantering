@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { Alert, Modal } from '../../components/ui';
 import type { Vikarie, NyVikarie, VikarieTillgänglighet } from '../../types';
 import { VECKODAG_LABELS } from '../../types';
+import { hämtaVikarieUppdateringar } from '../../lib/uppdateringar';
 
 async function anropaHanteraAnvandare(payload: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('hantera-anvandare', {
@@ -745,22 +746,6 @@ function TillgänglighetModal({
 }
 
 
-const UPPDATERINGSTITEL = 'Passportalen har uppdaterats';
-const UPPDATERINGSTEXT = `Hej!
-
-Passportalen har uppdaterats med följande förbättringar för dig som vikarie:
-
-• Veckopass kan nu skapas och bemannas smidigare av administratören. Om samma vikarie kopplas till flera dagar skickas en samlad notis i stället för en per dag.
-• Du kan nu föreslå en korrigering av arbetad tid direkt från ett pass under Mina pass. Förslaget skickas till administratören för godkännande innan tiderna ändras.
-• Placering och gruppinformation visas tydligare i pass och förfrågningar.
-• Mobilmenyn i vikarievyn har fått större knappar och mer luft längst ned på skärmen, särskilt för nyare iPhone-modeller.
-• Hanteringen av notiser och passuppdateringar har förbättrats.
-
-Stäng Passportalen helt och starta sedan appen igen för att säkerställa att uppdateringen börjar gälla. Om du använder Passportalen i webbläsaren kan du även behöva ladda om sidan.
-
-Vänliga hälsningar
-Administrationen`;
-
 export default function Vikarier() {
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [laddar, setLaddar] = useState(true);
@@ -773,6 +758,8 @@ export default function Vikarier() {
   const [massTitel, setMassTitel] = useState('Meddelande från admin');
   const [massText, setMassText] = useState('');
   const [massMall, setMassMall] = useState<'vanlig' | 'uppdatering'>('vanlig');
+  const [hämtarUppdateringar, setHämtarUppdateringar] = useState(false);
+  const [uppdateringsDatum, setUppdateringsDatum] = useState('');
   const [massFel, setMassFel] = useState('');
   const [massOk, setMassOk] = useState('');
   const [skickarMass, setSkickarMass] = useState(false);
@@ -854,14 +841,26 @@ export default function Vikarier() {
     });
   }
 
-  function öppnaMeddelande(mall: 'vanlig' | 'uppdatering') {
+  async function öppnaMeddelande(mall: 'vanlig' | 'uppdatering') {
     setMassMall(mall);
     setMassFel('');
     setMassOk('');
+    setMassText('');
+    setUppdateringsDatum('');
 
     if (mall === 'uppdatering') {
-      setMassTitel(UPPDATERINGSTITEL);
-      setMassText(UPPDATERINGSTEXT);
+      setHämtarUppdateringar(true);
+      try {
+        const uppdateringar = await hämtaVikarieUppdateringar();
+        setMassTitel(uppdateringar.titel);
+        setMassText(uppdateringar.text);
+        setUppdateringsDatum(uppdateringar.datum);
+      } catch {
+        setMassFel('Kunde inte hämta de senaste uppdateringarna. Kontrollera anslutningen och försök igen.');
+        return;
+      } finally {
+        setHämtarUppdateringar(false);
+      }
     } else {
       setMassTitel('Meddelande från admin');
       setMassText('');
@@ -979,21 +978,22 @@ export default function Vikarier() {
           </button>
           <button
             onClick={() => öppnaMeddelande('vanlig')}
-            disabled={markeradeIds.size === 0}
+            disabled={markeradeIds.size === 0 || hämtarUppdateringar}
             className="rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             style={{ background: 'var(--blue)' }}>
             Skicka meddelande ({markeradeIds.size})
           </button>
           <button
             onClick={() => öppnaMeddelande('uppdatering')}
-            disabled={markeradeIds.size === 0}
+            disabled={markeradeIds.size === 0 || hämtarUppdateringar}
             className="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--blue)', color: 'var(--blue)' }}
           >
-            Meddelande om uppdateringar
+            {hämtarUppdateringar ? 'Hämtar uppdateringar…' : 'Meddelande om uppdateringar'}
           </button>
         </div>
       </div>
+      {massFel && !massModal && <Alert typ="error" className="mb-4">{massFel}</Alert>}
       {filtrerade.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-16" style={{ borderColor: 'var(--border)' }}>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Inga vikarier registrerade.</p>
@@ -1101,7 +1101,7 @@ export default function Vikarier() {
                 <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Skicka meddelande</h2>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{markeradeIds.size} valda mottagare</p>
                 {massMall === 'uppdatering' && (
-                  <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--blue)' }}>Redigerbar uppdateringsmall</p>
+                  <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--blue)' }}>Redigerbar uppdateringsmall · Uppdaterad {uppdateringsDatum}</p>
                 )}
               </div>
               <button onClick={() => setMassModal(false)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>

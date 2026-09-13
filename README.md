@@ -173,6 +173,12 @@ npm run build
 
 Miljövariabler ska ligga lokalt och aldrig committas. Använd .env.example som mall om en sådan finns.
 
+## Meddelande om uppdateringar
+
+Adminens uppdateringsmall hämtar `public/vikarie-uppdateringar.json` på nytt varje gång den öppnas. Filen innehåller en redaktionell sammanställning av de senaste ändringarna som berör vikarier, inte en automatisk sammanfattning av Git-historiken.
+
+Vid ändringar som påverkar vikarier: uppdatera `uppdaterad` (YYYY-MM-DD) och `punkter` i samma ändring som funktionen levereras. Skriv det viktigaste först och beskriv var vikarien hittar funktionen. Ta bort inaktuella punkter och utelämna ändringar som bara gäller admin. Listan publiceras tillsammans med appen. Admin kan granska och redigera texten innan den skickas.
+
 ## Projektstruktur
 
 src/
