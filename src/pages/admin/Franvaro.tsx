@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
@@ -903,6 +903,7 @@ function RedigeraFrånvaroModal({
 
 export default function Franvaro() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [frånvaron, setFrånvaron] = useState<Frånvaro[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
@@ -917,6 +918,16 @@ export default function Franvaro() {
   const [sök, setSök] = useState('');
   const [visaLista, setVisaLista] = useState(false);
   const [kalenderDatum, setKalenderDatum] = useState(standardKalenderDatum());
+
+  useEffect(() => {
+    const datum = searchParams.get('datum');
+    const personalId = searchParams.get('personal');
+    if (datum && /^\d{4}-\d{2}-\d{2}$/.test(datum) && personalId) {
+      setKalenderDatum(datum);
+      setModal({ öppen: true, datum, personalId });
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => { ladda(); }, []);
 

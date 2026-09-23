@@ -1383,21 +1383,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
 <section>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Tid</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="time"
-              value={tidFrån}
-              onChange={e => setTidFrån(e.target.value)}
-              className="rounded-md border px-2 py-2 text-sm"
-              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-            />
-            <input
-              type="time"
-              value={tidTill}
-              onChange={e => setTidTill(e.target.value)}
-              className="rounded-md border px-2 py-2 text-sm"
-              style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-            />
+          <div className="admin-time-grid grid gap-2">
+            <Input label="Från kl" type="time" value={tidFrån} onChange={e => setTidFrån(e.target.value)} />
+            <Input label="Till kl" type="time" value={tidTill} onChange={e => setTidTill(e.target.value)} />
           </div>
 
 
@@ -2290,7 +2278,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
                         {dagensTid.aktiv ? 'Ingår' : 'Hoppas över'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="admin-time-grid grid gap-2">
                       <label>
                         <span className="mb-1 block text-[11px]" style={{ color: 'var(--text-muted)' }}>Från</span>
                         <input
@@ -2327,7 +2315,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="admin-time-grid grid gap-3">
           <Input label={form.veckopass ? "Standard från kl *" : "Från kl *"} type="time" value={form.tid_från} onChange={e => setForm({ ...form, tid_från: e.target.value })} />
           <Input label={form.veckopass ? "Standard till kl *" : "Till kl *"} type="time" value={form.tid_till} onChange={e => setForm({ ...form, tid_till: e.target.value })} />
         </div>

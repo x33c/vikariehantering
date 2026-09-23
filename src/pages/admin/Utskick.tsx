@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { absencesToFollowUp, previousWorkday } from '../../lib/absenceFollowUp';
 import { frånvaroApi, passApi, vikariApi, personalApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import type { Frånvaro, Personal, Vikariepass, Vikarie } from '../../types';
-import { Button, LaddaSida } from '../../components/ui';
+import { Button, LaddaSida, Modal, Select } from '../../components/ui';
 
 type CellTyp = 'franvaro' | 'vikarie' | 'ovrigt';
 type ExtraTyp = 'ingress' | 'lankar' | 'kontakt';
@@ -522,6 +524,13 @@ function byggHtml({
 }
 
 export default function Utskick() {
+  const navigate = useNavigate();
+  const [kontrollÖppen, setKontrollÖppen] = useState(false);
+  const [kontrollerar, setKontrollerar] = useState(false);
+  const [kontrollDatum, setKontrollDatum] = useState('');
+  const [kontrollFrånvaro, setKontrollFrånvaro] = useState<Frånvaro[]>([]);
+  const [kontrollerade, setKontrollerade] = useState<Set<string>>(new Set());
+  const [skickar, setSkickar] = useState(false);
   const [veckaStart, setVeckaStart] = useState(() => standardVeckaStart());
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
@@ -541,6 +550,43 @@ export default function Utskick() {
   const dagar = useMemo(() => [0, 1, 2, 3, 4].map((i) => läggTillDagar(start, i)), [start]);
   const startIso = iso(dagar[0]);
   const slutIso = iso(dagar[4]);
+  const kontrollPoster = useMemo(() => kontrollDatum ? absencesToFollowUp(kontrollFrånvaro, kontrollDatum) : [], [kontrollFrånvaro, kontrollDatum]);
+
+  async function kontrolleraUtskick() {
+    setKontrollerar(true);
+    setFel('');
+    try {
+      const [f, p, v, per] = await Promise.all([
+        frånvaroApi.lista(previousWorkday(startIso), slutIso),
+        passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
+        vikariApi.lista(), personalApi.lista(),
+      ]);
+      const error = f.error || p.error || v.error || per.error;
+      if (error) throw error;
+      const absences = (f.data ?? []) as Frånvaro[];
+      setKontrollFrånvaro(absences);
+      setFrånvaro(absences);
+      setPass((p.data ?? []) as Vikariepass[]);
+      setVikarier((v.data ?? []) as Vikarie[]);
+      setPersonal((per.data ?? []) as Personal[]);
+      const today = new Date().toLocaleDateString('sv-SE');
+      setKontrollDatum(dagar.map(iso).includes(today) ? today : startIso);
+      setKontrollerade(new Set());
+      setKontrollÖppen(true);
+    } catch {
+      setFel('Kunde inte kontrollera aktuell frånvaro. Försök igen innan utskicket.');
+    } finally { setKontrollerar(false); }
+  }
+
+  async function registreraFortsattFrånvaro(personalId: string) {
+    try {
+      if (!await sparaCeller()) return;
+      navigate(`/admin/franvaro?${new URLSearchParams({ datum: kontrollDatum, personal: personalId })}`);
+    } catch {
+      setSparar(false);
+      setFel('Kunde inte spara utskickstexten. Försök igen.');
+    }
+  }
   const vikarierById = useMemo(() => new Map(vikarier.map((v) => [v.id, v])), [vikarier]);
 
   const rutaStorlekKlasser = {
@@ -739,7 +785,7 @@ export default function Utskick() {
       return typ === 'vikarie' ? normaliseraVikarieRadbrytningar(text) : text;
     };
 
-    const dagensDatum = new Date();
+    const dagensDatum = new Date(`${kontrollDatum}T12:00:00`);
     const ingressText = byggIngress(textFörExtra('ingress'), dagensDatum);
     const html = byggHtml({ dagar, cellText: textFörMail, extraText: textFörExtra, ingressText });
     const plain = [
@@ -769,6 +815,7 @@ export default function Utskick() {
     }
 
     setKopierat(true);
+    setKontrollÖppen(false);
     setTimeout(() => setKopierat(false), 2500);
 
     const ämne = `Frånvarolista - ${långtDatum(dagensDatum)}`;
@@ -789,7 +836,7 @@ export default function Utskick() {
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
-          <Button onClick={skickaMail}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
+          <Button onClick={kontrolleraUtskick} loading={kontrollerar}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
       </div>
 
@@ -807,15 +854,15 @@ export default function Utskick() {
 
       <div className="mb-2 flex flex-col gap-2 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2">
-          <Button variant="secondary" size="sm" onClick={() => bytVecka(-1)}>
+          <Button variant="secondary" size="sm" disabled={kontrollerar} onClick={() => bytVecka(-1)}>
             <PeriodIkon typ="föregående" />
             <span className="hidden min-[390px]:inline">Föregående</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setVeckaStart(standardVeckaStart())}>
+          <Button variant="secondary" size="sm" disabled={kontrollerar} onClick={() => setVeckaStart(standardVeckaStart())}>
             <PeriodIkon typ="idag" />
             <span>Idag</span>
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => bytVecka(1)}>
+          <Button variant="secondary" size="sm" disabled={kontrollerar} onClick={() => bytVecka(1)}>
             <span className="hidden min-[390px]:inline">Nästa</span>
             <PeriodIkon typ="nästa" />
           </Button>
@@ -1007,6 +1054,35 @@ export default function Utskick() {
         </div>
       </details>
 
+      <Modal öppen={kontrollÖppen} onStäng={() => { if (!skickar) setKontrollÖppen(false); }} titel="Kontrollera fortsatt frånvaro" bredd="lg">
+        <div className="space-y-4">
+          <Select label="Utskicksdag" value={kontrollDatum} disabled={skickar} onChange={e => { setKontrollDatum(e.target.value); setKontrollerade(new Set()); }}>
+            {dagar.map(dag => <option key={iso(dag)} value={iso(dag)}>{långtDatum(dag)}</option>)}
+          </Select>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {kontrollPoster.length ? `Dessa personer var frånvarande ${previousWorkday(kontrollDatum)} men saknar registrerad frånvaro ${kontrollDatum}. Kontrollera om de är tillbaka eller behöver ny frånvaro.` : 'Ingen oregistrerad fortsättning hittades från föregående vardag.'}
+          </p>
+          {kontrollPoster.map(post => <div key={post.personal_id} className="border-b pb-3" style={{ borderColor: 'var(--border)' }}>
+            <p className="break-words font-semibold">{post.personal?.namn ?? 'Personal'}</p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input type="checkbox" checked={kontrollerade.has(post.personal_id)} disabled={skickar || sparar} onChange={e => setKontrollerade(prev => { const next = new Set(prev); if (e.target.checked) next.add(post.personal_id); else next.delete(post.personal_id); return next; })} />
+                Kontrollerad, ska inte läggas till
+              </label>
+              <Button size="sm" variant="secondary" disabled={skickar || sparar} onClick={() => registreraFortsattFrånvaro(post.personal_id)}>Registrera frånvaro</Button>
+            </div>
+          </div>)}
+          {fel && <p role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{fel}</p>}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" disabled={skickar} onClick={() => setKontrollÖppen(false)}>Avbryt</Button>
+            <Button loading={skickar} disabled={sparar || kontrollPoster.some(p => !kontrollerade.has(p.personal_id))} onClick={async () => {
+              setSkickar(true); setFel('');
+              try { await skickaMail(); } catch { setFel('Kunde inte öppna utskicket. Kontrollera urklippsbehörigheten och försök igen.'); }
+              finally { setSkickar(false); }
+            }}>Fortsätt till mail</Button>
+          </div>
+        </div>
+      </Modal>
       <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         Skicka mail kopierar tabellen och öppnar ett tomt mejl med ämnesrad. Klistra in direkt med Ctrl+V.
       </p>

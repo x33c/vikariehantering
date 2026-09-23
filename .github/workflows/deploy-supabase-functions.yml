@@ -31,6 +31,7 @@ jobs:
         run: |
           node scripts/test-edge-authorization.mjs
           node scripts/test-absence-suggestions.mjs
+          node scripts/test-absence-follow-up.mjs
           node scripts/test-pass-bilagor.mjs
 
       - name: Check Supabase secrets

@@ -6,7 +6,13 @@ const output = process.env.TEST_SCREENSHOTS || '../admin-mobile-screenshots';
 fs.mkdirSync(output, { recursive: true });
 const user = { id: 'user', aud: 'authenticated', role: 'authenticated', email: 'test@example.test', user_metadata: {} };
 const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: 4102444800 })).toString('base64url'), 'fake'].join('.');
-const date = new Date().toLocaleDateString('sv-SE');
+const testDay = new Date();
+if (testDay.getDay() === 6) testDay.setDate(testDay.getDate() + 2);
+if (testDay.getDay() === 0) testDay.setDate(testDay.getDate() + 1);
+const date = testDay.toLocaleDateString('sv-SE');
+const previous = new Date(`${date}T12:00:00`);
+do { previous.setDate(previous.getDate() - 1); } while ([0, 6].includes(previous.getDay()));
+const followUpPerson = { id: 'follow-up', namn: 'Fortsatt Frånvaro Testperson', aktiv: true };
 const people = Array.from({ length: 18 }, (_, i) => ({ id: `person-${i}`, namn: `Testpersonal ${i} Med Ett Längre Efternamn`, aktiv: true, arbetslag_id: 'team', arbetslag: { id: 'team', namn: 'Åk.1' } }));
 const shifts = people.map((person, i) => ({ id: `pass-${i}`, datum: date, tid_från: '08:00:00', tid_till: '16:30:00', grupp: 'Åk.1', status: 'bokat', vikarie_id: 'sub', personal_id: person.id, personal: person, frånvaro: null, förfrågningar: [], publicerad: false }));
 async function prepare(browser, width, height) {
@@ -20,11 +26,11 @@ async function prepare(browser, width, height) {
     let data = [];
     if (path.includes('/auth/v1/')) data = user;
     if (path.endsWith('/profiler')) data = [{ ...user, namn: 'Testadmin', roll: 'admin', aktiv: true }];
-    if (path.endsWith('/personal')) data = people;
+    if (path.endsWith('/personal')) data = [...people, followUpPerson];
     if (path.endsWith('/arbetslag')) data = [{ id: 'team', namn: 'Åk.1', aktiv: true }];
     if (path.endsWith('/vikarier')) data = [{ id: 'sub', profil_id: 'sub-profile', namn: 'Testvikarie Med Långt Namn', aktiv: true }];
     if (path.endsWith('/vikariepass')) data = shifts.filter(p => p.personal_id !== 'person-1');
-    if (path.endsWith('/frånvaro')) data = people.map(p => ({ id: `absence-${p.id}`, personal_id: p.id, personal: p, datum_från: date, datum_till: date, hel_dag: true, anteckning: p.id === 'person-1' ? 'Ingen vikarie behövs' : null }));
+    if (path.endsWith('/frånvaro')) data = [...people.map(p => ({ id: `absence-${p.id}`, personal_id: p.id, personal: p, datum_från: date, datum_till: date, hel_dag: true, anteckning: p.id === 'person-1' ? 'Ingen vikarie behövs' : null })), { id: 'previous-absence', personal_id: followUpPerson.id, personal: followUpPerson, datum_från: previous.toLocaleDateString('sv-SE'), datum_till: previous.toLocaleDateString('sv-SE'), hel_dag: true }];
     if (Array.isArray(data) && route.request().headers().accept?.includes('vnd.pgrst.object')) data = data[0] || null;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
@@ -34,6 +40,17 @@ async function checkDialog(page, name) {
   const dialog = page.getByRole('dialog').last();
   await dialog.waitFor();
   const body = dialog.locator('.app-dialog-body');
+  const timeFieldsFit = await dialog.locator('.admin-time-grid').evaluateAll(grids => grids.every(grid => {
+    const bounds = grid.getBoundingClientRect();
+    const inputs = [...grid.querySelectorAll('input[type="time"]')].map(input => input.getBoundingClientRect());
+    return inputs.every(rect => rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1) &&
+      inputs.every((rect, i) => inputs.slice(i + 1).every(other => rect.right <= other.left || other.right <= rect.left || rect.bottom <= other.top || other.bottom <= rect.top));
+  }));
+  assert(timeFieldsFit, `${name}: time fields overlap`);
+  if (await dialog.locator('.admin-time-grid').count()) {
+    await dialog.locator('.admin-time-grid').first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${output}/${name}-times.png` });
+  }
   const last = dialog.getByRole('button').last();
   await last.scrollIntoViewIfNeeded();
   await last.click({ trial: true });
@@ -76,6 +93,24 @@ async function checkDialog(page, name) {
           await page.locator('article:visible').filter({ hasText: people[1].namn }).getByText('Vikarie behövs ej', { exact: true }).waitFor();
           await page.getByRole('button', { name: '+ Ny frånvaro', exact: true }).click();
           await checkDialog(page, `absence-${width}`);
+        }
+        if (route === 'utskick') {
+          await page.getByRole('button', { name: 'Skicka mail', exact: true }).click();
+          const review = page.getByRole('dialog', { name: 'Kontrollera fortsatt frånvaro' });
+          await review.getByText(followUpPerson.namn, { exact: true }).waitFor();
+          const proceed = review.getByRole('button', { name: 'Fortsätt till mail' });
+          assert.equal(await proceed.isDisabled(), true);
+          await page.screenshot({ path: `${output}/follow-up-${width}.png` });
+          await review.getByRole('checkbox').check();
+          assert.equal(await proceed.isEnabled(), true);
+          await review.getByRole('checkbox').uncheck();
+          assert.equal(await proceed.isDisabled(), true);
+          await review.getByRole('button', { name: 'Registrera frånvaro' }).click();
+          const registration = page.getByRole('dialog', { name: 'Ny frånvaro' });
+          await registration.waitFor();
+          assert.equal(await registration.locator('select').first().inputValue(), followUpPerson.id);
+          assert.equal(await registration.locator('input[type="date"]').first().inputValue(), date);
+          await page.keyboard.press('Escape');
         }
         await page.screenshot({ path: `${output}/${route.replaceAll('/', '-')}-${width}.png` });
       }
