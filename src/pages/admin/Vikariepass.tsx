@@ -6,6 +6,7 @@ import { PASS_STATUS_LABELS, PASS_STATUS_COLORS, HÄNDELSE_LABELS } from '../../
 import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, Modal, Confirm } from '../../components/ui';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { supabase } from '../../lib/supabase';
+import { absenceSuggestions } from '../../lib/absenceSuggestions';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -2772,23 +2773,9 @@ export default function Bemanning() {
     datum,
     grupper: kalenderGrupper.filter(grupp => grupp.datum === datum),
   }));
-  function frånvaroTäckerDatum(frånvaro: Frånvaro, datum: string) {
-    return frånvaro.datum_från <= datum && frånvaro.datum_till >= datum;
-  }
-
-  function passFinnsFörFrånvaroDag(frånvaro: Frånvaro, datum: string) {
-    return veckansPass.some(p =>
-      p.status !== 'avbokat' &&
-      p.datum === datum &&
-      (p.frånvaro_id === frånvaro.id || (!p.frånvaro_id && p.personal_id === frånvaro.personal_id))
-    );
-  }
-
   const frånvaroFörslagPerDag = new Map(veckodagar.map((datum) => [
     datum,
-    frånvaron
-      .filter(frånvaro => frånvaroTäckerDatum(frånvaro, datum) && !frånvaro.ingen_vikarie_behövs)
-      .filter(frånvaro => !passFinnsFörFrånvaroDag(frånvaro, datum))
+    absenceSuggestions(frånvaron, veckansPass, datum)
       .sort((a, b) => (a.personal?.arbetslag?.namn ?? '').localeCompare(b.personal?.arbetslag?.namn ?? '', 'sv') || (a.personal?.namn ?? '').localeCompare(b.personal?.namn ?? '', 'sv')),
   ]));
   const synligaDagar = döljPasserade && snabbFilter !== 'arkiv'
