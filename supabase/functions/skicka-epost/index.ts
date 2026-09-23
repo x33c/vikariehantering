@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { authenticate, mayNotify } from '../_shared/authorization.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildPushHTTPRequest } from 'npm:@pushforge/builder';
 
@@ -206,23 +207,19 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+  if (req.method !== 'POST') return new Response(null, { status: 405, headers: corsHeaders });
+  const auth = await authenticate(req, supabase);
+  if ('error' in auth) return new Response(JSON.stringify({ error: auth.error }), {
+    status: auth.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
   const body = await req.json();
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return new Response(null, { status: 400, headers: corsHeaders });
+  if (!await mayNotify(supabase, auth.profile, body)) return new Response(JSON.stringify({ error: 'Behörighet saknas för denna notifiering.' }), {
+    status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
   const { pass_id, vikarie_ids, typ, avsandare_roll, meddelande, vikarie_id, svar } = body;
-
-
-
-
+  const userData = { user: auth.user };
   if (typ === 'koppla_vikarieprofil') {
-    const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Du måste vara inloggad.' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const email = userData.user.email?.trim();
     let kopplade = [];
 
@@ -243,28 +240,6 @@ serve(async (req) => {
   }
 
   if (typ === 'massmeddelande_vikarier') {
-    const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Du måste vara inloggad.' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { data: profil } = await supabase
-      .from('profiler')
-      .select('roll')
-      .eq('id', userData.user.id)
-      .maybeSingle();
-
-    if (profil?.roll !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Endast admin kan skicka massmeddelanden.' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const ids = Array.isArray(body.vikarie_ids)
       ? body.vikarie_ids.filter((id: unknown) => typeof id === 'string')
       : [];
@@ -508,16 +483,6 @@ serve(async (req) => {
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return new Response(JSON.stringify({ error: 'VAPID-nycklar saknas i Edge Function.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Du måste vara inloggad för att testa push.' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -786,7 +751,7 @@ serve(async (req) => {
     .in('id', vikarie_ids)
     .eq('aktiv', true);
 
-  const resultat: { vikarie_id: string; status: string; fel?: string }[] = [];
+  const resultat: { vikarie_id: string; status: string; fel?: string; push_profil_id?: string; push_prenumerationer: number }[] = [];
   let någotSkickades = false;
 
   for (const vikarie of (vikarier ?? [])) {

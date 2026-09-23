@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy skicka-epost
+    name: Test and deploy functions
     runs-on: ubuntu-latest
 
     env:
@@ -23,6 +23,15 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: 2.48.3
+
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Test authorization and regressions
+        run: |
+          node scripts/test-edge-authorization.mjs
+          node scripts/test-absence-suggestions.mjs
+          node scripts/test-pass-bilagor.mjs
 
       - name: Check Supabase secrets
         shell: bash
@@ -39,3 +48,6 @@ jobs:
 
       - name: Deploy function
         run: supabase functions deploy skicka-epost --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy account management
+        run: supabase functions deploy hantera-anvandare --project-ref "$SUPABASE_PROJECT_REF"

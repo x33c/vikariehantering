@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authenticate } from '../_shared/authorization.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY')!;
@@ -23,10 +24,15 @@ function normaliseraEpost(value: unknown) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return json({ error: 'Metoden stöds inte.' }, 405);
 
   try {
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const auth = await authenticate(req, supabaseAdmin);
+    if ('error' in auth) return json({ error: auth.error }, auth.status);
+    if (auth.profile.roll !== 'admin') return json({ error: 'Administratörsbehörighet krävs.' }, 403);
+    const adminProfil = auth.profile;
     const { åtgärd, ...data } = await req.json();
 
     if (åtgärd === 'skapa') {
@@ -99,30 +105,19 @@ serve(async (req) => {
     }
 
     if (åtgärd === 'uppdatera_roll') {
-      const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-      if (!token) return json({ error: 'Saknar inloggning.' }, 401);
-
-      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-      if (userError || !userData.user) return json({ error: 'Ogiltig inloggning.' }, 401);
-
-      const { data: adminProfil, error: adminProfilError } = await supabaseAdmin
-        .from('profiler')
-        .select('id, roll, epost')
-        .eq('id', userData.user.id)
-        .single();
-
-      if (adminProfilError || adminProfil?.roll !== 'admin') {
-        return json({ error: 'Endast administratörer kan ändra roller.' }, 403);
-      }
-
       const { profil_id, roll, namn, aktiv, admin_losenord } = data;
+      if (typeof profil_id !== 'string' || !['admin', 'vikarie'].includes(roll) ||
+        (namn !== undefined && namn !== null && typeof namn !== 'string') ||
+        (aktiv !== undefined && typeof aktiv !== 'boolean')) {
+        return json({ error: 'Ogiltiga kontouppgifter.' }, 400);
+      }
 
       if (roll === 'admin') {
         if (!admin_losenord || typeof admin_losenord !== 'string') {
           return json({ error: 'Lösenord krävs för att tilldela adminroll.' }, 400);
         }
 
-        const adminEpost = adminProfil.epost ?? userData.user.email;
+        const adminEpost = adminProfil.epost ?? auth.user.email;
         if (!adminEpost) return json({ error: 'Administratörskontot saknar e-post.' }, 400);
 
         const { error: loginError } = await supabaseAuth.auth.signInWithPassword({
