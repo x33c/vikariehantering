@@ -7,8 +7,8 @@ export function absenceNeedsSubstitute(absence: Frånvaro) {
 
 export function shiftMatchesAbsence(shift: Vikariepass, absence: Frånvaro) {
   if (shift.status === 'avbokat' || shift.datum < absence.datum_från || shift.datum > absence.datum_till) return false;
-  if (shift.frånvaro_id === absence.id) return true;
   if (shift.personal_id !== absence.personal_id) return false;
+  if (shift.frånvaro_id === absence.id) return true;
   // A shift can belong to an older absence record for the same person.
   return absence.hel_dag || !absence.tid_från || !absence.tid_till ||
     (shift.tid_från.slice(0, 5) < absence.tid_till.slice(0, 5) &&

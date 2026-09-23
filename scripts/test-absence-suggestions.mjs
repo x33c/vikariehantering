@@ -35,4 +35,12 @@ assert.equal(shiftMatchesAbsence({ ...shift, personal_id: 'someone-else' }, abse
 assert.equal(absenceNeedsSubstitute({ ...absence, anteckning: 'Ingen vikarie behövs' }), false);
 assert.equal(absenceNeedsSubstitute({ ...absence, anteckning: null }), true);
 assert.equal(count([{ ...absence, personal_id: 'dennis', anteckning: null }]), 1);
-console.log('20 absence suggestion and matching regression checks passed');
+const ahmed = { ...absence, id: 'ahmed-absence', personal_id: 'ahmed' };
+const gunilla = { ...absence, id: 'gunilla-absence', personal_id: 'gunilla' };
+const reassigned = { ...shift, personal_id: 'gunilla', frånvaro_id: ahmed.id, status: 'bokat' };
+assert.equal(shiftMatchesAbsence(reassigned, ahmed), false);
+assert.equal(shiftMatchesAbsence(reassigned, gunilla), true);
+assert.equal(absenceSuggestions([ahmed, gunilla], [reassigned], date)[0].id, ahmed.id);
+assert.equal(count([ahmed, gunilla], [reassigned]), 1);
+assert.equal(shiftMatchesAbsence({ ...reassigned, personal_id: null }, ahmed), false);
+console.log('25 absence suggestion and matching regression checks passed');

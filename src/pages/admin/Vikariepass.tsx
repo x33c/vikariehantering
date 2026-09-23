@@ -595,7 +595,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       ? personal.find(p => p.id === data.personal_id)
       : pass.personal;
 
-    onUppdaterad({ ...pass, ...data, personal: uppdateradPersonal });
+    onUppdaterad({ ...pass, ...data, personal: uppdateradPersonal,
+      frånvaro: data.frånvaro_id === null ? undefined : pass.frånvaro });
     return true;
   }
 
@@ -738,7 +739,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     const valdPersonal = nyPersonalId ? personal.find(p => p.id === nyPersonalId) : undefined;
 
     await uppdateraPass(
-      { personal_id: nyPersonalId } as Partial<Bemanning>,
+      { personal_id: nyPersonalId, frånvaro_id: null } as Partial<Bemanning>,
       {
         åtgärd: 'ändrade_ersatt_personal',
         tidigare_personal: pass.personal?.namn ?? null,
