@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
 import {
@@ -104,9 +106,9 @@ function datumÖverlappar(startA: string, slutA: string, startB: string, slutB: 
   return startA <= slutB && slutA >= startB;
 }
 
-function frånvaroPassStatus(pass: Vikariepass[], löst: boolean) {
+function frånvaroPassStatus(pass: Vikariepass[], löst: boolean, behöverVikarie = true) {
   if (löst) return { text: 'löst', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
-  if (pass.length === 0) return { text: 'Inget pass', färg: 'var(--text-muted)', bg: 'var(--hover)' };
+  if (pass.length === 0) return { text: behöverVikarie ? 'Inget pass' : 'Vikarie behövs ej', färg: 'var(--text-muted)', bg: 'var(--hover)' };
 
   const allaBemannade = pass.every((p) => !!p.vikarie_id && (p.status === 'bokat' || p.status === 'bekräftat'));
   if (allaBemannade) return { text: 'bemannat', färg: '#22c55e', bg: 'rgba(34,197,94,0.14)' };
@@ -797,7 +799,7 @@ function RedigeraFrånvaroModal({
     setDatumFrån(frånvaro.datum_från);
     setDatumTill(frånvaro.datum_till);
     setHelDag(frånvaro.hel_dag);
-    setIngenVikarieBehövs(markeradIngenVikarie);
+    setIngenVikarieBehövs(markeradIngenVikarie || !!frånvaro.ingen_vikarie_behövs);
     setTidFrån(tid(frånvaro.tid_från) || STANDARD_TID_FRÅN);
     setTidTill(tid(frånvaro.tid_till) || STANDARD_TID_TILL);
     setAnteckning(synligAnteckning);
@@ -815,6 +817,7 @@ function RedigeraFrånvaroModal({
     setFel('');
 
     const res = await frånvaroApi.uppdatera(aktuellFrånvaro.id, {
+      ...('ingen_vikarie_behövs' in aktuellFrånvaro ? { ingen_vikarie_behövs: ingenVikarieBehövs } : {}),
       personal_id: personalId,
       datum_från: datumFrån,
       datum_till: datumTill,
@@ -932,8 +935,10 @@ export default function Franvaro() {
   }
 
   function aktivaPassFör(frånvaro: Frånvaro) {
-    return vikariepass.filter((pass) => pass.frånvaro_id === frånvaro.id && pass.status !== 'avbokat');
+    return vikariepass.filter((pass) => shiftMatchesAbsence(pass, frånvaro));
   }
+
+  useRealtimeRefresh(true, ladda, ['frånvaro', 'vikariepass']);
 
   function öppnaPassFörFrånvaro(frånvaro: Frånvaro) {
     const pass = aktivaPassFör(frånvaro);
@@ -1091,8 +1096,8 @@ export default function Franvaro() {
 
   function sorteraDagensFrånvaro(dag: string) {
     return [...(frånvaroPerDag.get(dag) ?? [])].sort((a, b) => {
-      const aSaknar = !ärLöstFrånvaro(a, dag) && aktivaPassFör(a).filter((pass) => pass.datum === dag).length === 0;
-      const bSaknar = !ärLöstFrånvaro(b, dag) && aktivaPassFör(b).filter((pass) => pass.datum === dag).length === 0;
+      const aSaknar = absenceNeedsSubstitute(a) && !ärLöstFrånvaro(a, dag) && aktivaPassFör(a).filter((pass) => pass.datum === dag).length === 0;
+      const bSaknar = absenceNeedsSubstitute(b) && !ärLöstFrånvaro(b, dag) && aktivaPassFör(b).filter((pass) => pass.datum === dag).length === 0;
       if (aSaknar !== bSaknar) return aSaknar ? -1 : 1;
 
       const aLöst = ärLöstFrånvaro(a, dag);
@@ -1243,7 +1248,7 @@ export default function Franvaro() {
                       {dagensFrånvaro.map((frånvaro) => {
                         const pass = aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag);
                         const löst = ärLöstFrånvaro(frånvaro, dag);
-                        const status = frånvaroPassStatus(pass, löst);
+                        const status = frånvaroPassStatus(pass, löst, absenceNeedsSubstitute(frånvaro));
 
                         return (
                           <article
@@ -1333,7 +1338,7 @@ export default function Franvaro() {
                       const pass = aktivaPassFör(frånvaro).filter((pass) => pass.datum === dag);
                       const harPass = pass.length > 0;
                       const löst = ärLöstFrånvaro(frånvaro, dag);
-                      const status = frånvaroPassStatus(pass, löst);
+                      const status = frånvaroPassStatus(pass, löst, absenceNeedsSubstitute(frånvaro));
 
                       return (
                         <article
@@ -1454,7 +1459,7 @@ export default function Franvaro() {
                     </span>
                   </div>
                   {(() => {
-                    const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f));
+                    const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f), absenceNeedsSubstitute(f));
                     return (
                       <div className="flex items-center justify-between gap-3">
                         <span>Bemanning</span>
@@ -1503,7 +1508,7 @@ export default function Franvaro() {
                     </td>
                     <td className="px-4 py-3">
                       {(() => {
-                        const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f));
+                        const status = frånvaroPassStatus(aktivaPassFör(f), ärLöstFrånvaro(f), absenceNeedsSubstitute(f));
                         return (
                           <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ color: status.färg, background: status.bg }}>
                             {status.text}

@@ -2543,7 +2543,7 @@ export default function Bemanning() {
   }, [statusFilter, datumFrån, datumTill, veckaStart]);
 
   useEffect(() => { ladda(); }, [ladda]);
-  useRealtimeRefresh(true, ladda, ['vikariepass', 'passmeddelanden', 'notiser', 'pass_bilagor']);
+  useRealtimeRefresh(true, ladda, ['vikariepass', 'frånvaro', 'passmeddelanden', 'notiser', 'pass_bilagor']);
 
   const passIdFrånUrl = searchParams.get('pass');
 

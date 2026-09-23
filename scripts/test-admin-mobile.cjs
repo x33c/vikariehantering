@@ -23,8 +23,8 @@ async function prepare(browser, width, height) {
     if (path.endsWith('/personal')) data = people;
     if (path.endsWith('/arbetslag')) data = [{ id: 'team', namn: 'Åk.1', aktiv: true }];
     if (path.endsWith('/vikarier')) data = [{ id: 'sub', profil_id: 'sub-profile', namn: 'Testvikarie Med Långt Namn', aktiv: true }];
-    if (path.endsWith('/vikariepass')) data = shifts;
-    if (path.endsWith('/frånvaro')) data = people.map(p => ({ id: `absence-${p.id}`, personal_id: p.id, personal: p, datum_från: date, datum_till: date, hel_dag: true }));
+    if (path.endsWith('/vikariepass')) data = shifts.filter(p => p.personal_id !== 'person-1');
+    if (path.endsWith('/frånvaro')) data = people.map(p => ({ id: `absence-${p.id}`, personal_id: p.id, personal: p, datum_från: date, datum_till: date, hel_dag: true, anteckning: p.id === 'person-1' ? 'Ingen vikarie behövs' : null }));
     if (Array.isArray(data) && route.request().headers().accept?.includes('vnd.pgrst.object')) data = data[0] || null;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
@@ -72,6 +72,8 @@ async function checkDialog(page, name) {
           await checkDialog(page, `details-${width}`);
         }
         if (route === 'franvaro') {
+          await page.locator('article:visible').filter({ hasText: people[0].namn }).getByText('bemannat', { exact: true }).waitFor();
+          await page.locator('article:visible').filter({ hasText: people[1].namn }).getByText('Vikarie behövs ej', { exact: true }).waitFor();
           await page.getByRole('button', { name: '+ Ny frånvaro', exact: true }).click();
           await checkDialog(page, `absence-${width}`);
         }

@@ -8,7 +8,7 @@ const context = { exports: {} };
 vm.runInNewContext(ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText, context);
-const { absenceSuggestions } = context.exports;
+const { absenceSuggestions, absenceNeedsSubstitute, shiftMatchesAbsence } = context.exports;
 const date = '2026-09-25';
 const absence = { id: 'a', personal_id: 'gill', datum_från: date, datum_till: date, hel_dag: true };
 const shift = { datum: date, personal_id: 'gill', frånvaro_id: 'old', status: 'obokat', tid_från: '08:00', tid_till: '16:30' };
@@ -28,4 +28,11 @@ const afternoon = { ...morning, id: 'afternoon', tid_från: '13:00', tid_till: '
 assert.equal(count([morning, afternoon]), 2);
 assert.equal(count([morning, afternoon], [{ ...shift, tid_till: '10:00' }]), 1);
 assert.equal(count([morning, { ...morning, id: 'duplicate', tid_från: '08:00:00' }]), 1);
-console.log('13 absence suggestion regression checks passed');
+assert.equal(shiftMatchesAbsence(shift, absence), true);
+assert.equal(shiftMatchesAbsence({ ...shift, datum: '2026-09-24' }, absence), false);
+assert.equal(shiftMatchesAbsence({ ...shift, status: 'avbokat' }, absence), false);
+assert.equal(shiftMatchesAbsence({ ...shift, personal_id: 'someone-else' }, absence), false);
+assert.equal(absenceNeedsSubstitute({ ...absence, anteckning: 'Ingen vikarie behövs' }), false);
+assert.equal(absenceNeedsSubstitute({ ...absence, anteckning: null }), true);
+assert.equal(count([{ ...absence, personal_id: 'dennis', anteckning: null }]), 1);
+console.log('20 absence suggestion and matching regression checks passed');
