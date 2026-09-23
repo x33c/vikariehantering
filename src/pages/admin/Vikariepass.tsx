@@ -303,6 +303,12 @@ function notisHistorikText(metadata: Record<string, unknown>) {
 
 function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
   const metadata = h.metadata ?? {};
+  if (h.händelse === 'pass_avbokat') {
+    if (metadata.åtgärd === 'datastadning') return 'Pass arkiverat via Datastädning';
+    if (metadata.åtgärd === 'arkiverad_från_bemanning') return 'Pass arkiverat via flerval i Bemanning';
+  }
+  if (metadata.åtgärd === 'avbokade_pass') return 'Pass arkiverat från passdetaljer';
+  if (metadata.åtgärd === 'återöppnade_pass') return 'Pass återöppnat som obokat';
   if (metadata.åtgärd === 'tidsändring_föreslagen') {
     const namn = String(metadata.vikarie_namn ?? 'Vikarien');
     const från = `${String(metadata.tidigare_tid_från ?? '')}-${String(metadata.tidigare_tid_till ?? '')}`;
@@ -922,6 +928,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   }
 
   async function avbokaPass() {
+    if (sparar || dagLast) return;
+    if (!window.confirm(`Arkivera passet ${pass.datum} ${pass.tid_från.slice(0, 5)}–${pass.tid_till.slice(0, 5)}? En eventuell bokning tas bort och passet kan inte bemannas förrän det återöppnas.`)) return;
     await uppdateraPass(
       {
         status: 'avbokat',
@@ -931,6 +939,29 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       } as Partial<Bemanning>,
       { åtgärd: 'avbokade_pass' }
     );
+  }
+
+  async function återöppnaPass() {
+    if (sparar || dagLast || pass.status !== 'avbokat') return;
+    if (!window.confirm(`Återöppna passet ${pass.datum} som obokat? Datum, tider och frånvarokoppling behålls. Tidigare bokning och förfrågningar återställs inte. Du kan därefter boka en vikarie på nytt.`)) return;
+    setSparar(true);
+    setFel('');
+    try {
+      const res = await passApi.återöppna(pass.id);
+      if (res.error || !res.data) {
+        setFel(res.error?.message ?? 'Passet kunde inte återöppnas. Uppdatera vyn och försök igen.');
+        return;
+      }
+      const logg = await historikApi.skapa(pass.id, 'pass_uppdaterat', { åtgärd: 'återöppnade_pass' });
+      onUppdaterad(res.data as unknown as Bemanning);
+      setValdVikarieId('');
+      await laddaHistorikFörPass();
+      if (logg.error) setFel('Passet återöppnades, men historiken kunde inte sparas.');
+    } catch {
+      setFel('Kunde inte bekräfta återöppningen. Uppdatera vyn innan du försöker igen.');
+    } finally {
+      setSparar(false);
+    }
   }
 
   async function taBortAvbokatPass() {
@@ -1729,6 +1760,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                   <div key={h.id} className="mb-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <span style={{ color: 'var(--text-subtle)' }}>{new Date(h.created_at).toLocaleString('sv-SE')}</span>
                     {' '}{historikText(h, vikarier)}
+                    {h.utförd_av_profil && <span> · Utfört av {h.utförd_av_profil.namn ?? h.utförd_av_profil.epost}</span>}
                   </div>
                 ))}
             </div>
@@ -1774,9 +1806,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
             Spara ändringar
           </Button>
           {pass.status === 'avbokat' ? (
+            <>
+            <Button onClick={återöppnaPass} loading={sparar} disabled={dagLast}>
+              Återöppna pass
+            </Button>
             <Button variant="danger" onClick={taBortAvbokatPass} loading={sparar}>
               Ta bort pass
             </Button>
+            </>
           ) : (
             <Button variant="danger" onClick={avbokaPass} loading={sparar}>
               Arkivera pass

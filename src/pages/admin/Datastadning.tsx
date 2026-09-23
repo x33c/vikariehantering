@@ -3,7 +3,7 @@ import { historikApi, passApi } from '../../lib/api';
 import type { PassStatus, Vikariepass } from '../../types';
 import { Button, LaddaSida, StatusBadge } from '../../components/ui';
 
-type ProblemTyp = 'overlapp' | 'helg' | 'utan_franvaro' | 'orimlig_tid';
+type ProblemTyp = 'overlapp' | 'helg' | 'orimlig_tid';
 
 interface ProblemPass {
   pass: Vikariepass;
@@ -14,7 +14,6 @@ interface ProblemPass {
 const PROBLEM_LABEL: Record<ProblemTyp, string> = {
   overlapp: 'Överlapp',
   helg: 'Helg',
-  utan_franvaro: 'Utan frånvaro',
   orimlig_tid: 'Orimlig tid',
 };
 
@@ -54,7 +53,7 @@ function analyseraPass(pass: Vikariepass[]) {
     const längd = slut - start;
 
     if (ärHelg(rad.datum)) läggTillProblem(problem, rad, 'helg', 'Passet ligger på en helg.');
-    if (!rad.frånvaro_id) läggTillProblem(problem, rad, 'utan_franvaro', 'Passet saknar kopplad frånvaro.');
+    // Standalone shifts and shifts created directly for staff are valid without an absence.
     if (längd <= 0 || längd > 510 || start < 360 || slut > 1080) {
       läggTillProblem(problem, rad, 'orimlig_tid', `Tiden ${rad.tid_från.slice(0, 5)}-${rad.tid_till.slice(0, 5)} behöver kontrolleras.`);
     }
@@ -112,7 +111,7 @@ export default function Datastadning() {
   const problem = useMemo(() => analyseraPass(pass), [pass]);
   const filtrerade = aktivTyp === 'alla' ? problem : problem.filter((rad) => rad.typer.has(aktivTyp));
   const counts = useMemo(() => {
-    const next: Record<ProblemTyp | 'alla', number> = { alla: problem.length, overlapp: 0, helg: 0, utan_franvaro: 0, orimlig_tid: 0 };
+    const next: Record<ProblemTyp | 'alla', number> = { alla: problem.length, overlapp: 0, helg: 0, orimlig_tid: 0 };
     for (const rad of problem) {
       for (const typ of rad.typer) next[typ] += 1;
     }
@@ -130,6 +129,10 @@ export default function Datastadning() {
   }
 
   async function arkiveraMarkerade() {
+    if (arkiverar || markerade.size === 0) return;
+    const valdaPass = pass.filter(p => markerade.has(p.id));
+    const bokade = valdaPass.filter(p => p.vikarie_id).length;
+    if (!window.confirm(`Arkivera ${valdaPass.length} pass? ${bokade} har en kopplad vikarie. Passen markeras som avbokade och kan inte bemannas förrän de återöppnas. Granska urvalet innan du fortsätter.`)) return;
     setArkiverar(true);
     setFel('');
     setMeddelande('');
@@ -175,7 +178,7 @@ export default function Datastadning() {
       {meddelande && <div className="mb-3 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#22c55e', color: '#86efac', background: 'rgba(34,197,94,0.10)' }}>{meddelande}</div>}
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {(['alla', 'overlapp', 'helg', 'utan_franvaro', 'orimlig_tid'] as const).map((typ) => {
+        {(['alla', 'overlapp', 'helg', 'orimlig_tid'] as const).map((typ) => {
           const aktiv = aktivTyp === typ;
           const label = typ === 'alla' ? 'Alla problem' : PROBLEM_LABEL[typ];
           return (

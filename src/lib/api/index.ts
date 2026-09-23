@@ -454,6 +454,17 @@ export const passApi = {
       .select()
       .single();
   },
+  async återöppna(id: string) {
+    // Old unanswered requests must not become actionable when a shift is reopened.
+    const requests = await supabase.from('pass_forfragningar')
+      .update({ status: 'aterkallad', svarat_kl: new Date().toISOString() })
+      .eq('pass_id', id).eq('status', 'vantar');
+    if (requests.error) return { data: null, error: requests.error };
+    return supabase.from('vikariepass')
+      .update({ status: 'obokat', publicerad: false, vikarie_id: null, riktad_till_vikarie_id: null })
+      .eq('id', id).eq('status', 'avbokat')
+      .select(VIKARIEPASS_SELECT).single();
+  },
   async dashboardStatistik(): Promise<DashboardStatistik> {
     const idag = new Date().toISOString().slice(0, 10);
     const omSjuDagar = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
