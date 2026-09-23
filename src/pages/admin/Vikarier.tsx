@@ -61,14 +61,8 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
 
   if (!öppen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onStäng} />
-      <div className="relative w-full max-w-md rounded-xl border shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{vikarie ? 'Redigera vikarie' : 'Lägg till vikarie'}</h2>
-          <button onClick={onStäng} className="rounded px-2 py-1 text-sm" style={{ color: 'var(--text-muted)' }}>✕</button>
-        </div>
-        <div className="space-y-4 px-6 py-4">
+    <Modal öppen={öppen} onStäng={onStäng} titel={vikarie ? 'Redigera vikarie' : 'Lägg till vikarie'}>
+        <div className="space-y-4">
           {fel && <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: '#f87171', background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>{fel}</p>}
           {[
             { label: 'Namn *', key: 'namn', type: 'text' },
@@ -91,8 +85,7 @@ function VikarieModal({ öppen, onStäng, vikarie, onSparad }: {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -207,26 +200,8 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div
-        className="w-full max-w-md rounded-xl border shadow-xl"
-        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
-      >
-        <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            Kontoinställningar
-          </h2>
-          <button
-            type="button"
-            onClick={onStäng}
-            className="rounded px-2 py-1 text-xl leading-none"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="space-y-4 p-5">
+    <Modal öppen={öppen} onStäng={onStäng} titel="Kontoinställningar">
+        <div className="space-y-4">
           <p className="text-sm" style={{ color: 'var(--text)' }}>
             {vikarie.namn}
           </p>
@@ -347,8 +322,7 @@ function KontoModal({ vikarie, öppen, onStäng, onUppdaterad }: {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -957,7 +931,7 @@ export default function Vikarier() {
 
   return (
     <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>Vikarier</h1>
         <button onClick={() => setModal({ öppen: true })}
           className="rounded-md px-4 py-2 text-sm font-medium text-white"
@@ -1001,8 +975,8 @@ export default function Vikarier() {
             className="rounded-md px-3 py-1.5 text-xs font-medium text-white" style={{ background: 'var(--blue)' }}>Lägg till vikarie</button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-xl border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <table className="admin-record-table w-full text-sm">
             <thead>
               <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
 <th className="px-4 py-2.5 text-left font-medium w-10"></th>
@@ -1017,18 +991,19 @@ export default function Vikarier() {
             <tbody className="divide-y divide-gray-100">
               {filtrerade.map(v => (
                 <tr key={v.id} className="hover:bg-gray-50">
-<td className="px-4 py-3">
+<td className="record-select px-4 py-3">
                     <input
                       type="checkbox"
                       checked={markeradeIds.has(v.id)}
+                      aria-label={`Markera ${v.namn}`}
                       onChange={() => växlaMarkerad(v.id)}
                       className="h-4 w-4 rounded"
                     />
                   </td>
-<td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{v.namn}</td>
+<td className="record-name px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{v.namn}<span className="mt-1 block break-all text-xs font-normal md:hidden" style={{ color: 'var(--text-muted)' }}>{v.epost}</span></td>
                   <td className="px-4 py-3 hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>{v.epost ?? '–'}</td>
                   <td className="px-4 py-3 hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>{v.telefon ?? '–'}</td>
-                  <td className="px-4 py-3">
+                  <td className="record-state px-4 py-3">
                     {v.profil_id
                       ? <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: 'rgba(34,197,94,0.14)', color: '#22c55e' }}>Aktivt konto</span>
                       : <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--hover)', color: 'var(--text-muted)' }}>Inget konto</span>}
@@ -1044,7 +1019,7 @@ export default function Vikarier() {
                       <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Av</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="record-actions px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => setKontoModal({ öppen: true, rad: v })}
                         className="rounded px-2 py-1 text-xs font-medium" style={{ color: 'var(--blue)' }}>Konto</button>
@@ -1094,17 +1069,15 @@ export default function Vikarier() {
       )}
 
       {massModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl border p-5 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <Modal öppen={massModal} onStäng={() => setMassModal(false)} titel="Skicka meddelande" bredd="lg">
+          <div>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Skicka meddelande</h2>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{markeradeIds.size} valda mottagare</p>
                 {massMall === 'uppdatering' && (
                   <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--blue)' }}>Redigerbar uppdateringsmall · Uppdaterad {uppdateringsDatum}</p>
                 )}
               </div>
-              <button onClick={() => setMassModal(false)} className="text-xl" style={{ color: 'var(--text-muted)' }}>×</button>
             </div>
 
             {massFel && <div className="mb-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{massFel}</div>}
@@ -1143,14 +1116,11 @@ export default function Vikarier() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {raderaId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setRaderaId(null)} />
-          <div className="relative w-full max-w-sm rounded-xl border p-6 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-            <h2 className="mb-2 text-base font-semibold" style={{ color: 'var(--text)' }}>Ta bort vikarie</h2>
+        <Modal öppen onStäng={() => setRaderaId(null)} titel="Ta bort vikarie">
             <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>Bekräfta att du vill ta bort vikarie. Bokade pass påverkas inte.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setRaderaId(null)}
@@ -1159,8 +1129,7 @@ export default function Vikarier() {
               <button onClick={async () => { await vikariApi.radera(raderaId); setVikarier(prev => prev.filter(v => v.id !== raderaId)); setRaderaId(null); }}
                 className="rounded-md px-4 py-2 text-sm font-medium text-white" style={{ background: '#dc2626' }}>Ta bort</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

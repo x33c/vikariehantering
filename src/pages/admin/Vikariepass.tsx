@@ -1222,7 +1222,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const bemanningsKnappText = harAktivBokning ? 'Byt vikarie' : 'Boka vald vikarie';
 
   return (
-    <div className="flex max-h-[88vh] flex-col overflow-hidden">
+    <div className="pass-details flex max-h-[88dvh] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
         <div>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{pass.personal?.namn ?? 'Fristående pass'}</h2>
@@ -1233,7 +1233,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
         <button onClick={onStäng} className="rounded-full px-2 py-1 text-lg leading-none" style={{ color: 'var(--text-muted)' }}>×</button>
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
+      <div className="pass-details-content min-h-0 flex-1 space-y-5 overflow-y-auto p-3 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
         {dagLast && (
           <Alert typ="warning">Dagen är låst. Lås upp dagen innan du publicerar, skickar förfrågan eller bokar pass.</Alert>
@@ -1770,7 +1770,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
           />
           Skicka push-notis vid förfrågan
         </label>
-        <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
             {bemanningsKnappText}
           </Button>
@@ -2163,7 +2163,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
 
   return (
     <Modal öppen={öppen} onStäng={onStäng} titel="Skapa vikariepass" bredd="lg">
-      <div className="max-h-[calc(100dvh-5.5rem)] space-y-4 overflow-y-auto pb-2 pr-1 sm:max-h-[calc(100dvh-9rem)]">
+      <div className="space-y-4 pb-2">
         {fel && <Alert typ="error">{fel}</Alert>}
 
         <Select
@@ -2439,7 +2439,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
             )}
           </span>
         </label>
-        <div className="sticky bottom-0 -mx-1 grid grid-cols-2 gap-2 border-t px-1 py-3 sm:flex sm:justify-end" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+        <div className="grid grid-cols-2 gap-2 border-t py-3 sm:flex sm:justify-end" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
           <Button variant="secondary" onClick={onStäng}>Avbryt</Button>
           <Button loading={laddar} onClick={spara}>
             {form.veckopass ? 'Skapa veckopass' : 'Skapa pass'}
@@ -2528,11 +2528,12 @@ export default function Bemanning() {
     setVeckansPass((veckaPassRes.data ?? []) as Bemanning[]);
 
     const avbokningsIds = new Set<string>();
-    await Promise.all(passLista.map(async (passrad) => {
+    const aktivaBokningar = passLista.filter(passrad =>
+      !!passrad.vikarie_id && (passrad.status === 'bokat' || passrad.status === 'bekräftat'));
+    await Promise.all(aktivaBokningar.map(async (passrad) => {
       const res = await passmeddelandeApi.lista(passrad.id);
       const meddelanden = (res.data ?? []) as Passmeddelande[];
-      const harAktivBokning = !!passrad.vikarie_id && (passrad.status === 'bokat' || passrad.status === 'bekräftat');
-      if (harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
+      if (meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
         avbokningsIds.add(passrad.id);
       }
     }));
@@ -2872,7 +2873,7 @@ export default function Bemanning() {
 
   return (
     <div className="flex h-full min-h-0">
-      <div className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-2 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-3 lg:px-5 ${valtPass ? 'hidden lg:flex' : ''}`}>
+      <div className={`admin-staffing flex min-h-0 min-w-0 flex-1 flex-col px-2 pb-6 pt-2 sm:px-4 sm:pt-3 lg:px-5 ${valtPass ? 'hidden lg:flex' : ''}`}>
         <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Veckoplanering</p>
@@ -2890,7 +2891,7 @@ export default function Bemanning() {
           </div>
         </div>
 
-        <div className="sticky top-1 z-10 mb-3 rounded-xl border p-2 shadow-sm backdrop-blur sm:static sm:p-3 sm:shadow-none" style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)' }}>
+        <div className="mb-3 rounded-xl border p-2 sm:p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
           <div className="grid gap-3 xl:grid-cols-[minmax(190px,240px)_minmax(260px,1fr)_auto] xl:items-center">
             <div className="rounded-lg px-2 py-1.5" style={{ background: 'var(--bg)' }}>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Vecka {veckonummer(veckaStart)}</p>

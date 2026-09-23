@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { profilApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import type { Profil, UserRoll } from '../../types';
-import { Alert, Button, LaddaSida, Select } from '../../components/ui';
+import { Alert, Button, LaddaSida, Select, Modal } from '../../components/ui';
 
 export default function Konton() {
   const [profiler, setProfiler] = useState<Profil[]>([]);
@@ -117,7 +117,7 @@ export default function Konton() {
         ))}
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <div className="hidden overflow-x-auto rounded-lg border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
@@ -155,22 +155,20 @@ export default function Konton() {
       </div>
 
       {adminRollVal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setAdminRollVal(null)} />
-          <div className="relative w-full rounded-t-2xl p-5 shadow-xl sm:max-w-md sm:rounded-xl" style={{ background: 'var(--bg-card)' }}>
-            <h2 className="mb-2 text-base font-semibold" style={{ color: 'var(--text)' }}>Bekräfta adminroll</h2>
+        <Modal öppen onStäng={() => setAdminRollVal(null)} titel="Bekräfta adminroll">
             <p className="mb-4 text-sm" style={{ color: 'var(--text-muted)' }}>
               Skriv ditt lösenord för att tilldela adminroll till {adminRollVal.profil.epost ?? adminRollVal.profil.namn}.
             </p>
             <input
               type="password"
+              aria-label="Ditt lösenord"
               value={adminLosenord}
               onChange={e => setAdminLosenord(e.target.value)}
               className="mb-4 w-full rounded-md border px-3 py-2 text-sm"
               style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="secondary" onClick={() => setAdminRollVal(null)}>Avbryt</Button>
               <Button
                 onClick={() => uppdateraRoll(adminRollVal.profil, adminRollVal.roll, adminLosenord)}
@@ -179,8 +177,7 @@ export default function Konton() {
                 Tilldela adminroll
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

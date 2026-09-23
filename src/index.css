@@ -409,170 +409,82 @@ tbody tr:nth-child(even) {
   }
 }
 
-/* Admin mobile: bemanning/frånvaro ska kännas som swipebara app-vyer, inte långa desktopkolumner. */
+/* Admin: one page scroller, touch targets and safe areas. */
+.admin-main { scroll-padding-block: 1rem 3rem; }
+.admin-content { min-height: 100%; overflow-wrap: anywhere; }
+.admin-mobile-header {
+  min-height: calc(3.75rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+.admin-sidebar { padding-top: env(safe-area-inset-top); }
+[data-admin-mobile-sidebar-footer] { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+.admin-shell .app-dialog-overlay {
+  top: var(--admin-viewport-top, 0px);
+  height: var(--admin-viewport-height, 100dvh);
+  bottom: auto;
+  padding-top: env(safe-area-inset-top);
+}
+.admin-shell .app-dialog-body {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  scroll-padding-block: 1rem 4rem;
+}
+.admin-shell :is(input, select, textarea) { max-width: 100%; }
+.admin-shell :is(button, summary, a) { touch-action: manipulation; }
+.admin-table-scroll { max-width: 100%; overflow-x: auto; }
+
+@media (max-width: 1023px) {
+  .admin-content {
+    padding-inline: max(0.375rem, env(safe-area-inset-left)) max(0.375rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .admin-shell :is(button, summary, nav a, label[for="fil-upload"]) { min-height: 44px; }
+  .admin-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .admin-shell :is(input[type="checkbox"], input[type="radio"]) {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+}
+
 @media (max-width: 767px) {
-  main {
-    overflow-x: hidden;
+  .admin-content h1 { font-size: 1.25rem; line-height: 1.35; }
+  .admin-record-table, .admin-record-table tbody,
+  .admin-summary-table, .admin-summary-table tbody { display: block; width: 100%; }
+  .admin-record-table thead, .admin-summary-table thead { display: none; }
+  .admin-record-table tr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: start;
+    padding: 0.5rem;
   }
-
-  main > div > .flex.h-full,
-  main > div > .flex.h-full > div[class*="flex-col"],
-  main > div > div[class*="pb-24"] {
-    min-width: 0;
-    max-width: 100%;
+  .admin-record-table td { display: none; }
+  .admin-record-table td.record-select {
+    display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0;
   }
-
-  main h1 {
-    font-size: 1.125rem;
-    line-height: 1.35;
+  .admin-record-table td.record-name { display: block; grid-column: 2; padding: 0.5rem 0.25rem; }
+  .admin-record-table td.record-state { display: block; grid-column: 2; padding: 0.25rem; }
+  .admin-record-table td.record-actions { display: block; grid-column: 1 / -1; padding: 0.5rem 0 0; }
+  .admin-record-table .record-actions > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem;
   }
+  .admin-record-table .record-actions button { background: var(--bg); border: 1px solid var(--border); }
+  .admin-summary-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0.75rem; gap: 0.75rem; }
+  .admin-summary-table td { display: block; padding: 0; }
+  .admin-summary-table td:first-child { grid-column: 1 / -1; }
+  .admin-summary-table td::before { content: attr(data-label); display: block; color: var(--text-muted); font-size: 0.75rem; font-weight: 400; }
+}
 
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"],
-  main > div > div[class*="pb-24"] {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child,
-  main > div > div[class*="pb-24"] > div:first-child {
-    margin-bottom: 0.5rem !important;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child > div:last-child,
-  main > div > div[class*="pb-24"] > div:first-child > div:last-child {
-    display: flex !important;
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:first-child button,
-  main > div > div[class*="pb-24"] > div:first-child button {
-    min-height: 2.35rem;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2),
-  main > div > div[class*="pb-24"] > details:first-of-type,
-  main > div > div[class*="pb-24"] > section:first-of-type {
-    border-radius: 0.85rem !important;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) {
-    position: sticky;
-    top: 0;
-    z-index: 15;
-    margin-left: -0.5rem;
-    margin-right: -0.5rem;
-    border-left-width: 0;
-    border-right-width: 0;
-    border-radius: 0 !important;
-    backdrop-filter: blur(14px);
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div {
-    gap: 0.45rem !important;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2) {
-    order: 3;
-    margin-left: -0.25rem;
-    margin-right: -0.25rem;
-    padding-inline: 0.25rem;
-    scrollbar-width: none;
-  }
-
-  main > div > .flex.h-full > div[class*="flex-col"][class*="flex-1"] > div:nth-child(2) > div > div:nth-child(2)::-webkit-scrollbar {
-    display: none;
-  }
-
-  main details > div.absolute.right-0.z-20 {
-    position: fixed !important;
-    left: 0.75rem !important;
-    right: 0.75rem !important;
-    top: 5.5rem !important;
-    width: auto !important;
-    max-height: calc(100dvh - 7rem);
-    overflow: auto;
-  }
-
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 {
-    display: flex !important;
-    gap: 0.75rem !important;
-    overflow-x: auto;
-    margin-inline: -0.5rem;
-    padding-inline: 0.5rem;
-    padding-bottom: 0.75rem;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: 0.5rem;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > section,
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > div {
-    flex: 0 0 min(88vw, 24rem);
-    min-width: min(88vw, 24rem);
-    max-width: min(88vw, 24rem);
-    scroll-snap-align: start;
-  }
-
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > section > div:last-child,
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 > div > div:last-child {
-    max-height: calc(100dvh - 17rem);
-    overflow-y: auto;
-    padding-right: 0.1rem;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 article,
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 section > div > div {
-    overflow-wrap: anywhere;
-  }
-
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 button,
-  main .grid.gap-2.md\:grid-cols-2.xl\:grid-cols-5 a {
-    touch-action: manipulation;
-  }
-
-  main > div > div[class*="pb-24"] > details:first-of-type {
-    margin-bottom: 0.55rem !important;
-  }
-
-  main > div > div[class*="pb-24"] > details:first-of-type > summary {
-    flex-direction: row !important;
-    align-items: center !important;
-  }
-
-  main > div > div[class*="pb-24"] > details:first-of-type > summary > span:first-child {
-    white-space: nowrap;
-  }
-
-  main > div > div[class*="pb-24"] > section:first-of-type {
-    margin-left: -0.5rem;
-    margin-right: -0.5rem;
-    border-left-width: 0;
-    border-right-width: 0;
-    border-radius: 0 !important;
-    padding: 0.5rem !important;
-  }
-
-  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child {
-    display: grid !important;
-    grid-template-columns: 1fr;
-    gap: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
-  }
-
-  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child h2 {
-    margin-top: 0;
-    font-size: 1rem;
-  }
-
-  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child > div:last-child {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  main > div > div[class*="pb-24"] > section:first-of-type > div:first-child > div:last-child button {
-    min-width: 0;
-    padding-inline: 0.5rem;
+/* The shared dialog owns scrolling, including on short desktop windows. */
+.admin-shell .pass-details { display: block; max-height: none; overflow: visible; }
+.admin-shell .pass-details-content { overflow: visible; }
+@media (max-width: 639px) {
+  .admin-notification-panel {
+    top: calc(var(--admin-viewport-top, 0px) + env(safe-area-inset-top) + 4rem);
+    max-height: calc(var(--admin-viewport-height, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5rem);
   }
 }

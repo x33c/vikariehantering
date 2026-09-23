@@ -19,12 +19,12 @@ export default function Register() {
         </div>
 
         <div className="rounded-2xl border p-1.5" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <div className="grid gap-1.5 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-1.5">
             {tabs.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
-                className="rounded-xl px-3 py-2.5 text-sm font-semibold transition"
+                className="min-w-0 rounded-xl px-2 py-2.5 text-center text-sm font-semibold transition sm:px-3 sm:text-left"
                 style={({ isActive }) => ({
                   background: isActive ? 'var(--nav-active)' : 'transparent',
                   color: isActive ? 'var(--nav-active-text)' : 'var(--text-muted)',
@@ -32,7 +32,7 @@ export default function Register() {
                 })}
               >
                 <span className="block">{tab.label}</span>
-                <span className="mt-0.5 block text-xs font-medium opacity-70">{tab.beskrivning}</span>
+                <span className="mt-0.5 hidden text-xs font-medium opacity-70 sm:block">{tab.beskrivning}</span>
               </NavLink>
             ))}
           </div>

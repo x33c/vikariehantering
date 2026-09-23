@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth'; 
 import { LaddaSida } from './components/ui';
 
@@ -12,19 +13,22 @@ import Login from './pages/auth/Login';
 import NyttLosenord from './pages/auth/NyttLosenord';
 
 // Admin pages
-import Register from './pages/admin/Register';
-import Arbetslag from './pages/admin/Arbetslag';
-import Vikarier from './pages/admin/Vikarier';
-import Franvaro from './pages/admin/Franvaro';
-import Vikariepass from './pages/admin/Vikariepass';
-import Import from './pages/admin/Import';
-import Historik from './pages/admin/Historik';
-import Utskick from './pages/admin/Utskick';
-import Export from './pages/admin/Export';
-import Datastadning from './pages/admin/Datastadning';
-import Konton from './pages/admin/Konton';
-import Notiser from './pages/admin/Notiser';
-import { BetaBemanning, BetaFranvaro, BetaStart, BetaUtskick } from './pages/admin/beta/BetaAdmin';
+const Register = lazy(() => import('./pages/admin/Register'));
+const Arbetslag = lazy(() => import('./pages/admin/Arbetslag'));
+const Vikarier = lazy(() => import('./pages/admin/Vikarier'));
+const Franvaro = lazy(() => import('./pages/admin/Franvaro'));
+const Vikariepass = lazy(() => import('./pages/admin/Vikariepass'));
+const Import = lazy(() => import('./pages/admin/Import'));
+const Historik = lazy(() => import('./pages/admin/Historik'));
+const Utskick = lazy(() => import('./pages/admin/Utskick'));
+const Export = lazy(() => import('./pages/admin/Export'));
+const Datastadning = lazy(() => import('./pages/admin/Datastadning'));
+const Konton = lazy(() => import('./pages/admin/Konton'));
+const Notiser = lazy(() => import('./pages/admin/Notiser'));
+const BetaBemanning = lazy(() => import('./pages/admin/beta/BetaAdmin').then(m => ({ default: m.BetaBemanning })));
+const BetaFranvaro = lazy(() => import('./pages/admin/beta/BetaAdmin').then(m => ({ default: m.BetaFranvaro })));
+const BetaStart = lazy(() => import('./pages/admin/beta/BetaAdmin').then(m => ({ default: m.BetaStart })));
+const BetaUtskick = lazy(() => import('./pages/admin/beta/BetaAdmin').then(m => ({ default: m.BetaUtskick })));
 
 // Vikarie pages
 import LedigaPass from './pages/vikarie/LedigaPass';

@@ -339,12 +339,12 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
             onClick={() => setOppen(false)}
           />
           <div
-            className={`fixed inset-x-3 top-16 z-[100] max-h-[calc(100dvh-5rem)] overflow-hidden rounded-2xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:w-80 sm:max-w-[calc(100vw-2rem)] ${
+            className={`admin-notification-panel fixed inset-x-3 top-16 z-[100] flex max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-2xl border shadow-xl sm:absolute sm:inset-x-auto sm:top-auto sm:w-80 sm:max-w-[calc(100vw-2rem)] ${
               placement === 'up' ? 'sm:bottom-full sm:left-0 sm:mb-2' : 'sm:right-0 sm:top-full sm:mt-2'
             }`}
             style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
           >
-          <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2" style={{ borderColor: 'var(--border)' }}>
             <div>
               <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Adminnotiser</p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -362,13 +362,13 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
                   </button>
                 </>
               )}
-              <button type="button" onClick={() => setOppen(false)} className="text-lg leading-none sm:hidden" style={{ color: 'var(--text-muted)' }}>
+              <button type="button" aria-label="Stäng notispanel" onClick={() => setOppen(false)} className="w-11 text-lg leading-none sm:hidden" style={{ color: 'var(--text-muted)' }}>
                 ×
               </button>
             </div>
           </div>
 
-          <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto p-2 sm:max-h-96">
+          <div className="min-h-0 overflow-y-auto overscroll-contain p-2 sm:max-h-96">
             {synliga.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                 Inga notiser ännu.

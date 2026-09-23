@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode, useEffect } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode, useEffect, useRef, useId } from 'react';
 import { PASS_STATUS_COLORS, PASS_STATUS_LABELS, type PassStatus } from '../../types';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -153,34 +153,63 @@ interface ModalProps {
 const bredder = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' };
 
 export function Modal({ öppen, onStäng, titel, children, bredd = 'md' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onStäng);
+  closeRef.current = onStäng;
+  const titleId = useId();
   useEffect(() => {
     if (!öppen) return;
 
     const tidigareOverflow = document.body.style.overflow;
+    const tidigareFokus = document.activeElement as HTMLElement | null;
     document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus({ preventScroll: true });
+    function keyboard(event: KeyboardEvent) {
+      const dialogs = document.querySelectorAll('[data-app-dialog]');
+      if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeRef.current();
+      }
+      if (event.key === 'Tab' && dialogRef.current) {
+        const targets = [...dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]')]
+          .filter(el => el.getClientRects().length > 0);
+        const first = targets[0];
+        const last = targets[targets.length - 1];
+        if (!first) event.preventDefault();
+        else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    }
+    document.addEventListener('keydown', keyboard);
 
     return () => {
       document.body.style.overflow = tidigareOverflow;
+      document.removeEventListener('keydown', keyboard);
+      if (tidigareFokus?.isConnected) tidigareFokus.focus({ preventScroll: true });
     };
   }, [öppen]);
 
   if (!öppen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-4">
+    <div className="app-dialog-overlay fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onStäng} />
-      <div className={`relative max-h-[100dvh] w-full ${bredder[bredd]} overflow-hidden rounded-t-2xl shadow-xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-xl`} style={{ background: 'var(--bg-card)' }}>
+      <div ref={dialogRef} data-app-dialog role="dialog" aria-modal="true" aria-labelledby={titel ? titleId : undefined} aria-label={titel ? undefined : 'Passdetaljer'} tabIndex={-1} className={`app-dialog relative flex max-h-full min-h-0 w-full ${bredder[bredd]} flex-col overflow-hidden rounded-t-2xl shadow-xl sm:rounded-xl`} style={{ background: 'var(--bg-card)' }}>
         {titel && (
-          <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{titel}</h2>
-            <button onClick={onStäng} className="rounded p-1" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2 sm:px-6" style={{ borderColor: 'var(--border)' }}>
+            <h2 id={titleId} className="min-w-0 break-words text-base font-semibold" style={{ color: 'var(--text)' }}>{titel}</h2>
+            <button type="button" aria-label="Stäng dialog" onClick={onStäng} className="flex h-11 w-11 shrink-0 items-center justify-center rounded" style={{ color: 'var(--text-muted)' }}>
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
               </svg>
             </button>
           </div>
         )}
-        <div className="max-h-[100dvh] overflow-y-auto px-4 py-4 sm:max-h-[calc(100dvh-6rem)] sm:px-6">{children}</div>
+        <div className="app-dialog-body min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">{children}</div>
       </div>
     </div>
   );

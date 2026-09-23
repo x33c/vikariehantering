@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
+import { LaddaSida, Modal } from '../ui';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const huvudNavItems: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
@@ -84,20 +86,54 @@ export default function AdminLayout() {
   const [sidopanelKollapsad, setSidopanelKollapsad] = useState(false);
   const [bekraftaLoggaUt, setBekraftaLoggaUt] = useState(false);
   const { mörkt, toggla } = useDarkMode();
+  const desktop = useMediaQuery('(min-width: 1024px)');
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const root = document.documentElement;
+    const update = () => {
+      root.style.setProperty('--admin-viewport-height', `${viewport.height}px`);
+      root.style.setProperty('--admin-viewport-top', `${viewport.offsetTop}px`);
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+      root.style.removeProperty('--admin-viewport-height');
+      root.style.removeProperty('--admin-viewport-top');
+    };
+  }, []);
+  useEffect(() => {
+    setMenyÖppen(false);
+    if (!desktop) setSidopanelKollapsad(false);
+  }, [desktop, location.pathname]);
+
+  useEffect(() => {
+    if (!menyÖppen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenyÖppen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [menyÖppen]);
   const merÄrAktiv = merNavItems.some((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
 
   return (
-    <div className="flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="admin-shell flex h-[100dvh] w-full max-w-full overflow-hidden" style={{ background: 'var(--bg)' }}>
       {menyÖppen && (
-        <div className="fixed inset-0 z-20 bg-black/35 backdrop-blur-sm lg:hidden" onClick={() => setMenyÖppen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/35 lg:hidden" onClick={() => setMenyÖppen(false)} />
       )}
 
       <aside
+        id="admin-navigation"
+        aria-label="Adminmeny"
         className={`
-          fixed inset-y-0 left-0 z-30 flex max-w-[88vw] flex-col border-r lg:max-w-none
+          admin-sidebar fixed inset-y-0 left-0 z-40 flex max-w-[88vw] flex-col border-r lg:max-w-none
           transform transition-transform duration-200 ease-in-out
           lg:static lg:translate-x-0
-          ${menyÖppen ? 'translate-x-0' : '-translate-x-full'}
+          ${menyÖppen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible'}
           ${sidopanelKollapsad ? 'w-64 lg:w-[84px]' : 'w-64'}
         `}
         style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
@@ -113,7 +149,8 @@ export default function AdminLayout() {
           {sidopanelKollapsad ? '›' : '‹'}
         </button>
 
-        <div className="px-5 pb-4 pt-5">
+        <div className="relative shrink-0 px-5 pb-4 pt-5">
+          <button type="button" aria-label="Stäng meny" onClick={() => setMenyÖppen(false)} className="absolute right-2 top-2 h-11 w-11 text-xl lg:hidden">×</button>
           <div className={`flex items-center ${sidopanelKollapsad ? 'justify-center gap-0' : 'gap-4'}`}>
             <img
               src={mörkt ? "/sundbyberg-silver.png" : "/sundbyberg-halm.png"}
@@ -128,7 +165,7 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2">
           <div className="space-y-1.5">
             {huvudNavItems.map((item) => (
               <NavLink
@@ -219,7 +256,7 @@ export default function AdminLayout() {
           </div>
 
           <div className={`grid gap-2 ${sidopanelKollapsad ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            <AdminNotiser placement="up" compact={sidopanelKollapsad} />
+            {desktop && <AdminNotiser placement="up" compact={sidopanelKollapsad} />}
             <button
               onClick={toggla}
               className="flex min-h-10 items-center justify-center rounded-xl border px-3 transition-all hover:opacity-85"
@@ -232,7 +269,7 @@ export default function AdminLayout() {
           </div>
 
           <div className="mt-2">
-            {!sidopanelKollapsad && <PushButton />}
+            {desktop && !sidopanelKollapsad && <PushButton />}
           </div>
 
           <button
@@ -250,7 +287,8 @@ export default function AdminLayout() {
           </button>
         </div>
 
-        <div className="border-t p-3 lg:hidden" style={{ borderColor: 'var(--border)' }} data-admin-mobile-sidebar-footer>
+        <div className="shrink-0 border-t p-3 lg:hidden" style={{ borderColor: 'var(--border)' }} data-admin-mobile-sidebar-footer>
+          {!desktop && <div className="mb-2"><PushButton /></div>}
           <div className="flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>
@@ -271,21 +309,20 @@ export default function AdminLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
-          className="sticky top-0 z-[70] flex h-16 shrink-0 items-center border-b px-3 backdrop-blur sm:px-4 lg:hidden"
+          className="admin-mobile-header relative z-20 flex shrink-0 items-center border-b px-3 sm:px-4 lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
-          <button onClick={() => setMenyÖppen(true)} className="rounded-xl border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
+          <button aria-label="Öppna meny" aria-controls="admin-navigation" aria-expanded={menyÖppen} onClick={() => setMenyÖppen(true)} className="h-11 w-11 shrink-0 rounded-xl border p-2" style={{ color: 'var(--text)', borderColor: 'var(--border)' }}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
           <span className="ml-3 min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>Passportalen</span>
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <AdminNotiser />
-            <PushButton compact />
+            {!desktop && <AdminNotiser compact />}
             <button
               onClick={toggla}
-              className="rounded-xl border p-2"
+              className="h-11 w-11 rounded-xl border p-2"
               style={{ color: 'var(--text)', borderColor: 'var(--border)' }}
               aria-label={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
               title={mörkt ? 'Byt till ljust läge' : 'Byt till mörkt läge'}
@@ -295,17 +332,15 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="w-full max-w-none overflow-x-hidden px-1.5 py-0 sm:px-4 sm:py-2 lg:px-5 lg:py-3">
-            <Outlet />
+        <main className={`admin-main min-h-0 min-w-0 flex-1 ${menyÖppen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <div className="admin-content w-full min-w-0 max-w-none px-1.5 py-0 sm:px-4 sm:py-2 lg:px-5 lg:py-3">
+            <Suspense fallback={<LaddaSida />}><Outlet /></Suspense>
           </div>
         </main>
       </div>
 
       {bekraftaLoggaUt && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:items-center sm:p-4">
-          <div className="w-full max-w-sm rounded-2xl border p-4 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>Vill du logga ut?</h2>
+        <Modal öppen onStäng={() => setBekraftaLoggaUt(false)} titel="Vill du logga ut?" bredd="sm">
             <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
               Du behöver logga in igen för att administrera pass.
             </p>
@@ -327,8 +362,7 @@ export default function AdminLayout() {
                 Logga ut
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

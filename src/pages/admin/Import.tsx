@@ -239,7 +239,7 @@ export default function Import() {
           >
             Tillbaka
           </button>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-subtle)' }}>Förhandsvisning</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
               {filnamn}
@@ -250,7 +250,7 @@ export default function Import() {
         {fel && <Alert typ="error" className="mb-4">{fel}</Alert>}
         {personalMeddelande && <Alert typ="success" className="mb-4">{personalMeddelande}</Alert>}
 
-        <div className="mb-5 grid gap-3 sm:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Matchade', värde: matchade, color: '#047857' },
             { label: 'Osäkra', värde: osäkra, color: '#b45309' },
@@ -281,8 +281,8 @@ export default function Import() {
         </div>
 
         <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="admin-table-scroll" role="region" aria-label="Förhandsvisning av schema" tabIndex={0}>
+            <table className="min-w-[850px] w-full text-sm">
               <thead>
                 <tr className="border-b text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text-muted)' }}>
                   <th className="px-4 py-2.5 text-left font-medium">Datum</th>
@@ -317,6 +317,7 @@ export default function Import() {
                     </td>
                     <td className="px-4 py-2.5">
                       <select
+                        aria-label={`Koppla personal för rad ${i + 1}`}
                         className="rounded border px-2 py-1 text-xs"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
                         value={fb.åsidosattPersonalId ?? ''}
@@ -411,7 +412,7 @@ export default function Import() {
         <TomtTillstånd text="Inga importer genomförda ännu." />
       ) : (
         <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-          <table className="w-full text-sm">
+          <table className="admin-summary-table w-full text-sm">
             <thead>
               <tr className="border-b text-xs" style={{ borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text-muted)' }}>
                 <th className="px-4 py-2.5 text-left font-medium">Fil</th>
@@ -424,11 +425,11 @@ export default function Import() {
             <tbody>
               {importer.map(imp => (
                 <tr key={imp.id} className="border-b" style={{ borderColor: 'var(--border)' }}>
-                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{imp.filnamn}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text)' }}>{imp.radantal ?? '–'}</td>
-                  <td className="px-4 py-3 font-medium text-green-600">{imp.matchade}</td>
-                  <td className="px-4 py-3 font-medium text-red-500">{imp.omatchade}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
+                  <td data-label="Fil" className="px-4 py-3 font-medium" style={{ color: 'var(--text)' }}>{imp.filnamn}</td>
+                  <td data-label="Rader" className="px-4 py-3" style={{ color: 'var(--text)' }}>{imp.radantal ?? '–'}</td>
+                  <td data-label="Matchade" className="px-4 py-3 font-medium text-green-600">{imp.matchade}</td>
+                  <td data-label="Omatchade" className="px-4 py-3 font-medium text-red-500">{imp.omatchade}</td>
+                  <td data-label="Datum" className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
                     {new Date(imp.created_at).toLocaleDateString('sv-SE')}
                   </td>
                 </tr>

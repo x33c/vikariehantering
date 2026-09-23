@@ -187,8 +187,12 @@ function PersonalTabell({
   const allaMarkerade = rader.length > 0 && rader.every((p) => markeradeIds.has(p.id));
 
   return (
-    <div className="overflow-hidden rounded-lg border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-lg border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+      <label className="flex min-h-11 items-center gap-3 border-b px-3 text-sm md:hidden">
+        <input type="checkbox" checked={allaMarkerade} onChange={e => onMarkeraAlla(rader, e.target.checked)} className="h-5 w-5" />
+        Markera alla
+      </label>
+      <table className="admin-record-table w-full text-sm">
         <thead>
           <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
             <th className="w-11 px-4 py-3">
@@ -210,7 +214,7 @@ function PersonalTabell({
         <tbody>
           {rader.map((person) => (
             <tr key={person.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-              <td className="px-4 py-3">
+              <td className="record-select px-4 py-3">
                 <input
                   type="checkbox"
                   checked={markeradeIds.has(person.id)}
@@ -219,7 +223,7 @@ function PersonalTabell({
                   aria-label={`Markera ${person.namn}`}
                 />
               </td>
-              <td className="px-4 py-3">
+              <td className="record-name px-4 py-3">
                 <p className="font-medium" style={{ color: 'var(--text)' }}>{person.namn}</p>
                 <p className="mt-0.5 text-xs sm:hidden" style={{ color: 'var(--text-muted)' }}>
                   {person.signatur || person.titel || 'Ingen signatur'}
@@ -228,7 +232,7 @@ function PersonalTabell({
               <td className="hidden px-4 py-3 sm:table-cell" style={{ color: 'var(--text-muted)' }}>{person.titel ?? '-'}</td>
               <td className="hidden px-4 py-3 font-mono text-xs md:table-cell" style={{ color: 'var(--text-muted)' }}>{person.signatur ?? '-'}</td>
               <td className="hidden px-4 py-3 lg:table-cell" style={{ color: 'var(--text-muted)' }}>{person.epost ?? '-'}</td>
-              <td className="px-4 py-3 text-right">
+              <td className="record-actions px-4 py-3 text-right">
                 <div className="flex justify-end gap-1">
                   <button onClick={() => onRedigera(person)} className="rounded-md px-2.5 py-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
                     Redigera

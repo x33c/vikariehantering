@@ -305,7 +305,7 @@ function SchemaVal({
         <Button size="sm" variant="secondary" onClick={avmarkeraAlla}>Ta bort alla</Button>
       </div>
 
-      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1 pb-20">
+      <div className="space-y-2 pb-4">
         {sorterade.map((rad) => {
           const vald = valda.has(rad.id);
 
@@ -735,7 +735,7 @@ function FrånvaroModal({
 
 
           <div
-            className="sticky bottom-0 -mx-6 flex flex-wrap justify-end gap-2 border-t px-6 py-4 shadow-lg"
+            className="flex flex-wrap justify-end gap-2 border-t py-4"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
           >
             <Button variant="secondary" onClick={() => { onRegistrerad(); onStäng(); }}>Spara utan pass</Button>
@@ -1480,7 +1480,7 @@ export default function Franvaro() {
             ))}
           </div>
 
-          <div className="hidden overflow-hidden rounded-2xl border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="hidden overflow-x-auto rounded-2xl border md:block" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-xs" style={{ background: 'var(--hover)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
