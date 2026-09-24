@@ -7,7 +7,7 @@ export function useRealtimeRefresh(
   aktiv: boolean,
   uppdatera: () => void | Promise<void>,
   tabeller: string[] = STANDARD_TABELLER,
-  pollingMs = 8000
+  pollingMs = 60000
 ) {
   const uppdateraRef = useRef(uppdatera);
   const timerRef = useRef<number | null>(null);
@@ -19,10 +19,33 @@ export function useRealtimeRefresh(
   useEffect(() => {
     if (!aktiv) return;
 
+    let disposed = false;
+    let running = false;
+    let pending = false;
+
+    async function refresh() {
+      if (disposed || document.visibilityState === 'hidden') return;
+      if (running) { pending = true; return; }
+      running = true;
+      try {
+        await uppdateraRef.current();
+      } catch {
+        // A failed background refresh must not start an immediate retry loop.
+      } finally {
+        running = false;
+        if (pending && !disposed) {
+          pending = false;
+          schemalaggUppdatering();
+        }
+      }
+    }
+
     function schemalaggUppdatering() {
+      if (disposed || document.visibilityState === 'hidden') return;
       if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
-        void uppdateraRef.current();
+        timerRef.current = null;
+        void refresh();
       }, 250);
     }
 
@@ -41,10 +64,16 @@ export function useRealtimeRefresh(
     // Backup: även om Realtime inte är aktiverat i Supabase-publicationen
     // slipper användaren manuellt ladda om sidan.
     const poll = window.setInterval(() => {
-      void uppdateraRef.current();
-    }, pollingMs);
+      void refresh();
+    }, Math.max(pollingMs, 60000));
+
+    document.addEventListener('visibilitychange', schemalaggUppdatering);
+    window.addEventListener('online', schemalaggUppdatering);
 
     return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', schemalaggUppdatering);
+      window.removeEventListener('online', schemalaggUppdatering);
       if (timerRef.current) window.clearTimeout(timerRef.current);
       window.clearInterval(poll);
       void supabase.removeChannel(channel);

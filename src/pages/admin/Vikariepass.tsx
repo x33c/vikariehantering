@@ -2535,16 +2535,17 @@ export default function Bemanning() {
 
   const ladda = useCallback(async () => {
     const veckaSlutFörFrånvaro = läggTillDagarIso(veckaStart, 4);
+    const veckohämtning = passApi.lista({ datumFrån: veckaStart, datumTill: veckaSlutFörFrånvaro });
     const [pRes, vRes, perRes, fRes, veckaPassRes] = await Promise.all([
-      passApi.lista({
+      !statusFilter && !datumFrån && !datumTill ? veckohämtning : passApi.lista({
         status: statusFilter ? [statusFilter] : undefined,
-        datumFrån: datumFrån || undefined,
-        datumTill: datumTill || undefined,
+        datumFrån: datumFrån || (datumTill ? undefined : veckaStart),
+        datumTill: datumTill || (datumFrån ? undefined : veckaSlutFörFrånvaro),
       }),
       vikariApi.lista(),
       personalApi.lista(),
       frånvaroApi.lista(veckaStart, veckaSlutFörFrånvaro),
-      passApi.lista({ datumFrån: veckaStart, datumTill: veckaSlutFörFrånvaro }),
+      veckohämtning,
     ]);
     const passLista = (pRes.data ?? []) as Bemanning[];
     setPass(passLista);
@@ -2556,13 +2557,10 @@ export default function Bemanning() {
     const avbokningsIds = new Set<string>();
     const aktivaBokningar = passLista.filter(passrad =>
       !!passrad.vikarie_id && (passrad.status === 'bokat' || passrad.status === 'bekräftat'));
-    await Promise.all(aktivaBokningar.map(async (passrad) => {
-      const res = await passmeddelandeApi.lista(passrad.id);
-      const meddelanden = (res.data ?? []) as Passmeddelande[];
-      if (meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande))) {
-        avbokningsIds.add(passrad.id);
-      }
-    }));
+    const meddelandeRes = await passmeddelandeApi.listaVikariemeddelanden(aktivaBokningar.map(p => p.id));
+    for (const meddelande of meddelandeRes.data ?? []) {
+      if (ärAvbokningsförfrågan(meddelande.meddelande)) avbokningsIds.add(meddelande.pass_id);
+    }
     setAvbokningsPassIds(avbokningsIds);
 
     setLaddar(false);

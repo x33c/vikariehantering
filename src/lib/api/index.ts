@@ -510,6 +510,22 @@ export const historikApi = {
 };
 
 export const passmeddelandeApi = {
+  async listaVikariemeddelanden(passIds: string[]) {
+    const data: Pick<Passmeddelande, 'pass_id' | 'meddelande'>[] = [];
+    const ids = [...new Set(passIds)];
+    for (let i = 0; i < ids.length; i += 50) {
+      // Page explicitly so long conversations cannot hide an older cancellation request.
+      for (let offset = 0; ; offset += 500) {
+        const res = await supabase.from('passmeddelanden')
+          .select('pass_id, meddelande').in('pass_id', ids.slice(i, i + 50))
+          .eq('avsandare_roll', 'vikarie').order('id').range(offset, offset + 499);
+        if (res.error) return { data: null, error: res.error };
+        data.push(...(res.data ?? []));
+        if ((res.data?.length ?? 0) < 500) break;
+      }
+    }
+    return { data, error: null };
+  },
   async lista(passId: string) {
     return supabase
       .from('passmeddelanden')

@@ -166,7 +166,7 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
     ladda();
   }, [ladda]);
 
-  useRealtimeRefresh(true, ladda, ['notiser', 'passmeddelanden'], 6000);
+  useRealtimeRefresh(true, ladda, ['notiser', 'passmeddelanden', 'pass_tidsandringar']);
 
   useEffect(() => {
     if (!oppen) return;
