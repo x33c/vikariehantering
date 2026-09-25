@@ -550,11 +550,29 @@ serve(async (req) => {
     const vikarieNamn = vikarie?.namn ?? 'En vikarie';
     const bodyText = `${vikarieNamn} har tackat ${svar === 'ja' ? 'ja' : 'nej'} till ${passKortText(pass)}.`;
 
+    // Older clients may already have saved the same notification before invoking us.
+    const { data: existing, error: lookupError } = await supabase.from('notiser')
+      .select('id').eq('pass_id', pass_id).eq('vikarie_id', vikarie_id)
+      .eq('mottagare', 'admin').eq('ämne', title)
+      .gte('created_at', new Date(Date.now() - 60000).toISOString()).limit(1);
+    if (lookupError) return new Response(JSON.stringify({ error: 'Kunde inte kontrollera adminnotisen.' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    if (!existing?.length) {
+      const { error: saveError } = await supabase.from('notiser').insert({
+        pass_id, vikarie_id, mottagare: 'admin', kanal: 'push', status: 'skickat',
+        ämne: title, innehåll: bodyText, skickat_kl: new Date().toISOString(),
+      });
+      if (saveError) return new Response(JSON.stringify({ error: 'Kunde inte spara adminnotisen.' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     for (const admin of admins ?? []) {
       await skickaPush(supabase, admin.id, title, bodyText, `/admin/vikariepass?pass=${pass_id}`);
     }
 
-    return new Response(JSON.stringify({ ok: true, admins: admins?.length ?? 0 }), {
+    return new Response(JSON.stringify({ ok: true, saved: true, admins: admins?.length ?? 0 }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

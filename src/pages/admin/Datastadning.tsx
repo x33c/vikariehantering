@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { historikApi, passApi } from '../../lib/api';
+import { canArchiveDuringCleanup } from '../../lib/cleanupSafety';
 import type { PassStatus, Vikariepass } from '../../types';
 import { Button, LaddaSida, StatusBadge } from '../../components/ui';
 
@@ -119,6 +120,8 @@ export default function Datastadning() {
   }, [problem]);
 
   function toggle(id: string, aktiv?: boolean) {
+    const rad = pass.find(p => p.id === id);
+    if (!rad || !canArchiveDuringCleanup(rad)) return;
     setMarkerade((prev) => {
       const next = new Set(prev);
       const skaMarkera = aktiv ?? !next.has(id);
@@ -131,6 +134,10 @@ export default function Datastadning() {
   async function arkiveraMarkerade() {
     if (arkiverar || markerade.size === 0) return;
     const valdaPass = pass.filter(p => markerade.has(p.id));
+    if (valdaPass.some(p => !canArchiveDuringCleanup(p))) {
+      setFel('Endast tidigare dagar med obokade pass utan vikarie får arkiveras här. Uppdatera listan.');
+      return;
+    }
     const bokade = valdaPass.filter(p => p.vikarie_id).length;
     if (!window.confirm(`Arkivera ${valdaPass.length} pass? ${bokade} har en kopplad vikarie. Passen markeras som avbokade och kan inte bemannas förrän de återöppnas. Granska urvalet innan du fortsätter.`)) return;
     setArkiverar(true);
@@ -139,9 +146,11 @@ export default function Datastadning() {
 
     const ids = [...markerade];
     for (const id of ids) {
-      const res = await passApi.radera(id);
+      const res = await passApi.arkiveraVidStädning(id);
       if (res.error) {
-        setFel(res.error.message);
+        await ladda();
+        setMarkerade(new Set());
+        setFel('Arkiveringen stoppades. Passet kan ha ändrats eller sakna behörighet. Listan har uppdaterats.');
         setArkiverar(false);
         return;
       }
@@ -222,6 +231,7 @@ export default function Datastadning() {
                   <input
                     type="checkbox"
                     checked={markerade.has(rad.id)}
+                    disabled={!canArchiveDuringCleanup(rad) || arkiverar}
                     onChange={(e) => toggle(rad.id, e.target.checked)}
                     className="h-5 w-5 accent-teal-400"
                   />
@@ -248,8 +258,8 @@ export default function Datastadning() {
                   </p>
                 </div>
 
-                <Button size="sm" variant="secondary" onClick={() => toggle(rad.id)}>
-                  {markerade.has(rad.id) ? 'Avmarkera' : 'Markera'}
+                <Button size="sm" variant="secondary" onClick={() => toggle(rad.id)} disabled={!canArchiveDuringCleanup(rad) || arkiverar}>
+                  {!canArchiveDuringCleanup(rad) ? 'Skyddat pass' : markerade.has(rad.id) ? 'Avmarkera' : 'Markera'}
                 </Button>
               </article>
             ))}

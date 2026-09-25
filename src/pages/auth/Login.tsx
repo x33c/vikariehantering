@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { loginError } from '../../lib/loginError';
 
 export default function Login() {
   const { loggaIn, profil } = useAuth();
@@ -14,9 +15,14 @@ export default function Login() {
     e.preventDefault();
     setFel('');
     setLaddar(true);
-    const { error } = await loggaIn(epost, lösenord);
-    setLaddar(false);
-    if (error) { setFel('Felaktig e-postadress eller lösenord.'); return; }
+    try {
+      const { error } = await loggaIn(epost.trim(), lösenord);
+      if (error) setFel(loginError(error));
+    } catch (error) {
+      setFel(loginError(error));
+    } finally {
+      setLaddar(false);
+    }
   }
 
   if (profil) {

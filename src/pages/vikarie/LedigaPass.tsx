@@ -319,8 +319,8 @@ export default function LedigaPass() {
         }, grupp.riktad ? `${minVikarie.namn} tackade ja till förfrågan.` : `${minVikarie.namn} bokade passet.`);
 
         if (grupp.riktad) {
-          await notisApi.skapaAdminSvar(passrad.id, minVikarie.id, 'ja', minVikarie.namn);
-          void notisApi.skickaAdminSvar(passrad.id, minVikarie.id, 'ja');
+          const notis = await notisApi.skickaAdminSvar(passrad.id, minVikarie.id, 'ja');
+          if (notis.error) setFel('Passet är bokat, men adminnotisen kunde inte bekräftas. Kontakta administratören; boka inte om passet.');
         }
 
         lyckades++;
@@ -357,7 +357,13 @@ export default function LedigaPass() {
     setFel('');
 
     for (const p of grupp.pass) {
-      await passApi.tackaNej(p.id, minVikarie.id);
+      const svar = await passApi.tackaNej(p.id, minVikarie.id);
+      if (svar.error) {
+        setFel('Ditt nej kunde inte sparas för alla pass. Kontrollera förfrågningarna och försök igen.');
+        setSparar(false);
+        await ladda();
+        return;
+      }
       await historikApi.skapa(p.id, 'vikarie_borttagen', {
         vikarie_id: minVikarie.id,
         vikarie_namn: minVikarie.namn,
@@ -369,8 +375,8 @@ export default function LedigaPass() {
         tid: `${p.tid_från.slice(0, 5)}-${p.tid_till.slice(0, 5)}`,
         riktad: grupp.riktad,
       }, `${minVikarie.namn} tackade nej till förfrågan.`);
-      await notisApi.skapaAdminSvar(p.id, minVikarie.id, 'nej', minVikarie.namn);
-      void notisApi.skickaAdminSvar(p.id, minVikarie.id, 'nej');
+      const notis = await notisApi.skickaAdminSvar(p.id, minVikarie.id, 'nej');
+      if (notis.error) setFel('Ditt nej är sparat, men adminnotisen kunde inte bekräftas. Kontakta administratören.');
     }
 
     setSparar(false);

@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { cleanupDate } from '../cleanupSafety';
 
 function signaleraTillgänglighetÄndrad(vikarieId?: string | null) {
   if (typeof window === 'undefined') return;
@@ -470,6 +471,11 @@ export const passApi = {
       .select()
       .single();
   },
+  async arkiveraVidStädning(id: string) {
+    return supabase.from('vikariepass').update({ status: 'avbokat', publicerad: false })
+      .eq('id', id).eq('status', 'obokat').is('vikarie_id', null)
+      .lt('datum', cleanupDate()).select().single();
+  },
   async återöppna(id: string) {
     // Old unanswered requests must not become actionable when a shift is reopened.
     const requests = await supabase.from('pass_forfragningar')
@@ -827,9 +833,17 @@ export const notisApi = {
     });
   },
   async skickaAdminSvar(passId: string, vikarieId: string, svar: 'ja' | 'nej') {
-    return supabase.functions.invoke('skicka-epost', {
-      body: { typ: 'admin_vikarie_svar', pass_id: passId, vikarie_id: vikarieId, svar },
-    });
+    try {
+      const result = await supabase.functions.invoke('skicka-epost', {
+        body: { typ: 'admin_vikarie_svar', pass_id: passId, vikarie_id: vikarieId, svar },
+      });
+      if (!result.error && result.data?.saved !== true) {
+        return { data: result.data, error: new Error('Servern kunde inte bekräfta att notisen sparats.') };
+      }
+      return result;
+    } catch {
+      return { data: null, error: new Error('Kunde inte nå notistjänsten.') };
+    }
   },
   async skapaAdminAvbokning(passId: string) {
     const pass = await hämtaPassFörNotis(passId);
