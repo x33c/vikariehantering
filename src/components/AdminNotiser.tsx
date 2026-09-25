@@ -153,13 +153,13 @@ export default function AdminNotiser({ placement = 'down', compact = false }: { 
         .filter((id): id is string => !!id)
     )].slice(0, 20);
 
-    const förslag = await Promise.all(passIds.map(async passId => {
-      const förslagsRes = await passTidsändringApi.listaFörPass(passId);
-      const väntande = ((förslagsRes.data ?? []) as PassTidsändring[]).find(rad => rad.status === 'vantar');
-      return väntande ? [passId, väntande] as const : null;
-    }));
-
-    setTidsförslag(Object.fromEntries(förslag.filter((rad): rad is readonly [string, PassTidsändring] => !!rad)));
+    const förslagsRes = await passTidsändringApi.listaVäntandeFörFlera(passIds);
+    if (förslagsRes.error) return;
+    const förslag: Record<string, PassTidsändring> = {};
+    for (const rad of (förslagsRes.data ?? []) as PassTidsändring[]) {
+      if (!förslag[rad.pass_id]) förslag[rad.pass_id] = rad;
+    }
+    setTidsförslag(förslag);
   }, []);
 
   useEffect(() => {

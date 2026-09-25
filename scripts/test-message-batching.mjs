@@ -40,3 +40,19 @@ assert.equal(calls.length, 2);
 results = [{ error: { message: 'denied' } }];
 assert.equal((await list(['shift'])).error.message, 'denied');
 console.log('11 batching checks passed; 50 shifts use 1 request instead of 50 (short conversations)');
+for (const fetch of [context.exports.vikariApi['hämtaTillgänglighetFörFlera'], context.exports.passTidsändringApi['listaVäntandeFörFlera']]) {
+  calls = []; results = [];
+  await fetch([]);
+  assert.equal(calls.length, 0);
+  await fetch(['a', 'a', 'b']);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].ids.length, 2);
+  calls = [];
+  results = [{ data: Array.from({ length: 500 }, () => ({ id: 'row' })) }, { data: [{ id: 'last' }] }];
+  assert.equal((await fetch(['a'])).data.length, 501);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].range[0], 500);
+  results = [{ error: { message: 'denied' } }];
+  assert.equal((await fetch(['a'])).error.message, 'denied');
+}
+console.log('14 availability and time-proposal batching checks passed');

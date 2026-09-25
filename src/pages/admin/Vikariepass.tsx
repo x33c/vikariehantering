@@ -1074,13 +1074,12 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
 
   const laddaTillgänglighet = useCallback(async () => {
-    const poster = await Promise.all(
-      vikarier.map(async (v) => {
-        const res = await vikariApi.hämtaTillgänglighet(v.id);
-        const rad = hittaTillgänglighetFörDatum((res.data ?? []) as VikarieTillgänglighet[], pass.datum);
+    const res = await vikariApi.hämtaTillgänglighetFörFlera(vikarier.map(v => v.id));
+    if (res.error) return;
+    const poster = vikarier.map((v) => {
+        const rad = hittaTillgänglighetFörDatum((res.data ?? []).filter(p => p.vikarie_id === v.id), pass.datum);
         return [v.id, rad] as const;
-      })
-    );
+      });
 
     setTillgMap(Object.fromEntries(poster));
   }, [vikarier, pass.datum]);

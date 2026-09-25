@@ -126,6 +126,22 @@ export const personalApi = {
 };
 
 export const vikariApi = {
+  async hämtaTillgänglighetFörFlera(vikarieIds: string[]) {
+    const data: VikarieTillgänglighet[] = [];
+    const ids = [...new Set(vikarieIds)];
+    for (let i = 0; i < ids.length; i += 50) {
+      for (let offset = 0; ; offset += 500) {
+        const res = await supabase.from('vikarie_tillgänglighet').select('*')
+          .in('vikarie_id', ids.slice(i, i + 50))
+          .order('created_at', { ascending: false }).order('id')
+          .range(offset, offset + 499);
+        if (res.error) return { data: null, error: res.error };
+        data.push(...(res.data ?? []));
+        if ((res.data?.length ?? 0) < 500) break;
+      }
+    }
+    return { data, error: null };
+  },
   async lista() {
     return supabase.from('vikarier').select('*').eq('aktiv', true).order('namn');
   },
@@ -874,6 +890,22 @@ export const importApi = {
 };
 
 export const passTidsändringApi = {
+  async listaVäntandeFörFlera(passIds: string[]) {
+    const data = [];
+    const ids = [...new Set(passIds)];
+    for (let i = 0; i < ids.length; i += 50) {
+      for (let offset = 0; ; offset += 500) {
+        const res = await supabase.from('pass_tidsandringar')
+          .select('*, vikarie:vikarier(*)').in('pass_id', ids.slice(i, i + 50))
+          .eq('status', 'vantar').order('created_at', { ascending: false }).order('id')
+          .range(offset, offset + 499);
+        if (res.error) return { data: null, error: res.error };
+        data.push(...(res.data ?? []));
+        if ((res.data?.length ?? 0) < 500) break;
+      }
+    }
+    return { data, error: null };
+  },
   async listaFörPass(passId: string) {
     return supabase
       .from('pass_tidsandringar')
