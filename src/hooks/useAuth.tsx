@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profil, AuthState } from '../types';
@@ -13,6 +14,9 @@ interface AuthContext extends AuthState {
 const AuthCtx = createContext<AuthContext | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
   const [state, setState] = useState<AuthState>({
     användare: null,
     profil: null,
@@ -27,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') navigateRef.current('/nytt-losenord', { replace: true });
       const user = session?.user ?? null;
       if (user) laddaProfil(user);
       else setState({ användare: null, profil: null, laddar: false });

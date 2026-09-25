@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { loginError } from '../../lib/loginError';
 
 export default function Login() {
   const { loggaIn, profil } = useAuth();
-  const navigate = useNavigate();
   const [epost, setEpost] = useState('');
   const [lösenord, setLösenord] = useState('');
   const [fel, setFel] = useState('');
@@ -26,8 +25,7 @@ export default function Login() {
   }
 
   if (profil) {
-    navigate(profil.roll === 'admin' ? '/admin' : '/vikarie', { replace: true });
-    return null;
+    return <Navigate to={profil.roll === 'admin' ? '/admin' : '/vikarie'} replace />;
   }
 
   return (
@@ -69,6 +67,7 @@ export default function Login() {
             {laddar ? 'Loggar in…' : 'Logga in'}
           </button>
         </form>
+        <Link to="/glomt-losenord" className="mt-4 block text-sm text-blue-600 underline">Glömt lösenord?</Link>
       </div>
     </div>
   );

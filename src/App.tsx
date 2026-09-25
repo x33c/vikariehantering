@@ -11,6 +11,7 @@ import VikarieLayout from './components/layout/VikarieLayout';
 import BytLosenord from './pages/auth/BytLosenord';
 import Login from './pages/auth/Login';
 import NyttLosenord from './pages/auth/NyttLosenord';
+import GlomtLosenord from './pages/auth/GlomtLosenord';
 
 // Admin pages
 const Register = lazy(() => import('./pages/admin/Register'));
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
         <Route path="/byt-losenord" element={<BytLosenord />} />
           <Route path="/nytt-losenord" element={<NyttLosenord />} />
+          <Route path="/glomt-losenord" element={<GlomtLosenord />} />
 
           {/* Admin routes */}
           <Route

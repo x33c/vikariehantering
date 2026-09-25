@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { LaddaSida } from '../../components/ui';
 
 export default function NyttLosenord() {
-  const navigate = useNavigate();
+  const { användare, laddar } = useAuth();
   const [losenord, setLosenord] = useState('');
   const [bekrafta, setBekrafta] = useState('');
   const [fel, setFel] = useState('');
@@ -12,10 +14,11 @@ export default function NyttLosenord() {
 
   async function spara(e: React.FormEvent) {
     e.preventDefault();
+    if (sparar || klart || !användare) return;
     setFel('');
 
-    if (losenord.length < 6) {
-      setFel('Lösenordet måste vara minst 6 tecken.');
+    if (losenord.length < 8) {
+      setFel('Lösenordet måste vara minst 8 tecken.');
       return;
     }
 
@@ -25,17 +28,23 @@ export default function NyttLosenord() {
     }
 
     setSparar(true);
-    const { error } = await supabase.auth.updateUser({ password: losenord });
-    setSparar(false);
-
-    if (error) {
-      setFel(error.message);
-      return;
+    try {
+      const { error } = await supabase.auth.updateUser({ password: losenord });
+      if (error) {
+        setFel(error.code === 'same_password' ? 'Välj ett annat lösenord än ditt nuvarande.' : 'Lösenordet kunde inte sparas. Länken kan ha gått ut eller lösenordet uppfyller inte kraven.');
+        return;
+      }
+      setLosenord('');
+      setBekrafta('');
+      setKlart(true);
+    } catch {
+      setFel('Kunde inte bekräfta lösenordsbytet. Kontrollera anslutningen och försök logga in innan du försöker igen.');
+    } finally {
+      setSparar(false);
     }
-
-    setKlart(true);
-    setTimeout(() => navigate('/'), 1200);
   }
+
+  if (laddar) return <LaddaSida />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -46,7 +55,7 @@ export default function NyttLosenord() {
         {fel && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{fel}</p>}
         {klart && <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Lösenordet är sparat.</p>}
 
-        <form onSubmit={spara} className="space-y-4">
+        {!användare ? <p className="text-sm">Återställningslänken saknas eller är inte längre giltig. <Link to="/glomt-losenord" className="underline">Begär en ny länk</Link>.</p> : klart ? <Link to="/" className="text-blue-600 underline">Fortsätt till appen</Link> : <form onSubmit={spara} className="space-y-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">Nytt lösenord</label>
             <input
@@ -78,7 +87,7 @@ export default function NyttLosenord() {
           >
             {sparar ? 'Sparar...' : 'Spara lösenord'}
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   );
