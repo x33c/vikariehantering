@@ -1,6 +1,7 @@
 {
   "uppdaterad": "2026-09-28",
   "punkter": [
+    "När admin registrerar ditt återbud tas din bokning bort och du får en bekräftelse inne i appen. Passet kan sedan erbjudas en ersättare.",
     "Förfrågningar om vikariebyte är nu tydligt märkta. Ett ja innebär att du tar över passet och blir bokad. Admin bekräftar bytet innan förfrågan skickas.",
     "Du kan nu tacka ja till en förfrågan även om en annan vikarie redan är bokad. När du accepterar tar du över passet. Om du tackar nej behålls den tidigare bokningen.",
     "Om en annan vikarie tar över ditt pass efter en förfrågan från admin får du en notis inne i appen om att din bokning har ersatts. Appen försöker även skicka en pushnotis om du har aktiverat push på din enhet.",

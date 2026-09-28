@@ -13,12 +13,21 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
         localStorage.setItem('sb-pass-bilagor-test-auth-token', JSON.stringify({ user, access_token: token, refresh_token: 'fake', expires_at: 4102444800, token_type: 'bearer' }));
       }, { user, token });
       let writes = 0;
+      let withdrawalCalls = 0;
+      let failWithdrawal = true;
       const shift = { id: 'pass', datum: new Date().toLocaleDateString('sv-SE'), tid_från: '08:00:00', tid_till: '16:00:00', vikarie_id: 'old', status: 'bokat', publicerad: false, personal_id: 'person', personal: { id: 'person', namn: 'Lärare' }, förfrågningar: [] };
       await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
         if (url.hostname === '127.0.0.1') return route.continue();
         if (url.hostname !== 'pass-bilagor-test.supabase.co') return route.abort();
+        if (url.pathname.endsWith('/rpc/register_substitute_withdrawal')) {
+          withdrawalCalls++;
+          assert.deepEqual(request.postDataJSON(), { p_pass_id: 'pass', p_vikarie_id: 'old' });
+          if (failWithdrawal) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ message: 'Bokningen har ändrats. Ladda om passet.' }) });
+          Object.assign(shift, { vikarie_id: null, status: 'obokat', riktad_till_vikarie_id: null });
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shift) });
+        }
         let data = [];
         if (url.pathname.includes('/auth/v1/')) data = user;
         if (url.pathname.endsWith('/profiler')) data = [{ ...user, roll: 'admin', aktiv: true }];
@@ -49,6 +58,26 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       assert.equal(writes, before, 'Cancel must not write any booking or request');
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.screenshot({ path: `../replacement-confirmation-${width}.png` });
+      const withdrawal = dialog.getByRole('button', { name: 'Återbud – sök ersättare', exact: true });
+      page.once('dialog', d => d.dismiss());
+      await withdrawal.click();
+      assert.equal(withdrawalCalls, 0);
+      page.once('dialog', d => d.accept());
+      await withdrawal.click();
+      await dialog.getByText('Bokningen har ändrats. Ladda om passet.', { exact: true }).waitFor();
+      assert.equal(shift.vikarie_id, 'old');
+      assert(await withdrawal.isVisible());
+      failWithdrawal = false;
+      page.once('dialog', d => d.accept());
+      await withdrawal.click();
+      await dialog.getByText('Återbud registrerat. Passet är obemannat.', { exact: false }).waitFor();
+      assert.equal(withdrawalCalls, 2);
+      assert.equal(shift.vikarie_id, null);
+      assert.equal(shift.status, 'obokat');
+      assert.equal(await withdrawal.count(), 0);
+      assert(await dialog.getByRole('button', { name: 'Skicka förfrågan', exact: true }).isDisabled());
+      assert(await dialog.getByRole('button', { name: 'Boka vald vikarie', exact: true }).isDisabled());
+      await page.screenshot({ path: `../withdrawal-${width}.png` });
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}: explicit replacement, same-sub guard, names, cancellation, no overflow`);
       await context.close();

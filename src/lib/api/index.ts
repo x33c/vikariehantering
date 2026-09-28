@@ -453,6 +453,9 @@ export const passApi = {
       .select()
       .single();
   },
+  async registreraÅterbud(passId: string, vikarieId: string) {
+    return supabase.rpc('register_substitute_withdrawal', { p_pass_id: passId, p_vikarie_id: vikarieId });
+  },
   async arkiveraVidStädning(id: string) {
     return supabase.from('vikariepass').update({ status: 'avbokat', publicerad: false })
       .eq('id', id).eq('status', 'obokat').is('vikarie_id', null)

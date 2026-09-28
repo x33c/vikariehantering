@@ -329,6 +329,10 @@ function historikText(h: Passhistorik, vikarier: Vikarie[] = []) {
     ? metadata.tillfrågad_vikarie_namn
     : vikarieNamn ?? profilNamn;
 
+  if (metadata.åtgärd === 'registrerade_aterbud') {
+    return `Återbud registrerat${vikarieNamn ? `: ${vikarieNamn}` : ''}. Passet behöver en ersättare.`;
+  }
+
   if (h.händelse === 'vikarie_borttagen' && metadata.svar === 'nej') {
     return tillfrågad ? `Vikarie tackade nej: ${tillfrågad}` : 'Vikarie tackade nej';
   }
@@ -383,6 +387,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   onRaderad: (id: string) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
+  const [återbudRegistrerat, setÅterbudRegistrerat] = useState(false);
+  useEffect(() => { setÅterbudRegistrerat(false); }, [pass.id]);
   const [valdVikarieId, setValdVikarieId] = useState(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
   const [tidFrån, setTidFrån] = useState(pass.tid_från.slice(0, 5));
   const [tidTill, setTidTill] = useState(pass.tid_till.slice(0, 5));
@@ -937,6 +943,32 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     if (ok) await historikApi.skapa(pass.id, 'vikarie_bokat', { vikarie_id: valdVikarieId, vikarie_namn: valdVikarie?.namn });
   }
 
+  async function registreraÅterbud() {
+    if (sparar || dagLast || !pass.vikarie_id) return;
+    const namn = vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'vikarien';
+    if (!window.confirm(`Registrera återbud från ${namn} den ${pass.datum} ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}?\n\nBokningen tas bort direkt och gamla förfrågningar återkallas. Passet och kopplad frånvaro behålls. Du väljer sedan en ersättare. ${namn} får en bekräftelse inne i appen.`)) return;
+    setSparar(true);
+    setFel('');
+    try {
+      const res = await passApi.registreraÅterbud(pass.id, pass.vikarie_id);
+      if (res.error || !res.data) {
+        setFel(res.error?.message ?? 'Återbudet kunde inte bekräftas. Ladda om passet.');
+        return;
+      }
+      onUppdaterad({ ...pass, ...res.data, vikarie: null,
+        förfrågningar: (pass.förfrågningar ?? []).map(f => f.status === 'vantar' ? { ...f, status: 'aterkallad' as const } : f),
+      });
+      setValdVikarieId('');
+      setVisaAllaVikarier(true);
+      setÅterbudRegistrerat(true);
+      await laddaHistorikFörPass();
+    } catch {
+      setFel('Kunde inte bekräfta återbudet. Ladda om passet innan du försöker igen.');
+    } finally {
+      setSparar(false);
+    }
+  }
+
   async function avbokaPass() {
     if (sparar || dagLast) return;
     if (!window.confirm(`Arkivera passet ${pass.datum} ${pass.tid_från.slice(0, 5)}–${pass.tid_till.slice(0, 5)}? En eventuell bokning tas bort och passet kan inte bemannas förrän det återöppnas.`)) return;
@@ -1275,6 +1307,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
       <div className="pass-details-content min-h-0 flex-1 space-y-5 overflow-y-auto p-3 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
+        {återbudRegistrerat && !pass.vikarie_id && (
+          <Alert typ="success">Återbud registrerat. Passet är obemannat. Välj en ersättare för att skicka förfrågan eller boka direkt.</Alert>
+        )}
         {dagLast && (
           <Alert typ="warning">Dagen är låst. Lås upp dagen innan du publicerar, skickar förfrågan eller bokar pass.</Alert>
         )}
@@ -1800,6 +1835,11 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
           Skicka push-notis vid förfrågan
         </label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+          {pass.vikarie_id && pass.status !== 'avbokat' && (
+            <Button variant="secondary" onClick={registreraÅterbud} loading={sparar} disabled={dagLast}>
+              Återbud – sök ersättare
+            </Button>
+          )}
           <Button onClick={bokaDirekt} loading={sparar} disabled={!kanBemannaMedValdVikarie}>
             {bemanningsKnappText}
           </Button>
