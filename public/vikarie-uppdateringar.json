@@ -1,9 +1,13 @@
 {
-  "uppdaterad": "2026-09-11",
+  "uppdaterad": "2026-09-28",
   "punkter": [
+    "Du kan nu tacka ja till en förfrågan även om en annan vikarie redan är bokad. När du accepterar tar du över passet. Om du tackar nej behålls den tidigare bokningen.",
+    "Om en annan vikarie tar över ditt pass efter en förfrågan från admin får du en notis inne i appen om att din bokning har ersatts.",
+    "Förfrågningar om redan bemannade pass syns också i kalendern på den dag passet gäller. När någon tackar ja återkallas övriga väntande förfrågningar till passet.",
+    "Du kan begära en länk för att återställa ditt lösenord från inloggningssidan. Kontrollera även skräpposten om mejlet dröjer.",
     "Planeringsfiler och andra bilagor kan nu finnas direkt på dina arbetspass. Öppna passet under Mina pass och välj en fil under Bilagor.",
     "Notiser om pass visar tydligare vilket datum och vilken tid de gäller, vem du ersätter och vilken grupp det gäller. Under Notiser kan du öppna och läsa hela meddelandet.",
-    "Mina pass har fått en månadskalender med både bokade pass och väntande förfrågningar. Tryck på en dag för att visa dagens pass; listan kan sedan fällas ihop igen.",
+    "Mina pass har en månadskalender med både bokade pass och väntande förfrågningar. Tryck på en dag för att visa dagens pass.",
     "Förfrågningar kan skickas till flera vikarier. En förfrågan är inte en bokning – svara under Pass och kontrollera sedan dina bokade pass under Mina pass.",
     "Du kan föreslå en korrigering av arbetad tid från ett bokat pass under Mina pass. Administratören godkänner eller avslår förslaget innan tiderna ändras.",
     "Mobilmenyn har fått större knappar och mer utrymme längst ned på skärmen."
