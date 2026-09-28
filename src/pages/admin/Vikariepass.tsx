@@ -848,9 +848,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     setSparar(false);
     onUppdaterad({
       ...pass,
-      status: 'notifierat',
+      status: pass.vikarie_id ? (pass.status === 'bekräftat' ? 'bekräftat' : 'bokat') : 'notifierat',
       publicerad: false,
-      vikarie_id: null,
+      vikarie_id: pass.vikarie_id,
       riktad_till_vikarie_id: pass.riktad_till_vikarie_id,
       förfrågningar: [
         ...(pass.förfrågningar ?? []).filter(f => f.vikarie_id !== valdVikarieId || f.status !== 'vantar'),
@@ -2708,7 +2708,7 @@ export default function Bemanning() {
     setPass(prev => prev.map(p => {
       if (!uppdateradeIds.includes(p.id)) return p;
       return typ === 'förfrågan'
-        ? { ...p, status: 'notifierat' as PassStatus, publicerad: false }
+        ? { ...p, status: (p.vikarie_id ? (p.status === 'bekräftat' ? 'bekräftat' : 'bokat') : 'notifierat') as PassStatus, publicerad: false }
         : { ...p, status: 'bokat' as PassStatus, publicerad: false, vikarie_id: massVikarieId, riktad_till_vikarie_id: null };
     }));
     setValda(new Set());

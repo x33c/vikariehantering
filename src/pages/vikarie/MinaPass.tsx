@@ -30,7 +30,7 @@ function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
 }
 
 function ärFörfrågan(pass: Vikariepass, vikarieId?: string) {
-  if (pass.vikarie_id || pass.status !== 'notifierat') return false;
+  if (pass.status === 'avbokat' || (vikarieId && pass.vikarie_id === vikarieId)) return false;
   if (vikarieId) {
     return pass.riktad_till_vikarie_id === vikarieId ||
       (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
@@ -223,7 +223,7 @@ export default function MinaPass() {
       const mina = ((pRes.data ?? []) as Vikariepass[])
         .filter(p =>
           p.vikarie_id === vikarie.id ||
-          (p.status === 'notifierat' && ärFörfrågan(p, vikarie.id))
+          ärFörfrågan(p, vikarie.id)
         )
         .sort((a, b) => passNyckel(a).localeCompare(passNyckel(b)));
 

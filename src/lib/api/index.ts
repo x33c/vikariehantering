@@ -406,25 +406,7 @@ export const passApi = {
     return res;
   },
   async tackaJa(passId: string, vikarieId: string) {
-    const res = await supabase.from('vikariepass')
-      .update({ vikarie_id: vikarieId, status: 'bokat', riktad_till_vikarie_id: null })
-      .eq('id', passId).in('status', ['obokat', 'notifierat']).is('vikarie_id', null)
-      .select(VIKARIEPASS_SELECT).single();
-
-    if (!res.error) {
-      await supabase.from('pass_forfragningar')
-        .update({ status: 'ja', svarat_kl: new Date().toISOString() })
-        .eq('pass_id', passId)
-        .eq('vikarie_id', vikarieId)
-        .eq('status', 'vantar');
-      await supabase.from('pass_forfragningar')
-        .update({ status: 'aterkallad', svarat_kl: new Date().toISOString() })
-        .eq('pass_id', passId)
-        .neq('vikarie_id', vikarieId)
-        .eq('status', 'vantar');
-    }
-
-    return res;
+    return supabase.rpc('accept_shift_request', { p_pass_id: passId, p_vikarie_id: vikarieId });
   },
   async tackaNej(passId: string, vikarieId: string) {
     const svar = await supabase.from('pass_forfragningar')

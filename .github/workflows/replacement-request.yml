@@ -1,0 +1,42 @@
+name: Enable replacement requests
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - supabase/migrations/20260928090000_accept_replacement_request.sql
+      - scripts/test-replacement-request.sql
+      - scripts/activate-replacement-request.mjs
+      - .github/workflows/replacement-request.yml
+permissions:
+  contents: read
+concurrency:
+  group: replacement-request
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test transaction in disposable database
+        env:
+          PGPASSWORD: test-only-password
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/test-replacement-request.sql
+      - name: Apply tested migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_ID }}
+        run: node scripts/activate-replacement-request.mjs
