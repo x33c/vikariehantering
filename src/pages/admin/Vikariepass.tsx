@@ -2861,9 +2861,7 @@ export default function Bemanning() {
     absenceSuggestions(frånvaron, veckansPass, datum)
       .sort((a, b) => (a.personal?.arbetslag?.namn ?? '').localeCompare(b.personal?.arbetslag?.namn ?? '', 'sv') || (a.personal?.namn ?? '').localeCompare(b.personal?.namn ?? '', 'sv')),
   ]));
-  const synligaDagar = döljPasserade && snabbFilter !== 'arkiv'
-    ? grupperPerDag.filter(({ datum, grupper }) => grupper.length > 0 || (frånvaroFörslagPerDag.get(datum)?.length ?? 0) > 0)
-    : grupperPerDag;
+  const synligaDagar = grupperPerDag;
   const kalenderKolumner = Math.max(1, Math.min(synligaDagar.length, 5));
   const kalenderKolumnerMd = Math.max(1, Math.min(synligaDagar.length, 2));
   const veckaSlut = veckodagar[4];
@@ -3179,7 +3177,7 @@ export default function Bemanning() {
           </section>
         )}
 
-        {filtreradeGrupper.length === 0 ? (
+        {snabbFilter === 'arkiv' && filtreradeGrupper.length === 0 ? (
           <TomtTillstånd text="Inga vikariepass matchar filtret." />
         ) : snabbFilter === 'arkiv' ? (
           <div className="space-y-3">
