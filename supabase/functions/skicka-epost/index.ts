@@ -566,6 +566,24 @@ serve(async (req) => {
       if (saveError) return new Response(JSON.stringify({ error: 'Kunde inte spara adminnotisen.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+
+      // Only notify the displaced substitute recorded by the acceptance transaction.
+      // Never accept a previous recipient id from the requesting client.
+      if (svar === 'ja' && pass.vikarie_id === vikarie_id) {
+        const { data: replacementNotice, error: replacementError } = await supabase.from('notiser')
+          .select('vikarie_id, ämne, innehåll')
+          .eq('pass_id', pass_id).eq('mottagare', 'vikarie')
+          .eq('ämne', 'Din bokning har ersatts').neq('vikarie_id', vikarie_id)
+          .gte('created_at', new Date(Date.now() - 60000).toISOString())
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (replacementError) console.error('Could not load replacement notification', replacementError.code);
+        if (replacementNotice) {
+          const { data: previousSub } = await supabase.from('vikarier')
+            .select('profil_id').eq('id', replacementNotice.vikarie_id).maybeSingle();
+          await skickaPush(supabase, previousSub?.profil_id ?? null,
+            replacementNotice.ämne, replacementNotice.innehåll, '/vikarie/notiser');
+        }
+      }
     }
 
     for (const admin of admins ?? []) {

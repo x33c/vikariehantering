@@ -153,7 +153,7 @@ function PassKort({
             background: grupp.riktad ? 'color-mix(in srgb, var(--blue) 18%, transparent)' : 'var(--hover)',
             color: grupp.riktad ? 'var(--blue)' : 'var(--text-muted)',
           }}>
-          {grupp.riktad ? 'Bara för dig' : 'Ledigt'}
+          {grupp.riktad ? 'Förfrågan' : 'Ledigt'}
         </span>
       </div>
 
@@ -166,10 +166,12 @@ function PassKort({
           }}
         >
           <p className="font-semibold" style={{ color: 'var(--text)' }}>
-            Personlig förfrågan
+            {grupp.pass.some(p => p.vikarie_id) ? 'Förfrågan om vikariebyte' : 'Personlig förfrågan'}
           </p>
           <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-            Det här passet är skickat direkt till dig och visas inte som ett ledigt pass för andra vikarier.
+            {grupp.pass.some(p => p.vikarie_id)
+              ? 'När du tackar ja tar du över det redan bemannade passet och blir bokad. Tackar du nej behålls den tidigare bokningen.'
+              : 'När du tackar ja blir du bokad på passet. Fler vikarier kan ha fått samma förfrågan.'}
           </p>
         </div>
       )}

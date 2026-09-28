@@ -30,6 +30,7 @@ jobs:
       - name: Test authorization and regressions
         run: |
           node scripts/test-edge-authorization.mjs
+          node scripts/test-replacement-push.mjs
           node scripts/test-absence-suggestions.mjs
           node scripts/test-absence-follow-up.mjs
           node scripts/test-pass-bilagor.mjs

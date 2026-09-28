@@ -783,6 +783,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   }
 
   async function skickaFörfrågan() {
+    if (sparar) return;
     if (dagLast) {
       setFel('Dagen är låst. Lås upp dagen innan du skickar en förfrågan.');
       return;
@@ -797,6 +798,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       setFel('Vikarien har redan en aktiv förfrågan på passet.');
       return;
     }
+
+    if (pass.vikarie_id === valdVikarieId) {
+      setFel('Vikarien är redan bokad på passet.');
+      return;
+    }
+    if (pass.vikarie_id && !window.confirm(
+      `Begär vikariebyte ${pass.datum} ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}?\n\nNär ${vikarier.find(v => v.id === valdVikarieId)?.namn ?? 'den nya vikarien'} tackar ja ersätts ${vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'den bokade vikarien'}. Den befintliga bokningen behålls tills dess. Vid nej sker inget byte.`
+    )) return;
 
     setSparar(true);
     setFel('');
@@ -867,7 +876,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     const gamlaRiktadeIds = pass.riktad_till_vikarie_id ? [pass.riktad_till_vikarie_id] : [];
     const idsAttÅterkalla = [...new Set([...ids, ...gamlaRiktadeIds])];
 
-    if (idsAttÅterkalla.length === 0 || pass.status !== 'notifierat') {
+    if (idsAttÅterkalla.length === 0 || pass.status === 'avbokat') {
       setFel('Det finns ingen aktiv förfrågan att ta tillbaka.');
       return;
     }
@@ -896,7 +905,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     const kvar = (pass.förfrågningar ?? []).filter(f => !(idsAttÅterkalla.includes(f.vikarie_id) && f.status === 'vantar'));
     onUppdaterad({
       ...pass,
-      status: kvar.some(f => f.status === 'vantar') ? 'notifierat' : 'obokat',
+      status: pass.vikarie_id ? pass.status : kvar.some(f => f.status === 'vantar') ? 'notifierat' : 'obokat',
       riktad_till_vikarie_id: idsAttÅterkalla.includes(pass.riktad_till_vikarie_id ?? '') ? null : pass.riktad_till_vikarie_id,
       förfrågningar: kvar,
     });
@@ -1243,13 +1252,13 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro';
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const aktivaFörfrågningar = väntandeFörfrågningar(pass);
-  const harAktivFörfrågan = pass.status === 'notifierat' && (!!pass.riktad_till_vikarie_id || aktivaFörfrågningar.length > 0);
+  const harAktivFörfrågan = !!pass.riktad_till_vikarie_id || aktivaFörfrågningar.length > 0;
   const valdVikarieHarFörfrågan = harVäntandeFörfråganTill(pass, valdVikarieId);
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
   const valdVikarieHarKrock = !!valdVikarieId && !!bokadeVikarier[valdVikarieId];
   const valdVikarieÄrRedanBokadPåPasset = harAktivBokning && pass.vikarie_id === valdVikarieId;
   const kanBemannaMedValdVikarie = !dagLast && !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieÄrRedanBokadPåPasset && pass.status !== 'avbokat';
-  const kanSkickaFörfrågan = !dagLast && !!valdVikarieId && !valdVikarieHarKrock && !valdVikarieHarFörfrågan && pass.status !== 'avbokat';
+  const kanSkickaFörfrågan = !dagLast && !!valdVikarieId && pass.vikarie_id !== valdVikarieId && !valdVikarieHarKrock && !valdVikarieHarFörfrågan && pass.status !== 'avbokat';
   const bemanningsKnappText = harAktivBokning ? 'Byt vikarie' : 'Boka vald vikarie';
 
   return (
@@ -1795,7 +1804,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
             {bemanningsKnappText}
           </Button>
           <Button variant="secondary" onClick={skickaFörfrågan} loading={sparar} disabled={!kanSkickaFörfrågan}>
-  {valdVikarieHarFörfrågan ? 'Förfrågan skickad' : 'Skicka förfrågan'}
+  {valdVikarieHarFörfrågan ? 'Förfrågan skickad' : pass.vikarie_id ? 'Begär vikariebyte' : 'Skicka förfrågan'}
 </Button>
 {valdVikarieHarFörfrågan && (
   <Button variant="secondary" onClick={taTillbakaFörfrågan} loading={sparar}>
@@ -2622,6 +2631,7 @@ export default function Bemanning() {
 
 
   async function bemannaMarkerade(typ: 'förfrågan' | 'boka') {
+    if (massSparar) return;
     if (!massVikarieId) {
       setMassFel('Välj en vikarie först.');
       return;
@@ -2643,6 +2653,15 @@ export default function Bemanning() {
       setMassFel(`Dagen är låst (${låstaDatum.join(', ')}). Lås upp dagen innan du bemannar markerade pass.`);
       return;
     }
+
+    if (typ === 'förfrågan' && passAttBemanna.some(p => p.vikarie_id === massVikarieId)) {
+      setMassFel('Den valda vikarien är redan bokad på ett av passen. Avmarkera det passet först.');
+      return;
+    }
+    const byten = passAttBemanna.filter(p => p.vikarie_id && p.vikarie_id !== massVikarieId);
+    if (typ === 'förfrågan' && byten.length && !window.confirm(
+      `Begär vikariebyte till ${valdVikarie?.namn ?? 'vald vikarie'}?\n\n${byten.map(p => `${p.datum} ${p.tid_från.slice(0, 5)}-${p.tid_till.slice(0, 5)}: ${vikarier.find(v => v.id === p.vikarie_id)?.namn ?? 'Bokad vikarie'}`).join('\n')}\n\nFör varje pass sker bytet först när den nya vikarien tackar ja. Vid nej behålls den befintliga bokningen.`
+    )) return;
 
     setMassSparar(true);
     setMassFel('');
@@ -3107,7 +3126,7 @@ export default function Bemanning() {
               </div>
               <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-none xl:grid-cols-3">
                 <Button size="sm" onClick={() => bemannaMarkerade('förfrågan')} loading={massSparar} disabled={!massVikarieId}>
-                  Skicka förfrågan
+                  {pass.some(p => valda.has(p.id) && p.vikarie_id) ? 'Begär vikariebyte / förfrågan' : 'Skicka förfrågan'}
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => bemannaMarkerade('boka')} loading={massSparar} disabled={!massVikarieId}>
                   Boka direkt
