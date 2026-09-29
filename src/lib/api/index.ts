@@ -109,11 +109,12 @@ export const personalApi = {
     return supabase.from('personal').select('*, arbetslag(*)').eq('id', id).single();
   },
   async skapa(data: NyPersonal) {
-    return supabase.from('personal').insert({ ...data, signatur: data.signatur?.trim() || null }).select('*, arbetslag(*)').single();
+    return supabase.from('personal').insert({ ...data, signatur: data.signatur?.trim() || null, skola24_id: data.skola24_id?.trim() || null }).select('*, arbetslag(*)').single();
   },
   async uppdatera(id: string, data: UppdateraPersonal) {
     const uppdatering = { ...data };
     if (data.signatur !== undefined) uppdatering.signatur = data.signatur?.trim() || null;
+    if (data.skola24_id !== undefined) uppdatering.skola24_id = data.skola24_id?.trim() || null;
     return supabase.from('personal').update(uppdatering).eq('id', id).select('*, arbetslag(*)').single();
   },
   async radera(id: string) {

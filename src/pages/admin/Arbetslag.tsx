@@ -19,7 +19,7 @@ function PersonalModal({
     epost: personal?.epost ?? '',
     telefon: personal?.telefon ?? '',
     signatur: personal?.signatur ?? '',
-    skola24_id: personal?.signatur ?? '',
+    skola24_id: personal?.skola24_id ?? null,
     titel: personal?.titel ?? '',
     arbetslag_id: personal?.arbetslag_id ?? null,
     aktiv: personal?.aktiv ?? true,
@@ -34,7 +34,7 @@ function PersonalModal({
       epost: personal?.epost ?? '',
       telefon: personal?.telefon ?? '',
       signatur: personal?.signatur ?? '',
-      skola24_id: personal?.signatur ?? '',
+      skola24_id: personal?.skola24_id ?? null,
       titel: personal?.titel ?? '',
       arbetslag_id: personal?.arbetslag_id ?? null,
       aktiv: personal?.aktiv ?? true,
@@ -51,8 +51,10 @@ function PersonalModal({
     setLaddar(true);
     setFel('');
 
+    // The hidden import identity must not be overwritten by ordinary form edits.
+    const { skola24_id: _skola24Id, ...redigerbaraFält } = form;
     const res = personal
-      ? await personalApi.uppdatera(personal.id, form)
+      ? await personalApi.uppdatera(personal.id, redigerbaraFält)
       : await personalApi.skapa(form);
 
     setLaddar(false);
@@ -60,6 +62,8 @@ function PersonalModal({
     if (res.error) {
       setFel(res.error.code === '23505' && res.error.message.includes('personal_signatur_key')
         ? 'Signaturen används redan av en annan personal. Ange en unik signatur eller lämna fältet tomt.'
+        : res.error.code === '23505' && res.error.message.includes('personal_skola24_id_key')
+          ? 'Skola24-ID:t används redan av en annan personal. Kontrollera schemakopplingen.'
         : res.error.message);
       return;
     }
