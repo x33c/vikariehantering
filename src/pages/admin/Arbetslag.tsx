@@ -58,7 +58,9 @@ function PersonalModal({
     setLaddar(false);
 
     if (res.error) {
-      setFel(res.error.message);
+      setFel(res.error.code === '23505' && res.error.message.includes('personal_signatur_key')
+        ? 'Signaturen används redan av en annan personal. Ange en unik signatur eller lämna fältet tomt.'
+        : res.error.message);
       return;
     }
 
