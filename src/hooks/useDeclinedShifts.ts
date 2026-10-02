@@ -6,18 +6,21 @@ export async function loadDeclines(dates: string[]): Promise<Decline[]> {
   const days = [...new Set(dates.filter(Boolean))];
   if (!days.length) return [];
   const res = await supabase.from('pass_forfragningar')
-    .select('vikarie_id, pass:vikariepass!inner(datum, "tid_från", tid_till, grupp)')
+    .select('pass_id, vikarie_id, pass:vikariepass!inner(datum, "tid_från", tid_till, grupp)')
     .eq('status', 'nej').in('pass.datum', days);
-  const history = await supabase.from('passhistorik').select('metadata')
+  const history = await supabase.from('passhistorik').select('pass_id, metadata')
     .eq('metadata->>svar', 'nej').in('metadata->>datum', days);
   if (res.error || history.error) throw new Error('Tidigare nej-svar kunde inte kontrolleras. Försök igen.');
-  const rows: Decline[] = (history.data ?? []).flatMap(({ metadata: m }) => typeof m?.vikarie_id === 'string'
-    ? [{ id: m.vikarie_id, text: `${m.datum} ${m.tid ?? ''} ${m.personal_namn ?? ''}`.trim() }] : []);
+  const rows = new Map<string, Decline>();
+  for (const { pass_id, metadata: m } of history.data ?? []) {
+    if (typeof m?.vikarie_id !== 'string') continue;
+    rows.set(`${pass_id}:${m.vikarie_id}:${m.datum}`, { id: m.vikarie_id, text: `${m.datum} ${m.tid ?? ''} ${m.personal_namn ?? ''}`.trim() });
+  }
   for (const r of res.data ?? []) {
     const p = Array.isArray(r.pass) ? r.pass[0] : r.pass;
-    if (p) rows.push({ id: r.vikarie_id, text: `${p.datum} ${p.tid_från.slice(0, 5)}-${p.tid_till.slice(0, 5)} ${p.grupp ?? ''}`.trim() });
+    if (p && !rows.has(`${r.pass_id}:${r.vikarie_id}:${p.datum}`)) rows.set(`${r.pass_id}:${r.vikarie_id}:${p.datum}`, { id: r.vikarie_id, text: `${p.datum} ${p.tid_från.slice(0, 5)}-${p.tid_till.slice(0, 5)} ${p.grupp ?? ''}`.trim() });
   }
-  return rows;
+  return [...rows.values()];
 }
 export function declineText(rows: Decline[], id: string) {
   return [...new Set(rows.filter(r => r.id === id).map(r => r.text))].join('; ');

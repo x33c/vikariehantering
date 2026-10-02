@@ -1497,21 +1497,23 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                   const ärBokad = status === 'bokad';
 
                   return (
+                    <div key={vikarie.id} className="min-w-0">
                     <button
                       key={vikarie.id}
                       type="button"
                       onClick={() => väljVikarie(vikarie.id)}
                       disabled={ärBokad}
-                      className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                      className="w-full rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
                       style={{
                         borderColor: vald ? 'var(--blue)' : 'var(--border)',
                         background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
                       }}
                     >
                       <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                      {declineText(declined.rows, vikarie.id) && <span className="block text-xs">Tackat nej denna dag: {declineText(declined.rows, vikarie.id)}</span>}
                       <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
                     </button>
+                    {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2">Tackat nej denna dag</summary><p className="break-words pb-2">{declineText(declined.rows, vikarie.id)}</p></details>}
+                    </div>
                   );
                 })}
               </div>
@@ -1549,21 +1551,23 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                     const ärBokad = status === 'bokad';
 
                     return (
+                      <div key={vikarie.id} className="min-w-0">
                       <button
                         key={vikarie.id}
                         type="button"
                         onClick={() => väljVikarie(vikarie.id)}
                         disabled={ärBokad}
-                        className="rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
+                        className="w-full rounded-lg border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-55"
                         style={{
                           borderColor: vald ? 'var(--blue)' : 'var(--border)',
                           background: vald ? 'color-mix(in srgb, var(--blue) 10%, var(--bg-card))' : 'var(--bg-card)',
                         }}
                       >
                         <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                        {declineText(declined.rows, vikarie.id) && <span className="block text-xs">Tackat nej denna dag: {declineText(declined.rows, vikarie.id)}</span>}
                         <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
                       </button>
+                      {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2">Tackat nej denna dag</summary><p className="break-words pb-2">{declineText(declined.rows, vikarie.id)}</p></details>}
+                      </div>
                     );
                   })}
                 </div>
