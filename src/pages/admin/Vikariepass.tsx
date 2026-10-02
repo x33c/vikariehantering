@@ -7,6 +7,7 @@ import { Button, Input, Select, TomtTillstånd, LaddaSida, StatusBadge, Alert, M
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { supabase } from '../../lib/supabase';
 import { absenceSuggestions } from '../../lib/absenceSuggestions';
+import { useDeclinedShifts, declineText, confirmDeclines } from '../../hooks/useDeclinedShifts';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -387,6 +388,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   onRaderad: (id: string) => void;
 }) {
   const [historik, setHistorik] = useState<Passhistorik[]>([]);
+  const declined = useDeclinedShifts([pass.datum]);
   const [återbudRegistrerat, setÅterbudRegistrerat] = useState(false);
   useEffect(() => { setÅterbudRegistrerat(false); }, [pass.id]);
   const [valdVikarieId, setValdVikarieId] = useState(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
@@ -790,6 +792,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
   async function skickaFörfrågan() {
     if (sparar) return;
+    try { if (!await confirmDeclines([pass.datum], valdVikarieId)) return; }
+    catch (error) { setFel((error as Error).message); return; }
     if (dagLast) {
       setFel('Dagen är låst. Lås upp dagen innan du skickar en förfrågan.');
       return;
@@ -1307,6 +1311,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
       <div className="pass-details-content min-h-0 flex-1 space-y-5 overflow-y-auto p-3 sm:p-5">
         {fel && <Alert typ="error">{fel}</Alert>}
+        {declined.error && <Alert typ="warning">{declined.error}</Alert>}
         {återbudRegistrerat && !pass.vikarie_id && (
           <Alert typ="success">Återbud registrerat. Passet är obemannat. Välj en ersättare för att skicka förfrågan eller boka direkt.</Alert>
         )}
@@ -1504,6 +1509,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                       }}
                     >
                       <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                      {declineText(declined.rows, vikarie.id) && <span className="block text-xs">Tackat nej denna dag: {declineText(declined.rows, vikarie.id)}</span>}
                       <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
                     </button>
                   );
@@ -1555,6 +1561,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                         }}
                       >
                         <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
+                        {declineText(declined.rows, vikarie.id) && <span className="block text-xs">Tackat nej denna dag: {declineText(declined.rows, vikarie.id)}</span>}
                         <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
                       </button>
                     );
@@ -1932,6 +1939,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
   }, [öppen, förvaltDatum, förvaldFrånvaro]);
 
   const veckopassDatum = form.veckopass && form.datum ? veckodagarFörVecka(form.datum) : [];
+  const declined = useDeclinedShifts(öppen ? (form.veckopass ? veckopassDatum : [form.datum]) : []);
   const aktivaVeckopassDagar = veckopassDatum.filter(datum => tidFörDatum(datum).aktiv).length;
 
   function tidFörDatum(datum: string) {
@@ -2118,6 +2126,10 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
 
     const valdVikarie = vikarier.find(v => v.id === valdVikarieId);
     const skapadePass: Bemanning[] = [];
+    if (bemanningLäge === 'förfrågan') {
+      try { if (!await confirmDeclines(passSomSkaSkapas.map(p => p.datum), valdVikarieId)) { setLaddar(false); return; } }
+      catch (error) { setFel((error as Error).message); setLaddar(false); return; }
+    }
 
     for (const dag of passSomSkaSkapas) {
       let frånvaroId: string | null = förvaldFrånvaro?.id ?? null;
@@ -2494,7 +2506,7 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
               onChange={e => setValdVikarieId(e.target.value)}
             >
               <option value="">Välj vikarie...</option>
-              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+              {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}{declineText(declined.rows, v.id) ? ` · Tackat nej: ${declineText(declined.rows, v.id)}` : ''}</option>)}
             </Select>
           )}
         </section>
@@ -2682,6 +2694,10 @@ export default function Bemanning() {
       .filter(p => ids.includes(p.id))
       .sort((a, b) => a.datum.localeCompare(b.datum) || minuter(a.tid_från) - minuter(b.tid_från));
     const valdVikarie = vikarier.find(v => v.id === massVikarieId);
+    if (typ === 'förfrågan') {
+      try { if (!await confirmDeclines(passAttBemanna.map(p => p.datum), massVikarieId)) return; }
+      catch (error) { setMassFel((error as Error).message); return; }
+    }
 
     if (passAttBemanna.length === 0) {
       setMassFel('Markera minst ett pass först.');
@@ -2776,6 +2792,7 @@ export default function Bemanning() {
     ladda();
   }
 
+  const declined = useDeclinedShifts(pass.filter(p => valda.has(p.id)).map(p => p.datum));
   if (laddar) return <LaddaSida />;
 
   const bemanningSokTerm = bemanningSok.trim().toLowerCase();
@@ -3150,7 +3167,7 @@ export default function Bemanning() {
               <div className="space-y-2">
                 <Select value={massVikarieId} onChange={e => { setMassVikarieId(e.target.value); setMassFel(''); }}>
                   <option value="">Välj vikarie</option>
-                  {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}</option>)}
+                  {vikarier.map(v => <option key={v.id} value={v.id}>{v.namn}{declineText(declined.rows, v.id) ? ` · Tackat nej: ${declineText(declined.rows, v.id)}` : ''}</option>)}
                 </Select>
                 <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                   <input
