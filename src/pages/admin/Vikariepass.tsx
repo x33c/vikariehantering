@@ -1510,9 +1510,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                       }}
                     >
                       <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                      <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
+                      <span className="block text-xs" style={{ color: declineText(declined.rows, vikarie.id) ? '#ef4444' : vikarieStatusFärg(status), fontWeight: declineText(declined.rows, vikarie.id) ? 600 : undefined }}>{declineText(declined.rows, vikarie.id) ? 'Tackat nej denna dag' : detalj}</span>
                     </button>
-                    {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2">Tackat nej denna dag</summary><p className="break-words pb-2">{declineText(declined.rows, vikarie.id)}</p></details>}
+                    {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2" aria-label={`Visa nej-svar för ${vikarie.namn}`}>Visa nej-svar</summary><p className="break-words pb-2">{vikarie.namn}: {declineText(declined.rows, vikarie.id)}</p></details>}
                     </div>
                   );
                 })}
@@ -1564,9 +1564,9 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
                         }}
                       >
                         <span className="block text-sm font-semibold" style={{ color: 'var(--text)' }}>{vikarie.namn}</span>
-                        <span className="block text-xs" style={{ color: vikarieStatusFärg(status) }}>{detalj}</span>
+                        <span className="block text-xs" style={{ color: declineText(declined.rows, vikarie.id) ? '#ef4444' : vikarieStatusFärg(status), fontWeight: declineText(declined.rows, vikarie.id) ? 600 : undefined }}>{declineText(declined.rows, vikarie.id) ? 'Tackat nej denna dag' : detalj}</span>
                       </button>
-                      {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2">Tackat nej denna dag</summary><p className="break-words pb-2">{declineText(declined.rows, vikarie.id)}</p></details>}
+                      {declineText(declined.rows, vikarie.id) && <details className="mt-1 px-2 text-xs" style={{ color: 'var(--text)' }}><summary className="cursor-pointer py-2" aria-label={`Visa nej-svar för ${vikarie.namn}`}>Visa nej-svar</summary><p className="break-words pb-2">{vikarie.namn}: {declineText(declined.rows, vikarie.id)}</p></details>}
                       </div>
                     );
                   })}

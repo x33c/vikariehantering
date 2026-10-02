@@ -48,7 +48,11 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       const button = dialog.getByRole('button', { name: 'Begär vikariebyte', exact: true });
       await button.waitFor();
       assert(await button.isDisabled(), 'Must not request replacement by current substitute');
-      const details = dialog.locator('details').filter({ hasText: 'Tackat nej denna dag' }).first();
+      const candidate = dialog.getByRole('button', { name: /Benyamin/ }).first();
+      await candidate.getByText('Tackat nej denna dag', { exact: true }).waitFor();
+      assert.equal(await candidate.getByText('Okänd tillgänglighet', { exact: true }).count(), 0);
+      assert.equal(await candidate.getByText('Tackat nej denna dag').evaluate(el => getComputedStyle(el).color), 'rgb(239, 68, 68)');
+      const details = dialog.locator('details').filter({ hasText: 'Visa nej-svar' }).first();
       await details.locator('summary').click();
       await details.getByText(/07:00-09:00/).waitFor();
       assert(await button.isDisabled(), 'Opening decline details must not select the substitute');
