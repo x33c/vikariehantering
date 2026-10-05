@@ -37,6 +37,7 @@ function felTillText(error: unknown) {
 
 function bokningsFelText(error?: unknown) {
   const text = felTillText(error).toLowerCase();
+  const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
   if (
     text.includes('överlappar') ||
     text.includes('redan bokad') ||
@@ -45,7 +46,15 @@ function bokningsFelText(error?: unknown) {
     return 'Du är redan bokad på ett pass som överlappar denna tid.';
   }
 
-  return 'Passet kunde inte bokas. Det kan redan ha ändrats.';
+  if (text.includes('forfragan ar inte langre aktiv') || text.includes('förfrågan är inte längre aktiv')) {
+    return 'Förfrågan är inte längre aktiv. Be administratören kontrollera och vid behov skicka en ny förfrågan.';
+  }
+  if (code === '42501') return 'Bokningen nekades av behörighetskontrollen. Kontakta administratören och ange felkod 42501.';
+  if (code === 'PGRST202' || code === '42883') return `Bokningsfunktionen är inte tillgänglig på servern. Kontakta administratören och ange felkod ${code}.`;
+  if (text.includes('passet ar inte tillgangligt')) return 'Passet är inte längre tillgängligt. Ladda om listan.';
+  if (text.includes('fetch') || text.includes('network')) return 'Kunde inte kontakta servern. Kontrollera anslutningen och Mina pass innan du försöker igen.';
+  const safeCode = /^[A-Z0-9]{5,12}$/.test(code) ? ` Felkod: ${code}.` : '';
+  return `Passet kunde inte bokas. Kontakta administratören.${safeCode}`;
 }
 
 function tiderÖverlappar(startA: string, slutA: string, startB: string, slutB: string) {
