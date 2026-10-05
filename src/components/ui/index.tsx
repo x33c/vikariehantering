@@ -217,7 +217,7 @@ export function Modal({ öppen, onStäng, titel, children, bredd = 'md' }: Modal
 
 export function StatusBadge({ status }: { status: PassStatus }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PASS_STATUS_COLORS[status]}`}>
+    <span className={`inline-flex shrink-0 whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${PASS_STATUS_COLORS[status]}`}>
       {PASS_STATUS_LABELS[status]}
     </span>
   );

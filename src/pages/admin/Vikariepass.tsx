@@ -1371,7 +1371,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
 
         <section className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1 break-words">
               <p className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Översikt</p>
               <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 {pass.grupp ? `Grupp: ${pass.grupp}` : 'Ingen grupp angiven'}
