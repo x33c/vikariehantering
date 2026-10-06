@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
+import { AbsenceReport } from '../../components/AbsenceReport';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
@@ -1100,10 +1101,6 @@ export default function Franvaro() {
     }
     return map;
   }, [filtrerade, kalenderDagar]);
-  const totaltIKalendern = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag)?.length ?? 0), 0);
-  const antalMedPass = kalenderDagar.reduce((summa, dag) => summa + (frånvaroPerDag.get(dag) ?? [])
-    .filter((frånvaro) => !ärLöstFrånvaro(frånvaro, dag) && aktivaPassFör(frånvaro).some((pass) => pass.datum === dag))
-    .length, 0);
 
   function sorteraDagensFrånvaro(dag: string) {
     return [...(frånvaroPerDag.get(dag) ?? [])].sort((a, b) => {
@@ -1180,7 +1177,7 @@ export default function Franvaro() {
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
 
-      <div className="sticky top-1 z-10 mb-3 rounded-xl border p-2 shadow-sm backdrop-blur sm:static sm:p-3 sm:shadow-none" style={{ background: 'color-mix(in srgb, var(--bg-card) 94%, transparent)', borderColor: 'var(--border)' }}>
+      <div className="mb-3 border-y p-2 sm:p-3" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto] lg:items-center">
           <label className="min-w-0">
             <span className="sr-only">Sök frånvaro</span>
@@ -1195,17 +1192,6 @@ export default function Franvaro() {
           </label>
 
           <div className="-mx-2 flex min-w-0 snap-x gap-1.5 overflow-x-auto px-2 pb-1 text-xs sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
-            <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-              <span>{filtrerade.length} frånvaro</span>
-            </span>
-            <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-              {totaltIKalendern} i veckan
-            </span>
-            {antalMedPass > 0 && (
-              <span className="flex shrink-0 snap-start items-center gap-2 rounded-full border px-3 py-1.5 font-semibold" style={{ background: 'var(--bg)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
-                {antalMedPass} med pass
-              </span>
-            )}
             {sök && (
               <button
                 type="button"
@@ -1223,10 +1209,14 @@ export default function Franvaro() {
               className="shrink-0 snap-start rounded-full border px-3 py-1.5 font-semibold transition hover:shadow-sm focus:outline-none focus:ring-2"
               style={{ background: visaLista ? 'var(--accent)' : 'var(--bg)', borderColor: visaLista ? 'var(--accent)' : 'var(--border)', color: visaLista ? '#fff' : 'var(--text)' }}
             >
-              {visaLista ? 'Dölj lista' : 'Visa lista'}
+              {visaLista ? 'Dölj historiklista' : 'Visa historiklista'}
             </button>
           </div>
         </div>
+        <AbsenceReport week={veckaStart} search={sök} revision={JSON.stringify([
+          frånvaron.map(f => [f.id, f.updated_at, f.anteckning]),
+          vikariepass.map(p => [p.id, p.updated_at, p.status, p.vikarie_id]),
+        ])} />
       </div>
 
 

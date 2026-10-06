@@ -22,7 +22,10 @@ async function prepare(browser, width, height) {
     localStorage.setItem('sb-pass-bilagor-test-auth-token', JSON.stringify({ access_token: token, refresh_token: 'fake', token_type: 'bearer', expires_at: 4102444800, user }));
   }, { user, token });
   await context.route('https://pass-bilagor-test.supabase.co/**', async route => {
-    const path = decodeURIComponent(new URL(route.request().url()).pathname);
+    const url = new URL(route.request().url());
+    const path = decodeURIComponent(url.pathname);
+    const reportQuery = path.endsWith('/frånvaro') && url.searchParams.get('select')?.startsWith('id,personal_id,');
+    if (reportQuery && context.reportFailure) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'test failure' }) });
     let data = [];
     if (path.includes('/auth/v1/')) data = user;
     if (path.endsWith('/profiler')) data = [{ ...user, namn: 'Testadmin', roll: 'admin', aktiv: true }];
@@ -31,6 +34,11 @@ async function prepare(browser, width, height) {
     if (path.endsWith('/vikarier')) data = [{ id: 'sub', profil_id: 'sub-profile', namn: 'Testvikarie Med Långt Namn', aktiv: true }];
     if (path.endsWith('/vikariepass')) data = shifts.filter(p => p.personal_id !== 'person-1');
     if (path.endsWith('/frånvaro')) data = [...people.map(p => ({ id: `absence-${p.id}`, personal_id: p.id, personal: p, datum_från: date, datum_till: date, hel_dag: true, anteckning: p.id === 'person-1' ? 'Ingen vikarie behövs' : null })), { id: 'previous-absence', personal_id: followUpPerson.id, personal: followUpPerson, datum_från: previous.toLocaleDateString('sv-SE'), datum_till: previous.toLocaleDateString('sv-SE'), hel_dag: true }];
+    if (reportQuery && context.reportPagination) {
+      const offset = Number(url.searchParams.get('offset') || 0);
+      context.reportPages = (context.reportPages || 0) + 1;
+      data = Array.from({ length: 501 }, (_, i) => ({ id: `report-${i}`, personal_id: people[0].id, personal: people[0], datum_från: date, datum_till: date, hel_dag: true })).slice(offset, offset + 500);
+    }
     if (Array.isArray(data) && route.request().headers().accept?.includes('vnd.pgrst.object')) data = data[0] || null;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
   });
@@ -89,6 +97,37 @@ async function checkDialog(page, name) {
           await checkDialog(page, `details-${width}`);
         }
         if (route === 'franvaro') {
+          const report = page.getByRole('region', { name: 'Frånvarorapport', exact: true });
+          await report.getByRole('button', { name: 'Visa rapportdetaljer' }).waitFor();
+          await page.getByRole('searchbox').fill(people[0].namn);
+          assert.equal(await report.locator('dl > div').filter({ has: page.getByText('Personer', { exact: true }) }).locator('dd').innerText(), '1');
+          await report.getByLabel('Rapportperiod').selectOption('month');
+          await report.getByLabel('Månad', { exact: true }).fill(date.slice(0, 7));
+          await report.getByRole('button', { name: 'Visa rapportdetaljer' }).waitFor();
+          await report.getByLabel('Rapportperiod').selectOption('custom');
+          await report.getByLabel('Från datum', { exact: true }).fill(date);
+          await report.getByLabel('Till datum', { exact: true }).fill(date);
+          await report.getByRole('button', { name: 'Visa rapportdetaljer' }).click();
+          await report.getByText(people[0].namn, { exact: true }).waitFor();
+          assert.equal(await report.locator('li').count(), 1);
+          assert(await report.evaluate(el => el.scrollWidth <= el.clientWidth), `report ${width}: overflow`);
+          await page.screenshot({ path: `${output}/absence-report-${width}.png` });
+          context.reportFailure = true;
+          await report.getByRole('button', { name: 'Uppdatera rapport' }).click();
+          await report.getByText('Rapporten kunde inte hämtas. Försök igen.').waitFor();
+          assert.equal(await report.locator('dl').count(), 0, 'Do not present stale or zero totals after failure');
+          context.reportFailure = false;
+          context.reportPagination = true;
+          context.reportPages = 0;
+          await report.getByRole('button', { name: 'Uppdatera rapport' }).click();
+          await report.getByText(/501 frånvaroposter/).waitFor();
+          assert.equal(context.reportPages, 2, 'Fetch every result page');
+          assert.equal(await report.locator('dl > div').filter({ has: page.getByText('Persondagar', { exact: true }) }).locator('dd').innerText(), '1');
+          context.reportPagination = false;
+          await report.getByLabel('Från datum', { exact: true }).fill('2027-12-31');
+          await report.getByText('Välj ett giltigt datumintervall på högst 366 dagar.').waitFor();
+          await report.getByLabel('Rapportperiod').selectOption('week');
+          await page.getByRole('searchbox').fill('');
           const card = page.locator('article:visible').filter({ hasText: people[0].namn });
           await card.getByRole('button', { name: 'Öppna pass', exact: true }).waitFor();
           assert.equal(await card.getByRole('button', { name: 'Markera löst', exact: true }).isVisible(), false);
