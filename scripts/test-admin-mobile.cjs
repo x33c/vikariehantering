@@ -89,6 +89,15 @@ async function checkDialog(page, name) {
           await checkDialog(page, `details-${width}`);
         }
         if (route === 'franvaro') {
+          const card = page.locator('article:visible').filter({ hasText: people[0].namn });
+          await card.getByRole('button', { name: 'Öppna pass', exact: true }).waitFor();
+          assert.equal(await card.getByRole('button', { name: 'Markera löst', exact: true }).isVisible(), false);
+          await card.locator('summary').click();
+          await card.getByRole('button', { name: 'Markera löst', exact: true }).waitFor();
+          await card.getByRole('button', { name: 'Redigera', exact: true }).click();
+          await checkDialog(page, `absence-edit-${width}`);
+          await card.locator('summary').click();
+          assert(await card.evaluate(el => el.scrollWidth <= el.clientWidth), `absence ${width}: card overflow`);
           await page.locator('article:visible').filter({ hasText: people[0].namn }).getByText('bemannat', { exact: true }).waitFor();
           await page.locator('article:visible').filter({ hasText: people[1].namn }).getByText('Vikarie behövs ej', { exact: true }).waitFor();
           await page.getByRole('button', { name: '+ Ny frånvaro', exact: true }).click();
