@@ -8,6 +8,7 @@ import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { supabase } from '../../lib/supabase';
 import { absenceSuggestions } from '../../lib/absenceSuggestions';
 import { useDeclinedShifts, declineText, confirmDeclines } from '../../hooks/useDeclinedShifts';
+import { CopyShiftsModal } from '../../components/CopyShiftsModal';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -2572,6 +2573,8 @@ export default function Bemanning() {
   const [veckaStart, setVeckaStart] = useState(() => standardVeckaStartIso());
   const [lastaDagar, setLastaDagar] = useState<Set<string>>(() => lasLastaDagar());
   const [valda, setValda] = useState<Set<string>>(new Set());
+  const [copySource, setCopySource] = useState<Bemanning[] | null>(null);
+  const [copyResult, setCopyResult] = useState('');
   const [massVikarieId, setMassVikarieId] = useState('');
   const [massSkickaNotis, setMassSkickaNotis] = useState(true);
   const [massSparar, setMassSparar] = useState(false);
@@ -3158,15 +3161,16 @@ export default function Bemanning() {
             </div>
         </div>
 
+        {copyResult && <div className="mb-3"><Alert typ="info">{copyResult}</Alert></div>}
         {valda.size > 0 && (
           <section className="mb-3 rounded-xl border p-3" style={{ borderColor: 'var(--blue)', background: 'color-mix(in srgb, var(--blue) 8%, var(--bg-card))' }}>
             {massFel && <div className="mb-3"><Alert typ="error">{massFel}</Alert></div>}
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)_auto] lg:items-end">
-              <div>
+            <div className="grid gap-3 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)] lg:items-end">
+              <div className="flex flex-wrap items-center justify-between gap-2 lg:col-span-2">
                 <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{valda.size} markerade pass</p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Välj en vikarie och bemanna alla markerade pass med en samlad notis.
-                </p>
+                <Button size="sm" variant="secondary" disabled={massSparar || valdaPass.length === 0} onClick={() => { setCopySource([...valdaPass]); setCopyResult(''); }}>
+                  Kopiera till fler veckor
+                </Button>
               </div>
               <div className="space-y-2">
                 <Select value={massVikarieId} onChange={e => { setMassVikarieId(e.target.value); setMassFel(''); }}>
@@ -3183,7 +3187,7 @@ export default function Bemanning() {
                   Skicka en samlad push-notis
                 </label>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-none xl:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <Button size="sm" onClick={() => bemannaMarkerade('förfrågan')} loading={massSparar} disabled={!massVikarieId}>
                   {pass.some(p => valda.has(p.id) && p.vikarie_id) ? 'Begär vikariebyte / förfrågan' : 'Skicka förfrågan'}
                 </Button>
@@ -3531,6 +3535,12 @@ export default function Bemanning() {
       )}
 
       <NyttPassModal öppen={skapaModal} onStäng={stängSkapaPass} personal={personal} vikarier={vikarier} frånvaron={frånvaron} onSkapad={efterSkapatPass} förvaltDatum={skapaDatum} förvaldFrånvaro={förvaldFrånvaroFörPass} lastaDagar={lastaDagar} />
+      {copySource && <CopyShiftsModal source={copySource} personal={personal} substitutes={vikarier} locked={lastaDagar}
+        onClose={() => setCopySource(null)} onSaved={(count, warning) => {
+          setCopySource(null); setValda(new Set());
+          setCopyResult(`${count} pass kopierade. ${warning || 'Inga notiser eller förfrågningar skickades.'}`);
+          ladda();
+        }} />}
 
       <Confirm
         öppen={arkiveraValda}
