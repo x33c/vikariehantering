@@ -40,3 +40,26 @@ assert.equal(valid('', ''), false);
 assert.equal(valid('2025-01-01', '2026-10-01'), false);
 assert.equal(report([{ ...a, datum_från: '2026-12-31', datum_till: '2027-01-04' }], [], '2026-12-31', '2027-01-04', '').rows.length, 3);
 console.log('PASS: report periods, weekdays, unique person-days, search, full/partial days, staffing, resolved records and validation');
+const bookings = [
+  { ...shift, vikarie: { namn: 'Vikarie A' } },
+  { ...shift, id: 's2', tid_från: '17:00', tid_till: '18:00', vikarie: { namn: 'Vikarie A' } },
+  { ...shift, id: 's3', datum: '2026-10-02', vikarie: { namn: 'Vikarie A' } },
+  { ...shift, id: 's4', personal_id: null, frånvaro_id: null, vikarie_id: 'sub2', vikarie: { namn: 'Vikarie B' } },
+  { ...shift, id: 's5', status: 'notifierat' },
+  { ...shift, id: 's6', status: 'avbokat' },
+  { ...shift, id: 's7', datum: '2026-10-03' },
+];
+r = report([a], bookings, '2026-10-01', '2026-10-06', '');
+assert.equal(r.substitutes.length, 2, 'Unique substitutes across period, including standalone bookings');
+assert.equal(r.bookedShifts, 4, 'Only booked weekday shifts');
+assert.equal(r.substituteDays, 3, 'Unique substitute per day');
+assert.equal(r.daily[0].substitutes, 2);
+assert.equal(r.daily[0].shifts, 3);
+assert.equal(r.daily[1].substitutes, 1);
+assert.equal(r.daily[2].substitutes, 0, 'Include zero-booking weekdays');
+assert.equal(r.substitutes[0].days, 2);
+assert.equal(r.substitutes[0].shifts, 3);
+assert.equal(r.peopleDetails[0].days, 4);
+assert.equal(report([a], bookings, '2026-10-01', '2026-10-06', 'Anna').substitutes.length, 1, 'Search excludes unrelated standalone shifts');
+assert.equal(report([], bookings, '2026-10-01', '2026-10-06', '').substitutes.length, 2, 'Bookings do not require absence records');
+console.log('PASS: unique substitute counts, per-day totals, standalone shifts, search and person summaries');

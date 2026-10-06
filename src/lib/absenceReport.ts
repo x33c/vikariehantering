@@ -60,6 +60,30 @@ export function buildAbsenceReport(absences: Frånvaro[], shifts: Vikariepass[],
     rows.push({ key, personId: first.personal_id, name: first.personal?.namn ?? 'Okänd personal', team: first.personal?.arbetslag?.namn ?? 'Inget arbetslag', date: group.date, fullDay, time, status });
   }
   rows.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'sv'));
+  const bookedShifts = [...new Map(shifts.filter(p => {
+    if (!p.vikarie_id || !['bokat', 'bekräftat'].includes(p.status) || p.datum < start || p.datum > end) return false;
+    const weekday = new Date(`${p.datum}T12:00:00Z`).getUTCDay();
+    if (weekday === 0 || weekday === 6) return false;
+    return !term || groups.has(`${p.personal_id}:${p.datum}`) ||
+      [p.personal?.namn, p.personal?.arbetslag?.namn, p.grupp].some(s => s?.toLocaleLowerCase('sv-SE').includes(term));
+  }).map(p => [p.id, p])).values()];
+  const daily = [];
+  for (let date = start; date <= end; date = reportDate(date, 1)) {
+    if ([0, 6].includes(new Date(`${date}T12:00:00Z`).getUTCDay())) continue;
+    const dayShifts = bookedShifts.filter(p => p.datum === date);
+    daily.push({ date, people: rows.filter(r => r.date === date).length,
+      substitutes: new Set(dayShifts.map(p => p.vikarie_id)).size, shifts: dayShifts.length });
+  }
+  const substitutes = [...new Set(bookedShifts.map(p => p.vikarie_id!))].map(id => {
+    const bookings = bookedShifts.filter(p => p.vikarie_id === id);
+    return { id, name: bookings[0].vikarie?.namn ?? 'Okänd vikarie', days: new Set(bookings.map(p => p.datum)).size, shifts: bookings.length };
+  }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+  const peopleDetails = [...new Set(rows.map(r => r.personId))].map(id => {
+    const days = rows.filter(r => r.personId === id);
+    return { id, name: days[0].name, team: days[0].team, days: days.length, fullDays: days.filter(r => r.fullDay).length, partialDays: days.filter(r => !r.fullDay).length };
+  }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   return { rows, people: new Set(rows.map(r => r.personId)).size, records: recordIds.size,
+    daily, substitutes, peopleDetails, bookedShifts: bookedShifts.length,
+    substituteDays: daily.reduce((sum, d) => sum + d.substitutes, 0),
     fullDays: rows.filter(r => r.fullDay).length, partialDays: rows.filter(r => !r.fullDay).length };
 }

@@ -98,9 +98,17 @@ async function checkDialog(page, name) {
         }
         if (route === 'franvaro') {
           const report = page.getByRole('region', { name: 'Frånvarorapport', exact: true });
+          const reportToggle = report.getByRole('button', { name: /Frånvaro och bemanning/ });
+          assert.equal(await reportToggle.getAttribute('aria-expanded'), 'false');
+          assert((await report.boundingBox()).height < 130, 'Collapsed report stays compact');
+          await reportToggle.click();
           await report.getByRole('button', { name: 'Visa rapportdetaljer' }).waitFor();
           await page.getByRole('searchbox').fill(people[0].namn);
-          assert.equal(await report.locator('dl > div').filter({ has: page.getByText('Personer', { exact: true }) }).locator('dd').innerText(), '1');
+          assert.equal(await report.locator('dl > div').filter({ has: page.getByText('Unika frånvarande', { exact: true }) }).locator('dd').innerText(), '1');
+          assert.equal(await report.locator('dl > div').filter({ has: page.getByText('Unika bokade vikarier', { exact: true }) }).locator('dd').innerText(), '1');
+          await report.getByLabel('Rapportperiod').selectOption('day');
+          await report.getByLabel('Rapportdatum').fill(date);
+          await report.getByRole('button', { name: 'Visa rapportdetaljer' }).waitFor();
           await report.getByLabel('Rapportperiod').selectOption('month');
           await report.getByLabel('Månad', { exact: true }).fill(date.slice(0, 7));
           await report.getByRole('button', { name: 'Visa rapportdetaljer' }).waitFor();
@@ -108,6 +116,12 @@ async function checkDialog(page, name) {
           await report.getByLabel('Från datum', { exact: true }).fill(date);
           await report.getByLabel('Till datum', { exact: true }).fill(date);
           await report.getByRole('button', { name: 'Visa rapportdetaljer' }).click();
+          await report.getByRole('columnheader', { name: 'Unika vikarier', exact: true }).waitFor();
+          await report.getByLabel('Detaljvy').selectOption('people');
+          await report.getByText(`${people[0].namn} · Åk.1`, { exact: true }).waitFor();
+          await report.getByLabel('Detaljvy').selectOption('substitutes');
+          await report.getByText('1 dagar · 1 pass', { exact: true }).waitFor();
+          await report.getByLabel('Detaljvy').selectOption('absences');
           await report.getByText(people[0].namn, { exact: true }).waitFor();
           assert.equal(await report.locator('li').count(), 1);
           assert(await report.evaluate(el => el.scrollWidth <= el.clientWidth), `report ${width}: overflow`);
@@ -128,6 +142,8 @@ async function checkDialog(page, name) {
           await report.getByText('Välj ett giltigt datumintervall på högst 366 dagar.').waitFor();
           await report.getByLabel('Rapportperiod').selectOption('week');
           await page.getByRole('searchbox').fill('');
+          await reportToggle.click();
+          assert.equal(await report.getByLabel('Rapportperiod').isVisible(), false);
           const card = page.locator('article:visible').filter({ hasText: people[0].namn });
           await card.getByRole('button', { name: 'Öppna pass', exact: true }).waitFor();
           assert.equal(await card.getByRole('button', { name: 'Markera löst', exact: true }).isVisible(), false);
