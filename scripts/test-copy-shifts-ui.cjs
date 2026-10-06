@@ -4,7 +4,7 @@ const addDays = (date, days) => { const d = new Date(`${date}T12:00:00Z`); d.set
 (async () => {
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   try {
-    for (const width of [320, 390, 1280]) for (const retain of [false, true]) {
+    for (const width of [320, 390, 1280, 2280]) for (const retain of [false, true]) {
       const context = await browser.newContext({ viewport: { width, height: 844 } });
       const user = { id: 'user', aud: 'authenticated', role: 'authenticated', email: 'test@example.test', user_metadata: {} };
       const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: 4102444800 })).toString('base64url'), 'fake'].join('.');
@@ -49,6 +49,12 @@ const addDays = (date, days) => { const d = new Date(`${date}T12:00:00Z`); d.set
       await page.goto('http://127.0.0.1:5178/admin/vikariepass');
       for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Markera pass', exact: true }).first().click();
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No toolbar overflow');
+      if (width >= 1280) {
+        for (const name of ['Begär vikariebyte / förfrågan', 'Boka direkt', 'Avmarkera']) {
+          const bounds = await page.getByRole('button', { name, exact: true }).boundingBox();
+          assert(bounds.width < 260, `${name}: desktop button should fit its content`);
+        }
+      }
       await page.screenshot({ path: `../copy-toolbar-${width}.png` });
       await page.getByRole('button', { name: 'Kopiera till fler veckor', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Kopiera till fler veckor' });

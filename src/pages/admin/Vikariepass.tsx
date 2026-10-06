@@ -3187,7 +3187,7 @@ export default function Bemanning() {
                   Skicka en samlad push-notis
                 </label>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
                 <Button size="sm" onClick={() => bemannaMarkerade('förfrågan')} loading={massSparar} disabled={!massVikarieId}>
                   {pass.some(p => valda.has(p.id) && p.vikarie_id) ? 'Begär vikariebyte / förfrågan' : 'Skicka förfrågan'}
                 </Button>
