@@ -85,13 +85,11 @@ async function hittaÖverlappandeBokning(grupp: Passgrupp, vikarieId: string) {
 }
 
 function harVäntandeFörfrågan(pass: Vikariepass, vikarieId: string) {
-  return pass.riktad_till_vikarie_id === vikarieId ||
-    (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
+  return (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
 }
 
 function harNågonVäntandeFörfrågan(pass: Vikariepass) {
-  return !!pass.riktad_till_vikarie_id ||
-    (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
+  return (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
 }
 
 function grupperaPasser(pass: Vikariepass[], minVikarieId?: string): Passgrupp[] {
@@ -339,6 +337,7 @@ export default function LedigaPass() {
 
       if (lyckades === 0) {
         const text = bokningsFelText(senasteFel);
+        await ladda();
         setFel(text);
         return;
       }

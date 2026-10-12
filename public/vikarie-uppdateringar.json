@@ -1,6 +1,7 @@
 {
-  "uppdaterad": "2026-09-28",
+  "uppdaterad": "2026-10-12",
   "punkter": [
+    "Förfrågningar visar sparade passtider. Inaktiva förfrågningar visas inte längre som möjliga att besvara, och passlistan uppdateras om en bokning inte går igenom.",
     "När admin registrerar ditt återbud tas din bokning bort och du får en bekräftelse inne i appen. Passet kan sedan erbjudas en ersättare.",
     "Förfrågningar om vikariebyte är nu tydligt märkta. Ett ja innebär att du tar över passet och blir bokad. Admin bekräftar bytet innan förfrågan skickas.",
     "Du kan nu tacka ja till en förfrågan även om en annan vikarie redan är bokad. När du accepterar tar du över passet. Om du tackar nej behålls den tidigare bokningen.",

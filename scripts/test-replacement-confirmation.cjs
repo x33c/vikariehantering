@@ -16,12 +16,29 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       let declined = true;
       let withdrawalCalls = 0;
       let failWithdrawal = true;
+      const requestEvents = [];
+      let failTimeSave = true;
       const shift = { id: 'pass', datum: new Date().toLocaleDateString('sv-SE'), tid_från: '08:00:00', tid_till: '16:00:00', vikarie_id: 'old', status: 'bokat', publicerad: false, personal_id: 'person', personal: { id: 'person', namn: 'Lärare' }, förfrågningar: [] };
       await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
         if (url.hostname === '127.0.0.1') return route.continue();
         if (url.hostname !== 'pass-bilagor-test.supabase.co') return route.abort();
+        if (url.pathname.endsWith('/vikariepass') && request.method() === 'PATCH') {
+          const patch = request.postDataJSON();
+          if (patch.tid_från) {
+            if (failTimeSave) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ message: 'Test: tiden kunde inte sparas' }) });
+            requestEvents.push('times');
+          }
+          Object.assign(shift, patch);
+        }
+        if (url.pathname.endsWith('/pass_forfragningar') && request.method() === 'POST') {
+          assert.equal(shift.tid_från, '09:00');
+          assert.equal(shift.tid_till, '17:00');
+          requestEvents.push('request');
+          shift.förfrågningar = request.postDataJSON().map(row => ({ ...row, id: 'request' }));
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(shift.förfrågningar) });
+        }
         if (url.pathname.endsWith('/rpc/register_substitute_withdrawal')) {
           withdrawalCalls++;
           assert.deepEqual(request.postDataJSON(), { p_pass_id: 'pass', p_vikarie_id: 'old' });
@@ -103,6 +120,19 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       assert(await dialog.getByRole('button', { name: 'Skicka förfrågan', exact: true }).isDisabled());
       assert(await dialog.getByRole('button', { name: 'Boka vald vikarie', exact: true }).isDisabled());
       await page.screenshot({ path: `../withdrawal-${width}.png` });
+      await dialog.getByRole('button', { name: /Benyamin/ }).first().click();
+      await dialog.locator('input[type="time"]').nth(0).fill('09:00');
+      await dialog.locator('input[type="time"]').nth(1).fill('17:00');
+      const send = dialog.getByRole('button', { name: 'Skicka förfrågan', exact: true });
+      await send.click();
+      await dialog.getByText('Test: tiden kunde inte sparas', { exact: true }).waitFor();
+      assert.deepEqual(requestEvents, [], 'Failed time save must not send a request');
+      failTimeSave = false;
+      await send.click();
+      await dialog.getByText(/Förfrågan är redan skickad till/).waitFor();
+      assert.deepEqual(requestEvents, ['times', 'request']);
+      assert.equal(shift.förfrågningar[0].status, 'vantar');
+      assert.equal(await dialog.locator('input[type="time"]').nth(0).inputValue(), '09:00');
       assert.deepEqual(errors, []);
       console.log(`PASS ${width}: explicit replacement, same-sub guard, names, cancellation, no overflow`);
       await context.close();

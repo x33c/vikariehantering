@@ -186,8 +186,7 @@ function väntandeFörfrågningar(pass: Bemanning) {
 
 function harVäntandeFörfråganTill(pass: Bemanning, vikarieId?: string | null) {
   if (!vikarieId) return false;
-  return pass.riktad_till_vikarie_id === vikarieId ||
-    väntandeFörfrågningar(pass).some(f => f.vikarie_id === vikarieId);
+  return väntandeFörfrågningar(pass).some(f => f.vikarie_id === vikarieId);
 }
 
 function ärAvbokningsförfrågan(meddelande?: string | null) {
@@ -426,8 +425,11 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     setTidTill(pass.tid_till.slice(0, 5));
     setGrupp(pass.grupp ?? '');
     setValdPersonalId(pass.personal_id ?? '');
+  }, [pass.id, pass.tid_från, pass.tid_till, pass.grupp, pass.personal_id]);
+
+  useEffect(() => {
     setValdVikarieId(pass.vikarie_id ?? pass.riktad_till_vikarie_id ?? '');
-  }, [pass.id, pass.tid_från, pass.tid_till, pass.grupp, pass.personal_id, pass.vikarie_id, pass.riktad_till_vikarie_id]);
+  }, [pass.id, pass.vikarie_id, pass.riktad_till_vikarie_id]);
 
   async function laddaHistorikFörPass() {
     const res = await historikApi.listaFörPass(pass.id);
@@ -697,10 +699,10 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   async function sparaPassÄndringar() {
     if (!tidFrån || !tidTill || tidFrån >= tidTill) {
       setFel('Ange en giltig start- och sluttid.');
-      return;
+      return false;
     }
 
-    if (!harPassÄndringar) return;
+    if (!harPassÄndringar) return true;
 
     const data: Partial<Bemanning> = {};
     const historik: Record<string, unknown> = {
@@ -720,7 +722,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       historik.tid_till = tidTill;
     }
 
-    await uppdateraPass(data, historik);
+    return uppdateraPass(data, historik);
   }
 
   async function sparaGrupp() {
@@ -815,12 +817,18 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       return;
     }
     if (pass.vikarie_id && !window.confirm(
-      `Begär vikariebyte ${pass.datum} ${pass.tid_från.slice(0, 5)}-${pass.tid_till.slice(0, 5)}?\n\nNär ${vikarier.find(v => v.id === valdVikarieId)?.namn ?? 'den nya vikarien'} tackar ja ersätts ${vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'den bokade vikarien'}. Den befintliga bokningen behålls tills dess. Vid nej sker inget byte.`
+      `Begär vikariebyte ${pass.datum} ${tidFrån}-${tidTill}?\n\nNär ${vikarier.find(v => v.id === valdVikarieId)?.namn ?? 'den nya vikarien'} tackar ja ersätts ${vikarier.find(v => v.id === pass.vikarie_id)?.namn ?? 'den bokade vikarien'}. Den befintliga bokningen behålls tills dess. Vid nej sker inget byte.`
     )) return;
 
     setSparar(true);
     setFel('');
 
+    // Save the draft before creating the request and sending its notification.
+    if (!await sparaPassÄndringar()) {
+      setSparar(false);
+      return;
+    }
+    setSparar(true);
     const res = await passApi.läggTillFörfrågningar(pass.id, [valdVikarieId]);
 
     if (res.error) {
@@ -869,11 +877,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     onUppdaterad({
       ...pass,
       status: pass.vikarie_id ? (pass.status === 'bekräftat' ? 'bekräftat' : 'bokat') : 'notifierat',
+      tid_från: tidFrån,
+      tid_till: tidTill,
+      grupp: normaliseradGrupp || null,
       publicerad: false,
       vikarie_id: pass.vikarie_id,
       riktad_till_vikarie_id: pass.riktad_till_vikarie_id,
       förfrågningar: [
-        ...(pass.förfrågningar ?? []).filter(f => f.vikarie_id !== valdVikarieId || f.status !== 'vantar'),
+        ...(pass.förfrågningar ?? []).filter(f => f.vikarie_id !== valdVikarieId),
         ...((res.data ?? []) as any[]),
       ],
     });
@@ -1289,7 +1300,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     : pass.frånvaro_id ? 'Kopplad' : 'Saknar frånvaro';
   const harAktivBokning = !!pass.vikarie_id && (pass.status === 'bokat' || pass.status === 'bekräftat');
   const aktivaFörfrågningar = väntandeFörfrågningar(pass);
-  const harAktivFörfrågan = !!pass.riktad_till_vikarie_id || aktivaFörfrågningar.length > 0;
+  const harAktivFörfrågan = aktivaFörfrågningar.length > 0;
   const valdVikarieHarFörfrågan = harVäntandeFörfråganTill(pass, valdVikarieId);
   const harAvbokningsförfrågan = harAktivBokning && meddelanden.some(m => m.avsandare_roll === 'vikarie' && ärAvbokningsförfrågan(m.meddelande));
   const valdVikarieHarKrock = !!valdVikarieId && !!bokadeVikarier[valdVikarieId];

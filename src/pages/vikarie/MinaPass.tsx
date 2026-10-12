@@ -32,10 +32,9 @@ function ärPassPasserat(pass: Pick<Vikariepass, 'datum' | 'tid_till'>) {
 function ärFörfrågan(pass: Vikariepass, vikarieId?: string) {
   if (pass.status === 'avbokat' || (vikarieId && pass.vikarie_id === vikarieId)) return false;
   if (vikarieId) {
-    return pass.riktad_till_vikarie_id === vikarieId ||
-      (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
+    return (pass.förfrågningar ?? []).some(f => f.vikarie_id === vikarieId && f.status === 'vantar');
   }
-  return !!pass.riktad_till_vikarie_id || (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
+  return (pass.förfrågningar ?? []).some(f => f.status === 'vantar');
 }
 
 function tillIsoDatum(datum: Date) {
