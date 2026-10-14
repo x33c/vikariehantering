@@ -27,11 +27,11 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
         if (path.endsWith('/personal')) data = [person];
         if (path.endsWith('/vikarier')) data = [{ id: 'old', namn: 'Daren' }, { id: 'new', namn: 'Amanda' }];
         if (path.endsWith('/frånvaro')) data = [{ id: 'a', personal_id: 'person', personal: person, datum_från: date, datum_till: date, hel_dag: true }];
-        if (path.endsWith('/vikariepass')) data = [{ id: 'p', datum: date, tid_från: '09:00', tid_till: '17:00', status: 'bokat', vikarie_id: 'new', personal: person, förfrågningar: [] }];
+        if (path.endsWith('/vikariepass')) data = [{ id: 'p', datum: date, tid_från: '09:00', tid_till: '17:00', grupp: 'Åk.6', status: 'bokat', vikarie_id: 'new', personal: person, förfrågningar: [] }];
         if (path.endsWith('/passhistorik')) {
           assert.equal(url.searchParams.get('metadata->>åtgärd'), 'eq.registrerade_aterbud');
           if (fail) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'History unavailable' }) });
-          data = [{ pass_id: 'p', metadata: { vikarie_id: 'old', datum: date, tid_från: '08:00', tid_till: '16:00' } }];
+          data = [{ pass_id: 'p', metadata: { vikarie_id: 'old', datum: date, tid_från: '08:00', tid_till: '16:00', grupp: 'FSK' } }];
         }
         if (Array.isArray(data) && route.request().headers().accept?.includes('vnd.pgrst.object')) data = data[0] || null;
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
@@ -44,6 +44,8 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       assert.equal(await page.locator('s:visible').count(), 1);
       assert((await page.locator('s:visible').textContent()).includes('Daren'));
       assert(!(await page.locator('s:visible').textContent()).includes('Amanda'));
+      const cellText = await page.locator('s:visible').locator('..').textContent();
+      assert(cellText.indexOf('Daren') < cellText.indexOf('Amanda'), 'Withdrawn FSK must precede active year 6');
       assert(await page.locator('div:visible').evaluateAll(nodes => nodes.some(n => n.innerHTML === 'Gordana<br><br>Daren')));
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.locator('s:visible').first().scrollIntoViewIfNeeded();

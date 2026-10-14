@@ -669,11 +669,13 @@ export default function Utskick() {
     }
 
     if (typ === 'vikarie') {
-      const current = passFörDag(passKälla, datum)
-        .sort(sorteraPass)
-        .map((p) => vikarieText(p, namnFormatter.vikarieNamn, vikarieMap))
-      const withdrawn = återbudIdag.sort(sorteraPass).map(p => `Återbud: ${vikarieText(p, namnFormatter.vikarieNamn, vikarieMap)}`);
-      return [...current, ...withdrawn].join('\n\n');
+      return [
+        ...passFörDag(passKälla, datum).map(p => ({ pass: p, withdrawn: false })),
+        ...återbudIdag.map(p => ({ pass: p, withdrawn: true })),
+      ]
+        .sort((a, b) => sorteraPass(a.pass, b.pass))
+        .map(({ pass: p, withdrawn }) => `${withdrawn ? 'Återbud: ' : ''}${vikarieText(p, namnFormatter.vikarieNamn, vikarieMap)}`)
+        .join('\n\n');
     }
 
     return '';
