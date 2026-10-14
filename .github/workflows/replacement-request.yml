@@ -7,6 +7,8 @@ on:
       - supabase/migrations/20260928090000_accept_replacement_request.sql
       - supabase/migrations/20260928100000_register_substitute_withdrawal.sql
       - supabase/migrations/20261014090000_withdrawal_snapshot.sql
+      - supabase/migrations/20261014100000_independent_withdrawals.sql
+      - scripts/test-independent-withdrawals.sql
       - scripts/test-substitute-withdrawal.sql
       - scripts/test-replacement-request.sql
       - scripts/activate-replacement-request.mjs
@@ -40,6 +42,7 @@ jobs:
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/test-replacement-request.sql
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/test-substitute-withdrawal.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/test-independent-withdrawals.sql
       - name: Apply tested migration
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

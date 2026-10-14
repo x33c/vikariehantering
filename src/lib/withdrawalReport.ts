@@ -18,15 +18,18 @@ export function withdrawalBookings(rows: WithdrawalRow[], shifts: Vikariepass[])
   for (const row of activeWithdrawals(rows)) {
     const shift = byId.get(row.pass_id);
     const m = row.metadata;
-    if (!shift || !m?.vikarie_id) continue;
-    const date = m.datum ?? shift.datum;
+    if (!m?.vikarie_id) continue;
+    const date = m.datum ?? shift?.datum;
+    const start = m.tid_från ?? shift?.tid_från;
+    const end = m.tid_till ?? shift?.tid_till;
+    if (!date || !start || !end) continue;
     const key = `${row.pass_id}:${m.vikarie_id}:${date}`;
     if (unique.has(key)) continue;
     unique.set(key, {
-      ...shift, datum: date, vikarie_id: m.vikarie_id,
-      tid_från: m.tid_från ?? shift.tid_från, tid_till: m.tid_till ?? shift.tid_till,
-      grupp: m.grupp !== undefined ? m.grupp : shift.grupp,
-    });
+      ...shift, id: row.pass_id, datum: date, vikarie_id: m.vikarie_id,
+      tid_från: start, tid_till: end,
+      grupp: m.grupp !== undefined ? m.grupp : shift?.grupp,
+    } as Vikariepass);
   }
   return [...unique.values()];
 }
