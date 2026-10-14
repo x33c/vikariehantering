@@ -130,6 +130,9 @@ export const personalApi = {
 };
 
 export const vikariApi = {
+  async namnFörUtskick() {
+    return supabase.from('vikarier').select('id,namn').order('namn');
+  },
   async hämtaTillgänglighetFörFlera(vikarieIds: string[]) {
     const data: VikarieTillgänglighet[] = [];
     const ids = [...new Set(vikarieIds)];
@@ -502,6 +505,20 @@ export const passApi = {
 };
 
 export const historikApi = {
+  async återbudFörPeriod(start: string, end: string) {
+    const data = [];
+    for (let offset = 0; ; offset += 500) {
+      const res = await supabase.from('passhistorik')
+        .select('pass_id,metadata,pass:vikariepass!inner(datum)')
+        .eq('metadata->>åtgärd', 'registrerade_aterbud')
+        .gte('pass.datum', start).lte('pass.datum', end)
+        .order('created_at', { ascending: false }).order('id')
+        .range(offset, offset + 499);
+      if (res.error) return { data: null, error: res.error };
+      data.push(...(res.data ?? []));
+      if ((res.data?.length ?? 0) < 500) return { data, error: null };
+    }
+  },
   async listaFörPass(passId: string) {
     return (supabase.from('passhistorik') as any)
       .select('*, utförd_av_profil:profiler(namn, epost)')

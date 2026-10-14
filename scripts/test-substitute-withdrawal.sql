@@ -1,6 +1,8 @@
 -- Run after test-replacement-request.sql, in the disposable database only.
 create table passhistorik(pass_id uuid, händelse text, utförd_av uuid, metadata jsonb, anteckning text);
 alter table vikariepass add column frånvaro_id uuid;
+\ir ../supabase/migrations/20261014090000_withdrawal_snapshot.sql
+\ir ../supabase/migrations/20261014090000_withdrawal_snapshot.sql
 \ir ../supabase/migrations/20260928100000_register_substitute_withdrawal.sql
 \ir ../supabase/migrations/20260928100000_register_substitute_withdrawal.sql
 insert into profiler values ('00000000-0000-0000-0000-000000000002','admin',true);
@@ -36,6 +38,9 @@ do $$ begin
   assert exists (select 1 from vikariepass where id='00000000-0000-0000-0000-000000000024' and vikarie_id is null and status='obokat' and not publicerad and datum='2026-10-05' and tid_från='08:00' and tid_till='16:00' and frånvaro_id='00000000-0000-0000-0000-000000000031');
   assert (select status from pass_forfragningar where pass_id='00000000-0000-0000-0000-000000000024') = 'aterkallad';
   assert (select count(*) from passhistorik) = 1;
+  assert (select metadata->>'datum' from passhistorik) = '2026-10-05';
+  assert (select metadata->>'tid_från' from passhistorik) = '08:00:00';
+  assert (select metadata->>'tid_till' from passhistorik) = '16:00:00';
   assert (select count(*) from notiser where pass_id='00000000-0000-0000-0000-000000000024' and vikarie_id='00000000-0000-0000-0000-000000000012') = 1;
   begin
     perform register_substitute_withdrawal('00000000-0000-0000-0000-000000000024','00000000-0000-0000-0000-000000000012');

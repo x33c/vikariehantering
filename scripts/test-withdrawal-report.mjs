@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const ctx = { exports: {} };
+vm.runInNewContext(ts.transpileModule(readFileSync('src/lib/withdrawalReport.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, ctx);
+const { withdrawalBookings, appendWithdrawnNames } = ctx.exports;
+const shift = { id: 'pass', datum: '2026-10-14', vikarie_id: 'replacement', tid_från: '09:00', tid_till: '17:00', grupp: '2A', status: 'bokat' };
+const record = { pass_id: 'pass', metadata: { vikarie_id: 'daren', datum: '2026-10-14', tid_från: '08:00', tid_till: '16:00', grupp: '1A' } };
+const bookings = withdrawalBookings([record, record], [shift]);
+assert.equal(bookings.length, 1);
+assert.equal(bookings[0].vikarie_id, 'daren');
+assert.equal(bookings[0].tid_från, '08:00');
+assert.equal(bookings[0].grupp, '1A');
+assert.equal(shift.vikarie_id, 'replacement', 'Do not change the new booking');
+assert.equal(appendWithdrawnNames('Gordana\nJonas J.\nJakob (08:00-09:30)', [...bookings, ...bookings], () => 'Daren'), 'Gordana\nJonas J.\nJakob (08:00-09:30)\n\nDaren');
+assert.equal(appendWithdrawnNames('', bookings, () => 'Daren'), 'Daren');
+assert.equal(withdrawalBookings([{ pass_id: 'missing', metadata: record.metadata }], [shift]).length, 0);
+assert.equal(withdrawalBookings([{ pass_id: 'pass', metadata: { vikarie_id: 'daren' } }], [shift])[0].tid_från, '09:00', 'Old records remain readable');
+const source = ts.createSourceFile('Utskick.tsx', readFileSync('src/pages/admin/Utskick.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const names = ['esc', 'normaliseraVikarieRadbrytningar', 'htmlVikarieCell', 'htmlCell'];
+const code = source.statements.filter(n => ts.isFunctionDeclaration(n) && names.includes(n.name?.text)).map(n => n.getText(source)).join('\n');
+vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, ctx);
+const html = ctx.htmlVikarieCell('Amanda - 1A\n(09:00-17:00)\n\nÅterbud: Daren - 1A\n(08:00-16:00)');
+assert.equal((html.match(/<s /g) ?? []).length, 1);
+assert(html.includes('<s style="text-decoration:line-through;"><strong>Daren - 1A</strong><br>(08:00-16:00)</s>'));
+assert(!html.includes('Återbud:'));
+assert(!ctx.htmlVikarieCell('Återbud: <img src=x onerror=alert(1)>\n(08:00-16:00)').includes('<img'));
+assert.equal(ctx.htmlCell('Gordana\n\nDaren'), 'Gordana<br><br>Daren');
+console.log('PASS: withdrawal snapshots, replacement retained, unique absence names, blank line, Outlook strike HTML, escaping, legacy records');

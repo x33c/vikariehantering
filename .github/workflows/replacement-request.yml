@@ -6,6 +6,7 @@ on:
     paths:
       - supabase/migrations/20260928090000_accept_replacement_request.sql
       - supabase/migrations/20260928100000_register_substitute_withdrawal.sql
+      - supabase/migrations/20261014090000_withdrawal_snapshot.sql
       - scripts/test-substitute-withdrawal.sql
       - scripts/test-replacement-request.sql
       - scripts/activate-replacement-request.mjs

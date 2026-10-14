@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { absencesToFollowUp, previousWorkday } from '../../lib/absenceFollowUp';
-import { frånvaroApi, passApi, vikariApi, personalApi } from '../../lib/api';
+import { frånvaroApi, passApi, vikariApi, personalApi, historikApi } from '../../lib/api';
+import { withdrawalBookings, appendWithdrawnNames, type WithdrawalRow } from '../../lib/withdrawalReport';
 import { supabase } from '../../lib/supabase';
 import type { Frånvaro, Personal, Vikariepass, Vikarie } from '../../types';
 import { Button, LaddaSida, Modal, Select } from '../../components/ui';
@@ -421,8 +422,10 @@ function htmlVikarieCell(text: string) {
   const trimmed = normaliseraVikarieRadbrytningar(text);
   if (!trimmed) return '&nbsp;';
 
-  return trimmed
-    .split('\n')
+  return trimmed.split('\n\n').map(block => {
+    const withdrawn = block.startsWith('Återbud: ');
+    const body = withdrawn ? block.slice('Återbud: '.length) : block;
+    const html = body.split('\n')
     .map((rad) => {
       const clean = rad.trim();
       if (!clean) return '';
@@ -431,6 +434,8 @@ function htmlVikarieCell(text: string) {
       return ärTid ? innehåll : `<strong>${innehåll}</strong>`;
     })
     .join('<br>');
+    return withdrawn ? `<s style="text-decoration:line-through;">${html}</s>` : html;
+  }).join('<br><br>');
 }
 
 function normaliseraVikarieRadbrytningar(text: string) {
@@ -534,6 +539,8 @@ export default function Utskick() {
   const [veckaStart, setVeckaStart] = useState(() => standardVeckaStart());
   const [frånvaro, setFrånvaro] = useState<Frånvaro[]>([]);
   const [pass, setPass] = useState<Vikariepass[]>([]);
+  const [återbud, setÅterbud] = useState<WithdrawalRow[]>([]);
+  const [återbudFel, setÅterbudFel] = useState(false);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [celler, setCeller] = useState<Record<string, string>>({});
@@ -601,13 +608,14 @@ export default function Utskick() {
       setLaddar(true);
       setFel('');
 
-      const [fRes, pRes, vRes, perRes, cRes, eRes] = await Promise.all([
+      const [fRes, pRes, vRes, perRes, cRes, eRes, aRes] = await Promise.all([
         frånvaroApi.lista(startIso, slutIso),
         passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
-        vikariApi.lista(),
+        vikariApi.namnFörUtskick(),
         personalApi.lista(),
         supabase.from('utskick_celler').select('*').gte('datum', startIso).lte('datum', slutIso),
         supabase.from('utskick_celler').select('*').eq('datum', GLOBAL_CELL_DATE).in('typ', extraTyper),
+        historikApi.återbudFörPeriod(startIso, slutIso),
       ]);
 
       const frånvaroData = (fRes.data ?? []) as Frånvaro[];
@@ -617,6 +625,9 @@ export default function Utskick() {
 
       setFrånvaro(frånvaroData);
       setPass(passData);
+      setÅterbud((aRes.data ?? []) as unknown as WithdrawalRow[]);
+      setÅterbudFel(!!aRes.error);
+      if (aRes.error) setFel('Återbud kunde inte hämtas. Uppdatera innan utskicket kopieras.');
       setVikarier(vikarieData);
       setPersonal(personalData);
 
@@ -642,23 +653,27 @@ export default function Utskick() {
     frånvaroKälla = frånvaro,
     passKälla = pass,
     vikarierKälla = vikarier,
-    personalKälla = personal
+    personalKälla = personal,
+    återbudKälla = återbud
   ) {
     const namnFormatter = skapaUtskickNamnFormatter(frånvaroKälla, passKälla, vikarierKälla, personalKälla);
     const vikarieMap = new Map(vikarierKälla.map((v) => [v.id, v]));
+    const återbudIdag = withdrawalBookings(återbudKälla, passKälla).filter(p => p.datum === datum);
 
     if (typ === 'franvaro') {
-      return frånvaroFörDag(frånvaroKälla, datum)
+      const staff = frånvaroFörDag(frånvaroKälla, datum)
         .sort(sorteraFrånvaro)
         .map((f) => frånvaroText(f, namnFormatter.personalNamn))
         .join('\n');
+      return appendWithdrawnNames(staff, återbudIdag, id => namnFormatter.vikarieNamn(vikarieMap.get(id)?.namn ?? 'Okänd vikarie'));
     }
 
     if (typ === 'vikarie') {
-      return passFörDag(passKälla, datum)
+      const current = passFörDag(passKälla, datum)
         .sort(sorteraPass)
         .map((p) => vikarieText(p, namnFormatter.vikarieNamn, vikarieMap))
-        .join('\n\n');
+      const withdrawn = återbudIdag.sort(sorteraPass).map(p => `Återbud: ${vikarieText(p, namnFormatter.vikarieNamn, vikarieMap)}`);
+      return [...current, ...withdrawn].join('\n\n');
     }
 
     return '';
@@ -724,15 +739,17 @@ export default function Utskick() {
     setUppdateringsInfo('');
     setUppdateringsDetaljer([]);
 
-    const [fRes, pRes, vRes, perRes] = await Promise.all([
+    const [fRes, pRes, vRes, perRes, aRes] = await Promise.all([
       frånvaroApi.lista(startIso, slutIso),
       passApi.lista({ datumFrån: startIso, datumTill: slutIso }),
-      vikariApi.lista(),
+      vikariApi.namnFörUtskick(),
       personalApi.lista(),
+      historikApi.återbudFörPeriod(startIso, slutIso),
     ]);
 
-    if (fRes.error || pRes.error || vRes.error || perRes.error) {
-      setFel(fRes.error?.message ?? pRes.error?.message ?? vRes.error?.message ?? perRes.error?.message ?? 'Kunde inte uppdatera utskicket.');
+    if (fRes.error || pRes.error || vRes.error || perRes.error || aRes.error) {
+      setÅterbudFel(true);
+      setFel(fRes.error?.message ?? pRes.error?.message ?? vRes.error?.message ?? perRes.error?.message ?? aRes.error?.message ?? 'Kunde inte uppdatera utskicket.');
       setUppdaterar(false);
       return;
     }
@@ -744,6 +761,9 @@ export default function Utskick() {
 
     setFrånvaro(nyFrånvaro);
     setPass(nyaPass);
+    const nyaÅterbud = (aRes.data ?? []) as unknown as WithdrawalRow[];
+    setÅterbud(nyaÅterbud);
+    setÅterbudFel(false);
     setVikarier(nyaVikarier);
     setPersonal(nyPersonal);
     const nästa = { ...celler };
@@ -755,7 +775,7 @@ export default function Utskick() {
       for (const typ of ['franvaro', 'vikarie'] as const) {
         const key = cellKey(datum, typ);
         const gammalText = nästa[key] ?? '';
-        const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier, nyPersonal);
+        const nyText = grundText(datum, typ, nyFrånvaro, nyaPass, nyaVikarier, nyPersonal, nyaÅterbud);
         const uppdateradText = nyText;
         if (uppdateradText !== gammalText) {
           ändrade += 1;
@@ -836,7 +856,7 @@ export default function Utskick() {
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
-          <Button onClick={kontrolleraUtskick} loading={kontrollerar}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
+          <Button onClick={kontrolleraUtskick} loading={kontrollerar} disabled={återbudFel || uppdaterar}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
       </div>
 
@@ -945,13 +965,17 @@ export default function Utskick() {
                   const datum = iso(dag);
                   return (
                     <td key={`${datum}-${rad.typ}`} className="border p-2 align-top" style={{ borderColor: 'var(--border)' }}>
-                      <textarea
+                      {rad.typ !== 'ovrigt' ? (
+                        <div className={`${rad.minH} w-full rounded-lg border px-3 py-2 text-center text-sm leading-6 break-words`}
+                          style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                          dangerouslySetInnerHTML={{ __html: rad.typ === 'vikarie' ? htmlVikarieCell(textFörCell(datum, rad.typ)) : htmlCell(textFörCell(datum, rad.typ)) }} />
+                      ) : <textarea
                         value={textFörCell(datum, rad.typ)}
                         onChange={(e) => uppdateraCell(datum, rad.typ, e.target.value)}
                         placeholder="Skriv egen text..."
                         className={`${rad.minH} w-full resize-y rounded-lg border px-3 py-2 text-center text-sm leading-6`}
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                      />
+                      />}
                     </td>
                   );
                 })}
@@ -990,13 +1014,17 @@ export default function Utskick() {
                       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                         {label}
                       </span>
-                      <textarea
+                      {typ !== 'ovrigt' ? (
+                        <div className={`${minH} w-full rounded-lg border px-3 py-2 text-center text-sm leading-6 break-words`}
+                          style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
+                          dangerouslySetInnerHTML={{ __html: typ === 'vikarie' ? htmlVikarieCell(textFörCell(datum, typ)) : htmlCell(textFörCell(datum, typ)) }} />
+                      ) : <textarea
                         value={textFörCell(datum, typ)}
                         onChange={(e) => uppdateraCell(datum, typ, e.target.value)}
                         placeholder="Skriv egen text..."
                         className={`${minH} w-full resize-y rounded-lg border px-3 py-2 text-center text-sm leading-6`}
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', borderColor: 'var(--border)' }}
-                      />
+                      />}
                     </label>
                   );
                 })}
