@@ -812,7 +812,7 @@ export default function Utskick() {
     setFel('');
     const metadata = { åtgärd: 'dolde_aterbud_i_utskick', återbud_ids: ids, vikarie_id: booking.vikarie_id ?? undefined, datum: booking.datum };
     try {
-      const res = await historikApi.döljÅterbudsmarkeringar(ids);
+      const res = await historikApi.skapa(booking.id, 'pass_uppdaterat', metadata, 'Återbudsmarkering borttagen från utskicket. Bokningar oförändrade.');
       if (res.error) { setFel(res.error.message); return; }
       setÅterbud(previous => [...previous, { pass_id: booking.id, metadata }]);
     } catch {
