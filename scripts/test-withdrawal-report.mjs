@@ -30,3 +30,8 @@ assert(!html.includes('Återbud:'));
 assert(!ctx.htmlVikarieCell('Återbud: <img src=x onerror=alert(1)>\n(08:00-16:00)').includes('<img'));
 assert.equal(ctx.htmlCell('Gordana\n\nDaren'), 'Gordana<br><br>Daren');
 console.log('PASS: withdrawal snapshots, replacement retained, unique absence names, blank line, Outlook strike HTML, escaping, legacy records');
+const hidden = { pass_id: 'pass', metadata: { åtgärd: 'dolde_aterbud_i_utskick', återbud_ids: ['old'] } };
+assert.equal(withdrawalBookings([{ ...record, id: 'old' }, hidden], [shift]).length, 0);
+assert.equal(withdrawalBookings([{ ...record, id: 'old' }, hidden, { ...record, id: 'new' }], [shift]).length, 1, 'A future withdrawal is not hidden');
+assert.equal(withdrawalBookings([{ ...record, id: 'old' }, hidden, hidden], [shift]).length, 0, 'Repeated removal is harmless');
+console.log('PASS: hide only selected withdrawal IDs, preserve future withdrawals and history');

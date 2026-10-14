@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { absencesToFollowUp, previousWorkday } from '../../lib/absenceFollowUp';
 import { frånvaroApi, passApi, vikariApi, personalApi, historikApi } from '../../lib/api';
-import { withdrawalBookings, appendWithdrawnNames, type WithdrawalRow } from '../../lib/withdrawalReport';
+import { withdrawalBookings, appendWithdrawnNames, activeWithdrawals, type WithdrawalRow } from '../../lib/withdrawalReport';
 import { supabase } from '../../lib/supabase';
 import type { Frånvaro, Personal, Vikariepass, Vikarie } from '../../types';
 import { Button, LaddaSida, Modal, Select } from '../../components/ui';
@@ -541,6 +541,7 @@ export default function Utskick() {
   const [pass, setPass] = useState<Vikariepass[]>([]);
   const [återbud, setÅterbud] = useState<WithdrawalRow[]>([]);
   const [återbudFel, setÅterbudFel] = useState(false);
+  const [tarBortÅterbud, setTarBortÅterbud] = useState(false);
   const [vikarier, setVikarier] = useState<Vikarie[]>([]);
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [celler, setCeller] = useState<Record<string, string>>({});
@@ -798,6 +799,29 @@ export default function Utskick() {
     setUppdaterar(false);
   }
 
+  async function taBortÅterbudsmarkering(booking: Vikariepass) {
+    if (tarBortÅterbud) return;
+    const namn = vikarier.find(v => v.id === booking.vikarie_id)?.namn ?? 'vikarien';
+    if (!window.confirm(`Ta bort återbudsmarkeringen för ${namn} den ${booking.datum}?\n\nMarkeringen tas bort från utskicket. Historiken behålls och inga bokningar ändras.`)) return;
+    const ids = activeWithdrawals(återbud).filter(row => row.pass_id === booking.id &&
+      row.metadata?.vikarie_id === booking.vikarie_id &&
+      (row.metadata.datum ?? pass.find(p => p.id === row.pass_id)?.datum) === booking.datum)
+      .map(row => row.id).filter((id): id is string => !!id);
+    if (!ids.length) { setFel('Återbudet kunde inte identifieras. Uppdatera sidan och försök igen.'); return; }
+    setTarBortÅterbud(true);
+    setFel('');
+    const metadata = { åtgärd: 'dolde_aterbud_i_utskick', återbud_ids: ids, vikarie_id: booking.vikarie_id ?? undefined, datum: booking.datum };
+    try {
+      const res = await historikApi.skapa(booking.id, 'pass_uppdaterat', metadata, 'Återbudsmarkering borttagen från utskicket. Bokningar oförändrade.');
+      if (res.error) { setFel(res.error.message); return; }
+      setÅterbud(previous => [...previous, { pass_id: booking.id, metadata }]);
+    } catch {
+      setFel('Markeringen kunde inte tas bort. Uppdatera sidan innan du försöker igen.');
+    } finally {
+      setTarBortÅterbud(false);
+    }
+  }
+
   async function skickaMail() {
     const sparat = await sparaCeller();
     if (!sparat) return;
@@ -857,10 +881,24 @@ export default function Utskick() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar}>Uppdatera</Button>
-          <Button onClick={kontrolleraUtskick} loading={kontrollerar} disabled={återbudFel || uppdaterar}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
+          <Button variant="secondary" onClick={uppdateraFrånvaroOchBemanning} loading={uppdaterar} disabled={tarBortÅterbud}>Uppdatera</Button>
+          <Button onClick={kontrolleraUtskick} loading={kontrollerar} disabled={återbudFel || uppdaterar || tarBortÅterbud}>{kopierat ? 'Kopierat' : 'Skicka mail'}</Button>
         </div>
       </div>
+
+      {withdrawalBookings(återbud, pass).length > 0 && (
+        <details className="mb-2 border-b py-2" style={{ borderColor: 'var(--border)' }}>
+          <summary className="cursor-pointer text-sm font-semibold">Återbudsmarkeringar ({withdrawalBookings(återbud, pass).length})</summary>
+          <div className="mt-2 divide-y" style={{ borderColor: 'var(--border)' }}>
+            {withdrawalBookings(återbud, pass).map(booking => (
+              <div key={`${booking.id}:${booking.vikarie_id}:${booking.datum}`} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <span>{vikarier.find(v => v.id === booking.vikarie_id)?.namn ?? 'Okänd vikarie'} · {booking.datum} · {tid(booking.tid_från)}–{tid(booking.tid_till)}</span>
+                <Button size="sm" variant="secondary" disabled={tarBortÅterbud || uppdaterar || återbudFel} onClick={() => taBortÅterbudsmarkering(booking)}>Ta bort återbudsmarkering</Button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {uppdateringsInfo && (
         <div className="mb-2 rounded-xl border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>

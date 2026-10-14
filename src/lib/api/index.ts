@@ -509,8 +509,8 @@ export const historikApi = {
     const data = [];
     for (let offset = 0; ; offset += 500) {
       const res = await supabase.from('passhistorik')
-        .select('pass_id,metadata,pass:vikariepass!inner(datum)')
-        .eq('metadata->>åtgärd', 'registrerade_aterbud')
+        .select('id,pass_id,metadata,pass:vikariepass!inner(datum)')
+        .in('metadata->>åtgärd', ['registrerade_aterbud', 'dolde_aterbud_i_utskick'])
         .gte('pass.datum', start).lte('pass.datum', end)
         .order('created_at', { ascending: false }).order('id')
         .range(offset, offset + 499);

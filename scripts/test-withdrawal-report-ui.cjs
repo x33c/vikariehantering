@@ -15,6 +15,8 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       day.setDate(day.getDate() + (day.getDay() === 0 ? 1 : day.getDay() === 6 ? 2 : 0));
       const date = day.toLocaleDateString('sv-SE');
       let fail = false;
+      let failRemove = false;
+      const removals = [];
       const person = { id: 'person', namn: 'Gordana', aktiv: true };
       await context.route('**/*', async route => {
         const url = new URL(route.request().url());
@@ -29,9 +31,17 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
         if (path.endsWith('/frånvaro')) data = [{ id: 'a', personal_id: 'person', personal: person, datum_från: date, datum_till: date, hel_dag: true }];
         if (path.endsWith('/vikariepass')) data = [{ id: 'p', datum: date, tid_från: '09:00', tid_till: '17:00', grupp: 'Åk.6', status: 'bokat', vikarie_id: 'new', personal: person, förfrågningar: [] }];
         if (path.endsWith('/passhistorik')) {
-          assert.equal(url.searchParams.get('metadata->>åtgärd'), 'eq.registrerade_aterbud');
+          if (route.request().method() === 'POST') {
+            if (failRemove) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Remove failed' }) });
+            const row = route.request().postDataJSON();
+            assert.equal(row.metadata.åtgärd, 'dolde_aterbud_i_utskick');
+            assert.deepEqual(row.metadata.återbud_ids, ['withdrawal']);
+            removals.push(row);
+            return route.fulfill({ status: 201, contentType: 'application/json', body: '{}' });
+          }
+          assert.equal(url.searchParams.get('metadata->>åtgärd'), 'in.(registrerade_aterbud,dolde_aterbud_i_utskick)');
           if (fail) return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'History unavailable' }) });
-          data = [{ pass_id: 'p', metadata: { vikarie_id: 'old', datum: date, tid_från: '08:00', tid_till: '16:00', grupp: 'FSK' } }];
+          data = [{ id: 'withdrawal', pass_id: 'p', metadata: { åtgärd: 'registrerade_aterbud', vikarie_id: 'old', datum: date, tid_från: '08:00', tid_till: '16:00', grupp: 'FSK' } }, ...removals];
         }
         if (Array.isArray(data) && route.request().headers().accept?.includes('vnd.pgrst.object')) data = data[0] || null;
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
@@ -50,6 +60,27 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       await page.locator('s:visible').first().scrollIntoViewIfNeeded();
       await page.screenshot({ path: `../withdrawal-report-${width}.png` });
+      await page.getByText('Återbudsmarkeringar (1)', { exact: true }).click();
+      const remove = page.getByRole('button', { name: 'Ta bort återbudsmarkering', exact: true });
+      page.once('dialog', d => d.dismiss());
+      await remove.click();
+      assert.equal(removals.length, 0);
+      failRemove = true;
+      page.once('dialog', d => d.accept());
+      await remove.click();
+      await page.getByText('Remove failed', { exact: true }).waitFor();
+      assert.equal(await page.locator('s:visible').count(), 1);
+      failRemove = false;
+      page.once('dialog', d => d.accept());
+      await remove.click();
+      await remove.waitFor({ state: 'hidden' });
+      assert.equal(removals.length, 1);
+      assert.equal(await page.locator('s').count(), 0);
+      await page.reload();
+      await page.getByRole('button', { name: 'Uppdatera', exact: true }).waitFor();
+      assert.equal(await page.locator('s').count(), 0);
+      assert.equal(await page.getByText('Daren', { exact: true }).count(), 0);
+      await page.locator('strong:visible').filter({ hasText: 'Amanda - Åk.6' }).waitFor();
       fail = true;
       await page.getByRole('button', { name: 'Uppdatera', exact: true }).click();
       await page.getByText('History unavailable', { exact: true }).waitFor();

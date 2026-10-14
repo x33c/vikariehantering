@@ -1,14 +1,21 @@
 import type { Vikariepass } from '../types';
 
 export interface WithdrawalRow {
+  id?: string;
   pass_id: string;
-  metadata: { vikarie_id?: string; datum?: string; tid_från?: string; tid_till?: string; grupp?: string | null; vikarie_namn?: string } | null;
+  metadata: { åtgärd?: string; återbud_ids?: string[]; vikarie_id?: string; datum?: string; tid_från?: string; tid_till?: string; grupp?: string | null; vikarie_namn?: string } | null;
+}
+
+export function activeWithdrawals(rows: WithdrawalRow[]) {
+  const hidden = new Set(rows.filter(row => row.metadata?.åtgärd === 'dolde_aterbud_i_utskick')
+    .flatMap(row => row.metadata?.återbud_ids ?? []));
+  return rows.filter(row => row.metadata?.åtgärd !== 'dolde_aterbud_i_utskick' && (!row.id || !hidden.has(row.id)));
 }
 
 export function withdrawalBookings(rows: WithdrawalRow[], shifts: Vikariepass[]) {
   const byId = new Map(shifts.map(shift => [shift.id, shift]));
   const unique = new Map<string, Vikariepass>();
-  for (const row of rows) {
+  for (const row of activeWithdrawals(rows)) {
     const shift = byId.get(row.pass_id);
     const m = row.metadata;
     if (!shift || !m?.vikarie_id) continue;
