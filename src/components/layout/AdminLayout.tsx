@@ -5,6 +5,7 @@ import PushButton from '../PushButton';
 import AdminNotiser from '../AdminNotiser';
 import { LaddaSida, Modal } from '../ui';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useDarkMode } from '../../hooks/useDarkMode';
 
 const huvudNavItems: { to: string; label: string; icon: string; end?: boolean }[] = [
   { to: '/admin/franvaro', label: 'Frånvaro', icon: 'calendar' },
@@ -45,21 +46,6 @@ function NavIkon({ namn }: { namn: string }) {
   if (namn === 'account') return <svg {...gemensam}><rect x="4" y="3" width="16" height="18" rx="3" /><circle cx="12" cy="9" r="3" /><path d="M8 17a4 4 0 0 1 8 0" /></svg>;
   if (namn === 'layers') return <svg {...gemensam}><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>;
   return <svg {...gemensam}><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></svg>;
-}
-
-function useDarkMode() {
-  const [mörkt, setMörkt] = useState(() =>
-    document.documentElement.classList.contains('dark')
-  );
-
-  function toggla() {
-    const nytt = !mörkt;
-    setMörkt(nytt);
-    document.documentElement.classList.toggle('dark', nytt);
-    localStorage.setItem('tema', nytt ? 'dark' : 'light');
-  }
-
-  return { mörkt, toggla };
 }
 
 function TemaIkon({ mörkt }: { mörkt: boolean }) {

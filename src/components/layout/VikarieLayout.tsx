@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useDarkMode } from '../../hooks/useDarkMode';
 import PushButton from '../PushButton';
 
 const navItems = [
@@ -12,21 +13,6 @@ const navItems = [
   { to: '/vikarie/profil', label: 'Profil' },
   { to: '/vikarie/logga-ut', label: 'Logga ut' },
 ];
-
-function useDarkMode() {
-  const [mörkt, setMörkt] = useState(() =>
-    document.documentElement.classList.contains('dark')
-  );
-
-  function toggla() {
-    const nytt = !mörkt;
-    setMörkt(nytt);
-    document.documentElement.classList.toggle('dark', nytt);
-    localStorage.setItem('tema', nytt ? 'dark' : 'light');
-  }
-
-  return { mörkt, toggla };
-}
 
 export default function VikarieLayout() {
   const { profil } = useAuth();

@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-changing,
+  html.theme-changing *,
+  html.theme-changing *::before,
+  html.theme-changing *::after {
+    transition: background-color 240ms ease-out, color 240ms ease-out,
+      border-color 240ms ease-out, box-shadow 240ms ease-out,
+      fill 240ms ease-out, stroke 240ms ease-out !important;
+  }
+}
+
 @layer base {
   html {
     width: 100%;
