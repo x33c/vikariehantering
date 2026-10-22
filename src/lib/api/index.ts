@@ -505,16 +505,13 @@ export const passApi = {
 };
 
 export const historikApi = {
-  async döljÅterbudsmarkeringar(ids: string[]) {
-    return supabase.rpc('hide_withdrawal_markers', { p_ids: ids });
-  },
   async återbudFörPeriod(start: string, end: string) {
     const data = [];
     for (let offset = 0; ; offset += 500) {
-      const res = await supabase.from('vikarie_aterbud')
-        .select('id,pass_id,metadata')
-        .is('hidden_at', null)
-        .gte('datum', start).lte('datum', end)
+      const res = await supabase.from('passhistorik')
+        .select('id,pass_id,metadata,pass:vikariepass!inner(datum)')
+        .in('metadata->>åtgärd', ['registrerade_aterbud', 'dolde_aterbud_i_utskick'])
+        .gte('pass.datum', start).lte('pass.datum', end)
         .order('created_at', { ascending: false }).order('id')
         .range(offset, offset + 499);
       if (res.error) return { data: null, error: res.error };
