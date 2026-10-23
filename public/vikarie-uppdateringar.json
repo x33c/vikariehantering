@@ -1,6 +1,7 @@
 {
-  "uppdaterad": "2026-10-22",
+  "uppdaterad": "2026-10-23",
   "punkter": [
+    "Mobilvyn har större tryckytor för notiser och tema samt utrymme för mobilens statusfält. Notisguiden kan rullas på mindre skärmar.",
     "Växlingen mellan ljust och mörkt läge är mjukare och respekterar enhetens inställning för minskad rörelse.",
     "Förfrågningar visar sparade passtider. Inaktiva förfrågningar visas inte längre som möjliga att besvara, och passlistan uppdateras om en bokning inte går igenom.",
     "När admin registrerar ditt återbud tas din bokning bort och du får en bekräftelse inne i appen. Passet kan sedan erbjudas en ersättare.",

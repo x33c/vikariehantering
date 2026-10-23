@@ -122,7 +122,7 @@ export default function VikarieLayout() {
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Topbar mobil */}
         <header
-          className="flex h-14 shrink-0 items-center border-b px-3 sm:px-4 lg:hidden"
+          className="vikarie-mobile-header relative z-30 flex shrink-0 items-center gap-2 border-b lg:hidden"
           style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
         >
           <span className="min-w-0 truncate text-sm font-semibold" style={{ color: 'var(--text)' }}>{sidtitel}</span>
@@ -161,7 +161,7 @@ export default function VikarieLayout() {
             </button>
           </div>
         </header>
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:pb-0">
+        <main className="relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-smooth pb-[calc(env(safe-area-inset-bottom)+1rem)] lg:pb-0">
           <Outlet />
         </main>
         <nav
@@ -189,7 +189,7 @@ export default function VikarieLayout() {
 
       {visaNotisLathund && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:items-center sm:p-4">
-          <div className="w-full max-w-md rounded-2xl border p-5 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+          <div className="max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border p-5 shadow-xl" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>
               Kom igång med notiser
             </h2>
