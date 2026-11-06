@@ -1,4 +1,24 @@
 begin;
+-- Legacy create forms set the recipient on the shift. Persist the actual offer
+-- in the same transaction; later time edits must not reopen answered offers.
+create or replace function public.create_initial_shift_request()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'notifierat' and new.riktad_till_vikarie_id is not null and new.vikarie_id is null then
+    insert into public.pass_forfragningar(pass_id, vikarie_id, status)
+      select new.id, new.riktad_till_vikarie_id, 'vantar'
+      where not exists (
+        select 1 from public.pass_forfragningar where pass_id = new.id and vikarie_id = new.riktad_till_vikarie_id
+      );
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.create_initial_shift_request() from public, anon, authenticated;
+drop trigger if exists create_initial_shift_request on public.vikariepass;
+create trigger create_initial_shift_request after insert on public.vikariepass
+  for each row execute function public.create_initial_shift_request();
+
 create or replace function public.decline_shift_request(p_pass_id uuid, p_vikarie_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 declare shift public.vikariepass;

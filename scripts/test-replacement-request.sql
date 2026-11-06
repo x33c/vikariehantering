@@ -119,5 +119,17 @@ do $$ begin
   assert (select status from vikariepass where id='00000000-0000-0000-0000-000000000022') = 'bokat';
   assert (select vikarie_id from vikariepass where id='00000000-0000-0000-0000-000000000022') = '00000000-0000-0000-0000-000000000012'::uuid;
 end $$;
+insert into vikariepass values ('00000000-0000-0000-0000-000000000026',null,'notifierat','00000000-0000-0000-0000-000000000011',false,'2026-12-03','08:00','16:00');
+do $$ begin
+  assert (select status from pass_forfragningar where pass_id='00000000-0000-0000-0000-000000000026') = 'vantar';
+end $$;
+update vikariepass set tid_från='11:30' where id='00000000-0000-0000-0000-000000000026';
+set role authenticated;
+select decline_shift_request('00000000-0000-0000-0000-000000000026','00000000-0000-0000-0000-000000000011');
+reset role;
+update vikariepass set tid_från='12:00' where id='00000000-0000-0000-0000-000000000026';
+do $$ begin
+  assert (select status from pass_forfragningar where pass_id='00000000-0000-0000-0000-000000000026') = 'nej';
+end $$;
 rollback;
 select 'Time edit and decline tests passed';
