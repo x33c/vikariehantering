@@ -280,6 +280,20 @@ export default function LedigaPass() {
     setLaddar(false);
   }
 
+  async function kontrolleraAktuellaTider(grupp: Passgrupp) {
+    for (const pass of grupp.pass) {
+      const res = await passApi.hämta(pass.id);
+      if (res.error || !res.data) throw new Error('Kunde inte hämta passets aktuella tider. Försök igen.');
+      const current = res.data as Vikariepass;
+      if (current.datum !== pass.datum || current.tid_från.slice(0, 5) !== pass.tid_från.slice(0, 5) || current.tid_till.slice(0, 5) !== pass.tid_till.slice(0, 5)) {
+        await ladda();
+        setFel('Passets tider har ändrats. Listan är uppdaterad. Kontrollera de nya tiderna och svara igen.');
+        return false;
+      }
+    }
+    return true;
+  }
+
   async function tackaJa(grupp: Passgrupp) {
     if (!minVikarie) {
       const text = 'Din vikarieprofil är inte kopplad till kontot.';
@@ -294,6 +308,7 @@ export default function LedigaPass() {
     let senasteFel: unknown = null;
 
     try {
+      if (!await kontrolleraAktuellaTider(grupp)) return;
       const överlappande = await hittaÖverlappandeBokning(grupp, minVikarie.id);
       if (överlappande) {
         setFel(`Du är redan bokad ${överlappande.tid_från.slice(0, 5)}-${överlappande.tid_till.slice(0, 5)} den här dagen. Du kan inte boka ett pass som överlappar.`);
@@ -365,6 +380,17 @@ export default function LedigaPass() {
     if (!minVikarie) return;
     setSparar(true);
     setFel('');
+
+    try {
+      if (!await kontrolleraAktuellaTider(grupp)) {
+        setSparar(false);
+        return;
+      }
+    } catch {
+      setFel('Kunde inte hämta passets aktuella tider. Försök igen.');
+      setSparar(false);
+      return;
+    }
 
     for (const p of grupp.pass) {
       const svar = await passApi.tackaNej(p.id, minVikarie.id);

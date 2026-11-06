@@ -1924,9 +1924,9 @@ function NyttPassModal({ öppen, onStäng, personal, vikarier, frånvaron, onSka
 
     if (förvaldFrånvaro) {
       const datum = förvaltDatum ?? förvaldFrånvaro.datum_från;
-      const frånvaroStart = förvaldFrånvaro.tid_från?.slice(0, 5);
-      const frånvaroSlut = förvaldFrånvaro.tid_till?.slice(0, 5);
-      const harFrånvaroTid = !förvaldFrånvaro.hel_dag && !!frånvaroStart && !!frånvaroSlut;
+      const frånvaroStart = förvaldFrånvaro.tid_från?.slice(0, 5) || STANDARD_TID_FRÅN;
+      const frånvaroSlut = förvaldFrånvaro.tid_till?.slice(0, 5) || STANDARD_TID_TILL;
+      const harFrånvaroTid = !förvaldFrånvaro.hel_dag && !!(förvaldFrånvaro.tid_från || förvaldFrånvaro.tid_till);
 
       setForm(prev => ({
         ...prev,

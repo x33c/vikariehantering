@@ -415,39 +415,7 @@ export const passApi = {
     return supabase.rpc('accept_shift_request', { p_pass_id: passId, p_vikarie_id: vikarieId });
   },
   async tackaNej(passId: string, vikarieId: string) {
-    const svar = await supabase.from('pass_forfragningar')
-      .update({ status: 'nej', svarat_kl: new Date().toISOString() })
-      .eq('pass_id', passId)
-      .eq('vikarie_id', vikarieId)
-      .eq('status', 'vantar')
-      .select('*');
-
-    if (svar.error) return { data: null, error: svar.error };
-
-    const kvar = await supabase.from('pass_forfragningar')
-      .select('id')
-      .eq('pass_id', passId)
-      .eq('status', 'vantar')
-      .limit(1);
-
-    if (!kvar.error && (kvar.data ?? []).length === 0) {
-      return supabase.from('vikariepass')
-        .update({ status: 'obokat', riktad_till_vikarie_id: null })
-        .eq('id', passId)
-        .eq('status', 'notifierat')
-        .is('vikarie_id', null)
-        .select(VIKARIEPASS_SELECT)
-        .single();
-    }
-
-    if ((svar.data ?? []).length > 0) {
-      return supabase.from('vikariepass').select(VIKARIEPASS_SELECT).eq('id', passId).single();
-    }
-
-    return supabase.from('vikariepass')
-      .update({ status: 'obokat', riktad_till_vikarie_id: null })
-      .eq('id', passId).eq('riktad_till_vikarie_id', vikarieId).eq('status', 'notifierat')
-      .select(VIKARIEPASS_SELECT).single();
+    return supabase.rpc('decline_shift_request', { p_pass_id: passId, p_vikarie_id: vikarieId });
   },
   async hämtaVikarie(vikarieId: string) {
     return supabase.from('vikarier').select('*').eq('id', vikarieId).single();

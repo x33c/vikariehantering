@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
+import { absenceSchedule } from '../../lib/absenceSchedule';
 import { AbsenceReport } from '../../components/AbsenceReport';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
@@ -492,7 +493,7 @@ function FrånvaroModal({
     }
 
     const sRes = await frånvaroApi.hämtaSchemaraderFörFrånvaro(frånvarandePersonalId, datumFrån, datumTill);
-    const rader = sorteraOchRensaSchemarader((sRes.data ?? []) as Schemarad[]);
+    const rader = absenceSchedule(sorteraOchRensaSchemarader((sRes.data ?? []) as Schemarad[]), res.data as Frånvaro);
     setSchemarader(rader);
     setValda(new Set(rader.map((r) => r.id)));
     setSteg('pass');
@@ -998,7 +999,7 @@ export default function Franvaro() {
       return;
     }
 
-    const schemarader = sorteraOchRensaSchemarader((schemaRes.data ?? []) as Schemarad[])
+    const schemarader = absenceSchedule(sorteraOchRensaSchemarader((schemaRes.data ?? []) as Schemarad[]), frånvaro)
       .filter((rad) => rad.datum && rad.tid_från && rad.tid_till);
 
     try {

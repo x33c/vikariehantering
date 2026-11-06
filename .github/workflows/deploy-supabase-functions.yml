@@ -32,6 +32,9 @@ jobs:
           node scripts/test-edge-authorization.mjs
           node scripts/test-replacement-push.mjs
           node scripts/test-absence-suggestions.mjs
+          node scripts/test-absence-schedule.mjs
+          node scripts/test-request-review.mjs
+          node scripts/test-request-time-edit.mjs
           node scripts/test-absence-follow-up.mjs
           node scripts/test-pass-bilagor.mjs
 

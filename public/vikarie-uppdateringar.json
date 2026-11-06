@@ -1,6 +1,8 @@
 {
-  "uppdaterad": "2026-10-23",
+  "uppdaterad": "2026-11-06",
   "punkter": [
+    "Om passets tider har ändrats medan du haft sidan öppen hämtas de nya tiderna innan du svarar. Kontrollera dem och välj ja eller nej igen.",
+    "Nej-svar sparas tillsammans med passets status. Avbokningsönskemål visar tydligare om de har sparats; du är fortfarande bokad tills admin hanterar återbudet.",
     "Mobilvyn har större tryckytor för notiser och tema samt utrymme för mobilens statusfält. Notisguiden kan rullas på mindre skärmar.",
     "Växlingen mellan ljust och mörkt läge är mjukare och respekterar enhetens inställning för minskad rörelse.",
     "Förfrågningar visar sparade passtider. Inaktiva förfrågningar visas inte längre som möjliga att besvara, och passlistan uppdateras om en bokning inte går igenom.",

@@ -367,17 +367,26 @@ export default function MinaPass() {
   }
 
   async function beOmAvbokning() {
-    if (!valtPass) return;
+    if (!valtPass || sparar) return;
 
     const text = `Jag behöver avboka passet ${valtPass.datum} ${valtPass.tid_från.slice(0, 5)}-${valtPass.tid_till.slice(0, 5)}.`;
     setSparar(true);
-    const res = await passmeddelandeApi.skapa(valtPass.id, text, 'vikarie');
-    setSparar(false);
-
-    if (!res.error) {
-      await notisApi.skickaAdminAvbokning(valtPass.id);
-      setModalInfo('Admin har fått din avbokningsförfrågan.');
+    setModalFel('');
+    setModalInfo('');
+    try {
+      const res = await passmeddelandeApi.skapa(valtPass.id, text, 'vikarie');
+      if (res.error) {
+        setModalFel('Avbokningsförfrågan kunde inte sparas. Försök igen eller kontakta administratören.');
+        return;
+      }
+      setModalInfo('Din avbokningsförfrågan är sparad. Du är fortfarande bokad tills admin hanterar återbudet.');
+      const notification = await notisApi.skickaAdminAvbokning(valtPass.id);
+      if (notification.error) setModalFel('Förfrågan är sparad, men adminnotisen kunde inte skickas. Kontakta administratören.');
       await uppdateraMeddelanden(valtPass.id);
+    } catch {
+      setModalFel('Anslutningen avbröts. Kontrollera meddelandena eller kontakta admin innan du skickar igen.');
+    } finally {
+      setSparar(false);
     }
   }
 
