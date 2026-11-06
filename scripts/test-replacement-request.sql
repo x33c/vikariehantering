@@ -73,3 +73,49 @@ do $$ begin
   assert (select count(*) from notiser) = 1;
 end $$;
 select 'Replacement request tests passed';
+\ir ../supabase/migrations/20261106090000_decline_request.sql
+\ir ../supabase/migrations/20261106090000_decline_request.sql
+-- Editing times must not invalidate the pending request in either direction.
+insert into vikariepass values ('00000000-0000-0000-0000-000000000024',null,'notifierat',null,false,'2026-12-01','08:00','16:00');
+insert into pass_forfragningar values ('00000000-0000-0000-0000-000000000024','00000000-0000-0000-0000-000000000011','vantar',null);
+update vikariepass set tid_från='11:30', tid_till='15:00' where id='00000000-0000-0000-0000-000000000024';
+set role authenticated;
+select accept_shift_request('00000000-0000-0000-0000-000000000024','00000000-0000-0000-0000-000000000011');
+reset role;
+do $$ begin
+  assert (select tid_från from vikariepass where id='00000000-0000-0000-0000-000000000024') = '11:30'::time;
+  assert (select status from pass_forfragningar where pass_id='00000000-0000-0000-0000-000000000024') = 'ja';
+end $$;
+insert into vikariepass values ('00000000-0000-0000-0000-000000000025',null,'notifierat',null,false,'2026-12-02','08:00','16:00');
+insert into pass_forfragningar values ('00000000-0000-0000-0000-000000000025','00000000-0000-0000-0000-000000000011','vantar',null),
+('00000000-0000-0000-0000-000000000025','00000000-0000-0000-0000-000000000013','vantar',null);
+update vikariepass set tid_från='11:30' where id='00000000-0000-0000-0000-000000000025';
+set role authenticated;
+select decline_shift_request('00000000-0000-0000-0000-000000000025','00000000-0000-0000-0000-000000000011');
+do $$ begin
+  begin
+    perform decline_shift_request('00000000-0000-0000-0000-000000000025','00000000-0000-0000-0000-000000000013');
+    raise exception 'Other users request declined' using errcode='23514';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ begin
+  assert (select status from vikariepass where id='00000000-0000-0000-0000-000000000025') = 'notifierat';
+end $$;
+update pass_forfragningar set status='vantar' where pass_id='00000000-0000-0000-0000-000000000025';
+delete from pass_forfragningar where vikarie_id='00000000-0000-0000-0000-000000000013';
+set role authenticated;
+select decline_shift_request('00000000-0000-0000-0000-000000000025','00000000-0000-0000-0000-000000000011');
+reset role;
+do $$ begin
+  assert (select status from vikariepass where id='00000000-0000-0000-0000-000000000025') = 'obokat';
+end $$;
+-- A declined replacement must preserve the previous booking.
+set role authenticated;
+select decline_shift_request('00000000-0000-0000-0000-000000000022','00000000-0000-0000-0000-000000000011');
+reset role;
+do $$ begin
+  assert (select status from vikariepass where id='00000000-0000-0000-0000-000000000022') = 'bokat';
+  assert (select vikarie_id from vikariepass where id='00000000-0000-0000-0000-000000000022') = '00000000-0000-0000-0000-000000000012'::uuid;
+end $$;
+select 'Time edit and decline tests passed';
