@@ -76,6 +76,7 @@ select 'Replacement request tests passed';
 \ir ../supabase/migrations/20261106090000_decline_request.sql
 \ir ../supabase/migrations/20261106090000_decline_request.sql
 -- Editing times must not invalidate the pending request in either direction.
+begin;
 insert into vikariepass values ('00000000-0000-0000-0000-000000000024',null,'notifierat',null,false,'2026-12-01','08:00','16:00');
 insert into pass_forfragningar values ('00000000-0000-0000-0000-000000000024','00000000-0000-0000-0000-000000000011','vantar',null);
 update vikariepass set tid_från='11:30', tid_till='15:00' where id='00000000-0000-0000-0000-000000000024';
@@ -118,4 +119,5 @@ do $$ begin
   assert (select status from vikariepass where id='00000000-0000-0000-0000-000000000022') = 'bokat';
   assert (select vikarie_id from vikariepass where id='00000000-0000-0000-0000-000000000022') = '00000000-0000-0000-0000-000000000012'::uuid;
 end $$;
+rollback;
 select 'Time edit and decline tests passed';
