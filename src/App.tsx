@@ -39,6 +39,7 @@ import Profil from './pages/vikarie/Profil';
 import LoggaUt from './pages/vikarie/LoggaUt';
 import Schema from './pages/vikarie/Schema';
 import VikarieNotiser from './pages/vikarie/Notiser';
+import Feedback from './pages/Feedback';
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { profil, laddar } = useAuth();
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="export" element={<Export />} />
             <Route path="datastadning" element={<Datastadning />} />
             <Route path="notiser" element={<Notiser />} />
+            <Route path="feedback" element={<Feedback />} />
             <Route path="beta" element={<Navigate to="/admin/beta/start" replace />} />
             <Route path="beta/start" element={<BetaStart />} />
             <Route path="beta/franvaro" element={<BetaFranvaro />} />
@@ -126,6 +128,7 @@ export default function App() {
             <Route path="schema" element={<Schema />} />
             <Route path="notiser" element={<VikarieNotiser />} />
             <Route path="profil" element={<Profil />} />
+            <Route path="feedback" element={<Feedback />} />
             <Route path="logga-ut" element={<LoggaUt />} />
           </Route>
 

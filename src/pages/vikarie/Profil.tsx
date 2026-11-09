@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { vikariApi } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { Vikarie } from '../../types';
@@ -57,6 +58,7 @@ export default function Profil() {
   return (
     <div className="mx-auto w-full max-w-3xl overflow-x-hidden p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-6">
       <h1 className="mb-6 text-xl font-semibold" style={{ color: 'var(--text)' }}>Profil & kontakt</h1>
+      <Link to="/vikarie/feedback" className="mb-5 inline-block rounded-md border px-3 py-2 text-sm font-medium" style={{ borderColor: 'var(--border)', color: 'var(--blue)' }}>Rapportera problem / lämna förslag</Link>
       {fel && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{fel}</p>}
       {sparat && <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Uppgifterna är sparade.</p>}
 

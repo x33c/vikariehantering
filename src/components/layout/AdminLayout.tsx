@@ -15,6 +15,7 @@ const huvudNavItems: { to: string; label: string; icon: string; end?: boolean }[
 ];
 
 const merNavItems = [
+  { to: '/admin/feedback', label: 'Feedback', icon: 'mail' },
   { to: '/admin/import', label: 'Schema', icon: 'table' },
   { to: '/admin/historik', label: 'Historik', icon: 'history' },
   { to: '/admin/export', label: 'Export', icon: 'download' },

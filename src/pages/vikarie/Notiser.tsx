@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { notisApi, vikariApi } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -251,6 +251,7 @@ export default function VikarieNotiser() {
             <div className="mt-5 whitespace-pre-wrap break-words text-sm leading-6" style={{ color: 'var(--text)' }}>
               {vald.innehåll || 'Det finns ingen ytterligare information.'}
             </div>
+            {vald.ämne === 'Svar på feedback' && <Link to="/vikarie/feedback" className="mt-4 inline-block underline" style={{ color: 'var(--blue)' }}>Öppna min feedback</Link>}
             {valdDetaljer.length > 0 && (
               <div className="mt-5 rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                 {valdDetaljer.map((rad) => (

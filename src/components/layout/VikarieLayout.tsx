@@ -24,7 +24,7 @@ export default function VikarieLayout() {
   const aktivSida = navItems.find((item) =>
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   );
-  const sidtitel = aktivSida?.label ?? 'Pass';
+  const sidtitel = location.pathname === '/vikarie/feedback' ? 'Feedback' : aktivSida?.label ?? 'Pass';
 
   useEffect(() => {
     if (!profil?.id) return;

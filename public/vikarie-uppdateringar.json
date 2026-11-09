@@ -1,6 +1,7 @@
 {
-  "uppdaterad": "2026-11-06",
+  "uppdaterad": "2026-11-09",
   "punkter": [
+    "Under Profil kan du rapportera problem och lämna förslag. Följ dina ärenden, komplettera med svar och få en notis i appen när admin återkopplar.",
     "Om passets tider har ändrats medan du haft sidan öppen hämtas de nya tiderna innan du svarar. Kontrollera dem och välj ja eller nej igen.",
     "Nej-svar sparas tillsammans med passets status. Avbokningsönskemål visar tydligare om de har sparats; du är fortfarande bokad tills admin hanterar återbudet.",
     "Mobilvyn har större tryckytor för notiser och tema samt utrymme för mobilens statusfält. Notisguiden kan rullas på mindre skärmar.",
