@@ -45,3 +45,20 @@ for (const scenario of ['success', 'save-error', 'notify-error', 'network-error'
   assert.equal(!!info, ['success', 'notify-error'].includes(scenario));
 }
 console.log('PASS: stale times require review; cancellation handles save, notification and network failure');
+const conflicts = handler('src/pages/admin/Vikariepass.tsx', 'bokningskrockar', {});
+const booked = [{ id: 'other', vikarie_id: 'alex', tid_från: '10:00:00', tid_till: '15:15:00' }];
+for (const [from, to, collision] of [['08:00', '10:00', false], ['15:15', '17:00', false], ['09:00', '10:01', true], ['15:14', '17:00', true], ['11:00', '12:00', true]]) {
+  assert.equal(!!conflicts(booked, 'current', from, to).alex, collision);
+}
+assert.equal(Object.keys(conflicts(booked, 'other', '08:00', '17:00')).length, 0);
+let saved;
+await handler('src/pages/admin/Vikariepass.tsx', 'bokaDirekt', {
+  tidFrån: '15:15', tidTill: '17:00', dagLast: false, valdVikarieId: 'alex',
+  pass: { id: 'current' }, valdVikarie: { namn: 'Alex' },
+  setFel: message => { throw new Error(message); },
+  uppdateraPass: async data => { saved = data; return true; },
+  historikApi: { skapa: async () => {} },
+})();
+assert.equal(saved.tid_från, '15:15');
+assert.equal(saved.tid_till, '17:00');
+console.log('PASS: same-day adjacent shifts allowed, overlaps blocked, direct booking saves draft times');

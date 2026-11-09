@@ -13,6 +13,17 @@ import { CopyShiftsModal } from '../../components/CopyShiftsModal';
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
 const STANDARD_TID_TILL = '16:30';
+
+function bokningskrockar(bokningar: Bemanning[], passId: string, från: string, till: string) {
+  const krockar: Record<string, Bemanning> = {};
+  for (const bokning of bokningar) {
+    if (bokning.vikarie_id && bokning.id !== passId &&
+        från.slice(0, 5) < bokning.tid_till.slice(0, 5) && till.slice(0, 5) > bokning.tid_från.slice(0, 5)) {
+      krockar[bokning.vikarie_id] = bokning;
+    }
+  }
+  return krockar;
+}
 type SnabbFilterTyp = 'alla' | 'atgard' | 'lediga' | 'bokade' | 'ej_publicerade' | 'arkiv';
 
 const SNABBFILTER: { id: SnabbFilterTyp; label: string }[] = [
@@ -401,7 +412,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   const [fel, setFel] = useState('');
   const [sparar, setSparar] = useState(false);
   const [meddelanden, setMeddelanden] = useState<Passmeddelande[]>([]);
-  const [bokadeVikarier, setBokadeVikarier] = useState<Record<string, Bemanning>>({});
+  const [dagensBokningar, setDagensBokningar] = useState<Bemanning[]>([]);
+  const bokadeVikarier = bokningskrockar(dagensBokningar, pass.id, tidFrån, tidTill);
   const [tillgMap, setTillgMap] = useState<Record<string, VikarieTillgänglighet | null>>({});
   const [nyttMeddelande, setNyttMeddelande] = useState('');
   const [skickarMeddelande, setSkickarMeddelande] = useState(false);
@@ -481,21 +493,14 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   }, [pass.personal_id, pass.datum]);
 
   useEffect(() => {
+    let aktiv = true;
     async function laddaBokade() {
       const res = await passApi.lista({ datumFrån: pass.datum, datumTill: pass.datum, status: ["bokat", "bekräftat"] });
-      const bokade: Record<string, Bemanning> = {};
-
-      ((res.data ?? []) as Bemanning[]).forEach(p => {
-        if (!p.vikarie_id || p.id === pass.id) return;
-
-        const överlappar = pass.tid_från < p.tid_till && pass.tid_till > p.tid_från;
-        if (överlappar) bokade[p.vikarie_id] = p;
-      });
-
-      setBokadeVikarier(bokade);
+      if (aktiv) setDagensBokningar((res.data ?? []) as Bemanning[]);
     }
 
     laddaBokade();
+    return () => { aktiv = false; };
   }, [pass.datum, pass.id, pass.tid_från, pass.tid_till]);
 
   async function notifieraBokadVikarieOmPassÄndrats(data: Partial<Bemanning>) {
@@ -936,6 +941,10 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
   }
 
   async function bokaDirekt() {
+    if (!tidFrån || !tidTill || tidFrån >= tidTill) {
+      setFel('Ange en giltig start- och sluttid.');
+      return;
+    }
     if (dagLast) {
       setFel('Dagen är låst. Lås upp dagen innan du bokar passet.');
       return;
@@ -949,6 +958,8 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
     const ok = await uppdateraPass(
       {
         status: 'bokat',
+        tid_från: tidFrån,
+        tid_till: tidTill,
         publicerad: false,
         vikarie_id: valdVikarieId,
         riktad_till_vikarie_id: null,
