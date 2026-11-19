@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
 import { absenceSchedule } from '../../lib/absenceSchedule';
 import { AbsenceReport } from '../../components/AbsenceReport';
+import { MobilePlanningDay, usePlanningDay } from '../../components/MobilePlanningDay';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
 import { frånvaroApi, personalApi, passApi, historikApi, vikariApi, notisApi } from '../../lib/api';
 import type { Frånvaro, Personal, Schemarad, Vikarie, Vikariepass } from '../../types';
@@ -1091,6 +1093,8 @@ export default function Franvaro() {
     : frånvaron;
 
   const veckaStart = startPåVecka(kalenderDatum);
+  const [mobilDag, setMobilDag] = usePlanningDay(veckaStart);
+  const mobil = useMediaQuery('(max-width: 767px)');
   const kalenderDagar = useMemo(
     () => Array.from({ length: 5 }, (_, index) => läggTillDagar(veckaStart, index)),
     [veckaStart]
@@ -1173,7 +1177,7 @@ export default function Franvaro() {
             Registrera frånvaro och skapa vikariepass vid behov.
           </p>
         </div>
-        <Button size="sm" onClick={() => setModal({ öppen: true })}>+ Ny frånvaro</Button>
+        <Button size="sm" onClick={() => setModal({ öppen: true, datum: mobil ? mobilDag : undefined })}>+ Ny frånvaro</Button>
       </div>
 
       {sidFel && <div className="mb-4"><Alert typ="error">{sidFel}</Alert></div>}
@@ -1230,24 +1234,25 @@ export default function Franvaro() {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-end sm:gap-2">
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>
+            <Button aria-label="Föregående vecka" size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, -7))}>
               <PeriodIkon typ="föregående" />
               <span className="hidden min-[390px]:inline">Föregående</span>
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(standardKalenderDatum())}>
+            <Button size="sm" variant="secondary" onClick={() => { setKalenderDatum(standardKalenderDatum()); setMobilDag(datumIdag()); }}>
               <PeriodIkon typ="idag" />
               <span>Idag</span>
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>
+            <Button aria-label="Nästa vecka" size="sm" variant="secondary" onClick={() => setKalenderDatum(läggTillDagar(veckaStart, 7))}>
               <span className="hidden min-[390px]:inline">Nästa</span>
               <PeriodIkon typ="nästa" />
             </Button>
           </div>
         </div>
 
-        <div className="space-y-2 md:hidden">
+        <MobilePlanningDay days={kalenderDagar} selected={mobilDag} counts={kalenderDagar.map(dag => frånvaroPerDag.get(dag)?.length ?? 0)} onSelect={setMobilDag} />
+        <div className="space-y-2 md:hidden" data-testid="mobile-absence-day">
           {kalenderDagar
-            .filter((dag) => dag === datumIdag() || (frånvaroPerDag.get(dag)?.length ?? 0) > 0)
+            .filter((dag) => dag === mobilDag)
             .map((dag) => {
               const dagensFrånvaro = sorteraDagensFrånvaro(dag);
               const ärIdag = dag === datumIdag();
@@ -1341,7 +1346,7 @@ export default function Franvaro() {
 
       {visaLista && (filtrerade.length === 0 ? (
         <TomtTillstånd text="Ingen frånvaro ännu." åtgärd={
-          <Button size="sm" onClick={() => setModal({ öppen: true })}>Ny frånvaro</Button>
+          <Button size="sm" onClick={() => setModal({ öppen: true, datum: mobil ? mobilDag : undefined })}>Ny frånvaro</Button>
         } />
       ) : (
         <>

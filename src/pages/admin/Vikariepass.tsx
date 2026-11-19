@@ -9,6 +9,8 @@ import { supabase } from '../../lib/supabase';
 import { absenceSuggestions } from '../../lib/absenceSuggestions';
 import { useDeclinedShifts, declineText, confirmDeclines } from '../../hooks/useDeclinedShifts';
 import { CopyShiftsModal } from '../../components/CopyShiftsModal';
+import { MobilePlanningDay, usePlanningDay } from '../../components/MobilePlanningDay';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -2593,8 +2595,13 @@ export default function Bemanning() {
   const [datumTill, setDatumTill] = useState('');
   const [döljPasserade, setDöljPasserade] = useState(false);
   const [veckaStart, setVeckaStart] = useState(() => standardVeckaStartIso());
+  const [mobilDag, setMobilDag] = usePlanningDay(veckaStart);
+  const mobil = useMediaQuery('(max-width: 767px)');
   const [lastaDagar, setLastaDagar] = useState<Set<string>>(() => lasLastaDagar());
   const [valda, setValda] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (mobil) setValda(new Set());
+  }, [mobil, mobilDag]);
   const [copySource, setCopySource] = useState<Bemanning[] | null>(null);
   const [copyResult, setCopyResult] = useState('');
   const [massVikarieId, setMassVikarieId] = useState('');
@@ -3127,15 +3134,15 @@ export default function Bemanning() {
               </details>
 
               <div className="grid grid-cols-3 gap-1.5 sm:flex sm:justify-center sm:gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
+                <Button aria-label="Föregående vecka" size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, -7))}>
                   <PeriodIkon typ="föregående" />
                   <span className="hidden min-[390px]:inline">Föregående</span>
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(standardVeckaStartIso())}>
+                <Button size="sm" variant="secondary" onClick={() => { setVeckaStart(standardVeckaStartIso()); setMobilDag(idag); }}>
                   <PeriodIkon typ="idag" />
                   <span>Idag</span>
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
+                <Button aria-label="Nästa vecka" size="sm" variant="secondary" onClick={() => setVeckaStart(läggTillDagarIso(veckaStart, 7))}>
                   <span className="hidden min-[390px]:inline">Nästa</span>
                   <PeriodIkon typ="nästa" />
                 </Button>
@@ -3249,8 +3256,9 @@ export default function Bemanning() {
           </div>
         ) : (
           <>
-              <div className="space-y-5 md:hidden">
-                {synligaDagar.map(({ datum, grupper }) => {
+              <MobilePlanningDay days={veckodagar} selected={mobilDag} counts={grupperPerDag.map(dag => dag.grupper.length)} onSelect={setMobilDag} disabled={massSparar} />
+              <div className="space-y-3 md:hidden" data-testid="mobile-staffing-day">
+                {synligaDagar.filter(dag => dag.datum === mobilDag).map(({ datum, grupper }) => {
                   const passförslag = frånvaroFörslagPerDag.get(datum) ?? [];
                   const dagLast = arDagLast(datum);
                   const dagHarÅtgärd = !dagLast && (grupper.some(grupp => gruppInfo(grupp).atgard) || passförslag.length > 0);
