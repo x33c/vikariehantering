@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RecipientList } from '../../components/RecipientList';
 import { absencesToFollowUp, previousWorkday } from '../../lib/absenceFollowUp';
 import { frånvaroApi, passApi, vikariApi, personalApi, historikApi } from '../../lib/api';
 import { withdrawalBookings, appendWithdrawnNames, activeWithdrawals, type WithdrawalRow } from '../../lib/withdrawalReport';
@@ -886,6 +887,7 @@ export default function Utskick() {
         </div>
       </div>
 
+      <RecipientList />
       {withdrawalBookings(återbud, pass).length > 0 && (
         <details className="mb-2 border-b py-2" style={{ borderColor: 'var(--border)' }}>
           <summary className="cursor-pointer text-sm font-semibold">Återbudsmarkeringar ({withdrawalBookings(återbud, pass).length})</summary>
