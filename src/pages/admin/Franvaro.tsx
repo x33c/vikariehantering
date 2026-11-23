@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { absenceNeedsSubstitute, shiftMatchesAbsence } from '../../lib/absenceSuggestions';
 import { absenceSchedule } from '../../lib/absenceSchedule';
 import { AbsenceReport } from '../../components/AbsenceReport';
+import { PersonalSelect } from '../../components/PersonalSelect';
 import { MobilePlanningDay, usePlanningDay } from '../../components/MobilePlanningDay';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh';
@@ -641,19 +642,10 @@ function FrånvaroModal({
       {steg === 'formulär' ? (
         <div className="space-y-4">
           {fel && <Alert typ="error">{fel}</Alert>}
-          <Select
-            label="Vem är frånvarande?"
-            value={personalId}
-            onChange={(e) => {
-              setPersonalId(e.target.value);
-              if (e.target.value) setEgenPersonalNamn('');
-            }}
-          >
-            <option value="">Välj från personal</option>
-            {personal.map((p) => (
-              <option key={p.id} value={p.id}>{p.namn} {p.arbetslag ? `(${p.arbetslag.namn})` : ''}</option>
-            ))}
-          </Select>
+          <PersonalSelect key={`${öppen}:${förvaltDatum ?? ''}`} personal={personal} value={personalId} onChange={id => {
+            setPersonalId(id);
+            if (id) setEgenPersonalNamn('');
+          }} />
 
           <Input
             label="Eller skriv namn"
@@ -852,12 +844,7 @@ function RedigeraFrånvaroModal({
       <div className="space-y-4">
         {fel && <Alert typ="error">{fel}</Alert>}
 
-        <Select label="Vem är frånvarande? *" value={personalId} onChange={(e) => setPersonalId(e.target.value)}>
-          <option value="">Välj person</option>
-          {personal.map((p) => (
-            <option key={p.id} value={p.id}>{p.namn} {p.arbetslag ? `(${p.arbetslag.namn})` : ''}</option>
-          ))}
-        </Select>
+        <PersonalSelect key={frånvaro?.id ?? 'closed'} personal={personal} value={personalId} onChange={setPersonalId} />
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Första dag *" type="date" value={datumFrån} onChange={(e) => setDatumFrån(e.target.value)} />

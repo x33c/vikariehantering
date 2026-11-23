@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { cleanupDate } from '../cleanupSafety';
+import { publishShiftUpdate } from '../shiftEvents';
 
 function signaleraTillgänglighetÄndrad(vikarieId?: string | null) {
   if (typeof window === 'undefined') return;
@@ -333,7 +334,9 @@ export const passApi = {
       .single();
   },
   async uppdatera(id: string, data: UppdateraVikariepass) {
-    return supabase.from('vikariepass').update(data).eq('id', id).select('*, personal(*)').single();
+    const result = await supabase.from('vikariepass').update(data).eq('id', id).select('*, personal(*)').single();
+    if (!result.error && result.data) publishShiftUpdate(result.data);
+    return result;
   },
   async uppdateraStatus(id: string, status: PassStatus) {
     return supabase.from('vikariepass').update({ status }).eq('id', id).select().single();

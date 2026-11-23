@@ -11,6 +11,7 @@ import { useDeclinedShifts, declineText, confirmDeclines } from '../../hooks/use
 import { CopyShiftsModal } from '../../components/CopyShiftsModal';
 import { MobilePlanningDay, usePlanningDay } from '../../components/MobilePlanningDay';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { subscribeShiftUpdates } from '../../lib/shiftEvents';
 
 const ALLA_STATUSAR: PassStatus[] = ['obokat', 'notifierat', 'bokat', 'bekräftat', 'avbokat'];
 const STANDARD_TID_FRÅN = '08:00';
@@ -613,7 +614,7 @@ function PassDetaljer({ pass, vikarier, personal, dagLast = false, onStäng, onU
       ? personal.find(p => p.id === data.personal_id)
       : pass.personal;
 
-    onUppdaterad({ ...pass, ...data, personal: uppdateradPersonal,
+    onUppdaterad({ ...pass, ...res.data, personal: uppdateradPersonal,
       frånvaro: data.frånvaro_id === null ? undefined : pass.frånvaro });
     return true;
   }
@@ -2663,6 +2664,12 @@ export default function Bemanning() {
   }, [statusFilter, datumFrån, datumTill, veckaStart]);
 
   useEffect(() => { ladda(); }, [ladda]);
+  useEffect(() => subscribeShiftUpdates(updated => {
+    const merge = (row: Bemanning): Bemanning => ({ ...row, ...updated,
+      personal: row.personal_id === updated.personal_id ? row.personal : updated.personal });
+    setPass(previous => previous.map(row => row.id === updated.id ? merge(row) : row));
+    setValtPass(previous => previous?.id === updated.id ? merge(previous) : previous);
+  }), []);
   useRealtimeRefresh(true, ladda, ['vikariepass', 'frånvaro', 'passmeddelanden', 'notiser', 'pass_bilagor']);
 
   const passIdFrånUrl = searchParams.get('pass');
