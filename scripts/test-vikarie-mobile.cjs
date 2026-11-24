@@ -36,6 +36,16 @@ const token = [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from
       await page.waitForURL('**/vikarie/notiser');
       await header.getByRole('button', { name: 'Växla tema' }).tap();
       await page.screenshot({ path: `../vikarie-mobile-${width}.png` });
+      await page.goto('http://127.0.0.1:5178/vikarie/profil');
+      await page.getByRole('main').getByRole('link', { name: 'Logga ut', exact: true }).click();
+      await page.getByRole('heading', { name: 'Logga ut?' }).waitFor();
+      await page.getByRole('link', { name: 'Avbryt', exact: true }).click();
+      await page.waitForURL('**/vikarie');
+      await page.goto('http://127.0.0.1:5178/vikarie/profil');
+      await page.getByRole('main').getByRole('link', { name: 'Logga ut', exact: true }).click();
+      await page.getByRole('button', { name: 'Logga ut', exact: true }).click();
+      await page.waitForURL('**/login');
+      assert.equal(await page.evaluate(() => localStorage.getItem('sb-pass-bilagor-test-auth-token')), null);
       await context.close();
       console.log(`PASS ${width}x${height}: touch targets, navigation, theme, overflow`);
     }
