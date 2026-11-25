@@ -20,9 +20,22 @@ assert.equal(appendWithdrawnNames('', bookings, () => 'Daren'), 'Daren');
 assert.equal(withdrawalBookings([{ pass_id: 'missing', metadata: record.metadata }], [shift]).length, 0);
 assert.equal(withdrawalBookings([{ pass_id: 'pass', metadata: { vikarie_id: 'daren' } }], [shift])[0].tid_från, '09:00', 'Old records remain readable');
 const source = ts.createSourceFile('Utskick.tsx', readFileSync('src/pages/admin/Utskick.tsx', 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const names = ['esc', 'normaliseraVikarieRadbrytningar', 'htmlVikarieCell', 'htmlCell'];
+const names = ['esc', 'normaliseraVikarieRadbrytningar', 'htmlVikarieCell', 'htmlCell', 'gruppForUtskick', 'utskickGruppText', 'arbetslagSortIndex', 'sorteraPass', 'vikarieText', 'tid'];
 const code = source.statements.filter(n => ts.isFunctionDeclaration(n) && names.includes(n.name?.text)).map(n => n.getText(source)).join('\n');
 vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, ctx);
+const personShift = { ...shift, personal: { arbetslag: { namn: 'Åk.3' } }, vikarie: { namn: 'Wilmer' }, grupp: '3A' };
+assert.equal(ctx.gruppForUtskick(personShift), '3A');
+for (const group of ['3A', '4B', '3A/3B', 'FSK Blå', 'PREST fm', '3A fm; 4B em']) {
+  assert.equal(ctx.utskickGruppText(ctx.gruppForUtskick({ ...personShift, grupp: group })), group);
+}
+for (const group of ['', '   ', null, undefined]) {
+  assert.equal(ctx.gruppForUtskick({ ...personShift, grupp: group }), 'Åk.3');
+}
+assert.equal(ctx.gruppForUtskick({ grupp: '', personal: null }), '');
+assert.equal(ctx.vikarieText(personShift, name => name, new Map()), 'Wilmer - 3A\n(09:00-17:00)');
+const ordered = ['6B', '3A', 'FSK Blå', '1A', 'PREST'].map(grupp => ({ ...personShift, grupp })).sort(ctx.sorteraPass);
+assert.deepEqual(ordered.map(row => row.grupp), ['FSK Blå', '1A', '3A', '6B', 'PREST']);
+console.log('PASS: exact shift group, staff fallback, exported class text and FSK/year ordering');
 const html = ctx.htmlVikarieCell('Amanda - 1A\n(09:00-17:00)\n\nÅterbud: Daren - 1A\n(08:00-16:00)');
 assert.equal((html.match(/<s /g) ?? []).length, 1);
 assert(html.includes('<s style="text-decoration:line-through;"><strong>Daren - 1A</strong><br>(08:00-16:00)</s>'));

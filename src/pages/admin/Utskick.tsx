@@ -284,14 +284,8 @@ function arbetslagSortIndex(value?: string | null) {
   return 99;
 }
 
-function arDetaljeradGrupptext(grupp?: string | null) {
-  const text = (grupp ?? '').trim();
-  return /[:|;\n]|\b(?:f\.?m\.?|e\.?m\.?|fr\.)\b/i.test(text);
-}
-
 function gruppForUtskick(pass: Vikariepass) {
-  if (arDetaljeradGrupptext(pass.grupp)) return pass.grupp;
-  return pass.personal?.arbetslag?.namn ?? pass.grupp;
+  return pass.grupp?.trim() || pass.personal?.arbetslag?.namn?.trim() || '';
 }
 
 function sorteraPass(a: Vikariepass, b: Vikariepass) {
@@ -362,27 +356,7 @@ function frånvaroText(f: Frånvaro, formatNamn: NamnFormatter) {
 }
 
 function utskickGruppText(grupp?: string | null) {
-  const text = (grupp ?? '').trim();
-  if (!text) return '';
-
-  const kompakt = text.toLowerCase().replace(/\s+/g, '');
-
-  if (kompakt.includes('fsk') || kompakt.includes('förskole') || kompakt.includes('forskole')) return 'FSK';
-  if (kompakt.includes('prest')) return 'PREST';
-
-  const delar = text.split(/[,/]+/).map((del) => del.trim()).filter(Boolean);
-  const årskurser = delar
-    .map((del) => del.match(/(?:åk\.?|ak\.?)?\s*([1-6])\s*[a-zåäö]?/i)?.[1])
-    .filter(Boolean);
-
-  if (årskurser.length > 0 && årskurser.length === delar.length && new Set(årskurser).size === 1) {
-    return `Åk.${årskurser[0]}`;
-  }
-
-  const ensam = text.match(/^(?:åk\.?|ak\.?)?\s*([1-6])\s*[a-zåäö]?$/i)?.[1];
-  if (ensam) return `Åk.${ensam}`;
-
-  return text;
+  return (grupp ?? '').trim();
 }
 
 function vikarieText(pass: Vikariepass, formatNamn: NamnFormatter, vikarierById: Map<string, Vikarie>) {
